@@ -8,15 +8,15 @@
 ## 概要
 - 外部APIを利用した最小限のECサイト
 - 商品一覧・商品詳細・カート・購入フローを実装
-- Stripeテストモードで決済可能
-- SSRを使用して商品詳細ページを高速表示
+- Stripeテストモードで決済可能　//TODO
+- SSRを使用して商品詳細ページを高速表示　//TODO
 
 ## 技術スタック
 - React / Next.js
-- GraphQL / REST API（商品情報取得）
-- Stripe（決済API）
+- GraphQL / REST API（商品情報取得）//TODO
+- Stripe（決済API）//TODO
 - Bootstrap（UI）
-- SSR (Next.js)
+- SSR (Next.js)//TODO
 
 ## 機能
 - ログイン / ログアウト（オプション）
