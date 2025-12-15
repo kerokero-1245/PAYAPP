@@ -35,7 +35,9 @@
 `.env.local` に以下を設定してください。
 
 STRIPE_SECRET_KEY=xxxx
+
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=xxxx
+
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 ## 今後の拡張予定
@@ -44,6 +46,6 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 - 認証・注文履歴など、ECとしての機能拡張
 
 ## 補足
-本プロジェクトは現在も継続的に改善・拡張を行っています。
+
 本プロジェクトは現在も継続的に改善・拡張を行っています。  
 完成度よりも、設計・実装方針や技術選定の考え方を見ていただくことを目的としています。
