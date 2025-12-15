@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+/**
+ * 商品一覧を管理するZustandストア
+ *
+ * 現在はモックデータを使用し、
+ * 将来的にAPI連携へ差し替える想定。
+ */
 export const useProductStore = create(
   persist(
     () => ({

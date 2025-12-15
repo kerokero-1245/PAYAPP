@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import {persist} from "zustand/middleware";
 
+/**
+ * カート状態管理用のZustandストア
+ *
+ * - 商品の追加・削除
+ * - 数量更新
+ * - 合計金額の算出
+ * - localStorage への永続化
+ */
 export const useCartStore = create(
   persist(
     (set,get) => ({
