@@ -4,15 +4,13 @@ import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import { useState } from "react";
 
 export default function CartPage() {
+  const [loading, setLoading] = useState(false); 
   const router = useRouter();
   const { items, removeItem, updateQuantity } = useCartStore();
   const totalPrice = useCartStore((state) => state.totalPrice());
-
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-);
 
   if (items.length === 0) {
     return(
@@ -24,15 +22,27 @@ const stripePromise = loadStripe(
   }
 
   const handleCheckout = async () => {
-    const res = await fetch("/checkout", {
+    setLoading(true);
+
+    try {
+      const res = await fetch("/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
     });
 
-    const { id } = await res.json();
-    const stripe = await stripePromise;
-    await stripe.redirectToCheckout({ sessionId: id });
+    const data = await res.json();
+    if (!data.url) {
+      throw new Error("Checkout URL が取得できません");
+    }
+    window.location.href = data.url;
+
+    } catch (e) {
+      console.error("Checkout error:", e);
+      alert("決済処理に失敗しました");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,10 +74,13 @@ const stripePromise = loadStripe(
         </div>
       ))}
       <button
-        className="bg-green-500 text-white px-6 py-2 mt-4"
         onClick={handleCheckout}
+        disabled={loading}
+        className={`px-4 py-2 ${
+        loading ? "bg-gray-400" : "bg-green-500"
+      } text-white`}
       >
-        購入する
+        {loading ? "Stripeへ移動中..." : "購入する"}
       </button>
       <button
         onClick={() => router.back()}

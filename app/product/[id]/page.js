@@ -43,6 +43,12 @@ export default function ProductPage() {
               >
                 詳細
               </Link>
+              <Link
+                href={`/cart`}
+                className="text-blue-600 underline"
+              >
+                カートを見る
+              </Link>
 
               <button
                 onClick={() => addItem(p)}
