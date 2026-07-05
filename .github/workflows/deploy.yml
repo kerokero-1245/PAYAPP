@@ -1,0 +1,32 @@
+name: Deploy (design skeleton — inactive)
+
+# ⚠️ これは「設計用の雛形」です。実際のデプロイ実装は集約側のセッションで行います。
+#
+# 意図的に無効化してあります:
+#   - 手動トリガー (workflow_dispatch) のみで自動実行しない
+#   - ジョブは `if: false` でスキップ
+# 実装時は下記 TODO を埋め、`if:` を有効な条件（例: シークレット存在チェック）に置き換えてください。
+#
+# 想定フロー（Vercel を第一候補とした一例。ホスティングは差し替え可能）:
+#   1. main への push / リリースタグで起動
+#   2. CI（lint/typecheck/test/build）成功を前提条件にする
+#   3. プレビュー環境（PR）と本番環境（main）を分離
+#   4. STRIPE_SECRET_KEY / NEXT_PUBLIC_BASE_URL 等は GitHub Secrets / 環境変数から注入
+#      （リポジトリには絶対にコミットしない）
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: false # 設計雛形のため常にスキップ。実装時に有効化する。
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(集約側): ホスティング先を確定し、以下を実装する
+      #   - actions/setup-node + npm ci
+      #   - ビルド（または各ホスティングのデプロイ CLI/Action）
+      #   - シークレット注入（secrets.* を env へ）
+      - name: Placeholder
+        run: echo "デプロイ手順は集約側で実装する（設計雛形）"
