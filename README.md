@@ -1,51 +1,79 @@
-# My EC Site (PAYAPP)
+# MAISON — Luxury EC (PAYAPP)
 
-※ 本リポジトリは現在も作成途中の個人開発プロジェクトです。
-
-## 作成背景
-ポートフォリオ用に、ECサイトにおける最小限の機能を実装することを目的として作成を開始しました。  
-商品一覧からカート管理、決済API（Stripe）を利用した購入フローまでを、実務を意識した構成で実装することを目標としています。
+ラグジュアリーブランドをイメージした、ダークテーマのECサイト（ポートフォリオ用個人開発）。
+商品閲覧からカート、Stripe 決済、注文履歴までの購入体験を、拡張しやすい構成で実装しています。
 
 ## 概要
-- 外部API（Stripe）を利用した最小構成のECサイト
-- 商品一覧・商品詳細・カート・購入フローを実装中
+- 黒基調 × シャンパンゴールドの世界観（デザインシステムを `globals.css` に集約）
+- 商品一覧 / 詳細 / カート / 決済 / 注文履歴 / 会員（モック認証）まで一通りの EC フロー
+- Stripe Checkout（テストモード）による実決済フロー
 
 ## 技術スタック
-- React / Next.js（SSR）
-- GraphQL（データ取得）
-- Stripe（決済API）
-- Bootstrap（UI）
+- **Next.js 16**（App Router / Turbopack / SSR・SSG）
+- **React 19**
+- **Tailwind CSS v4**（`@theme` でデザイントークンを定義）
+- **Zustand**（状態管理・`persist` で localStorage 永続化）
+- **Stripe**（Checkout Session による決済）
+- 画像は `next/image`、フォントは `next/font`（Playfair Display / Inter）
 
-※ フロントエンドの状態管理・設計を意識し、拡張しやすい構成を意識しています。
-
-## 機能
+## 主な機能
 ### 実装済み
-- 商品一覧画面（初期画面）
-- 商品詳細画面
-- カート管理（追加・削除）
+- **トップ（ランディング）** — ヒーロースライダー / 新着 / カテゴリショーケース / ブランドプレッジ
+- **商品一覧** — カテゴリ絞り込み・キーワード検索（名前 / 説明の部分一致）・件数表示・空状態
+- **商品詳細** — 画像ギャラリー（サムネ切替）・数量指定でカート追加・関連商品
+- **カート** — 追加 / 削除 / 数量増減・小計 / 合計・localStorage 永続化
+- **決済** — Stripe Checkout へ遷移（`/checkout` API で Checkout Session を作成）
+- **決済結果** — 成功 `/success`（注文を履歴へ記録しカートを空に）/ キャンセル `/cancel`
+- **注文履歴** `/orders` — 過去の注文を新しい順に表示
+- **会員** `/login` `/account` — ログイン / ログアウト（※ ポートフォリオ用のモック認証）
+- 共通ヘッダー（カート点数バッジ・検索・アカウント）/ フッター / レスポンシブ対応
 
-### 実装予定 / 開発中
-- ログイン / ログアウト機能
-- 商品購入完了画面
-- 注文履歴表示
-- 認証機能（2段階認証）
-- Stripeテストモードでの購入処理
+### 今後の拡張候補
+- バックエンド連携（商品 API・実認証 / NextAuth・注文の永続化）
+- Stripe Webhook による注文確定・在庫管理
+- お気に入り / レビュー / クーポン
+
+## セットアップ
+
+> **Node.js 18.18 以上が必要です**（Next.js 16 の要件）。
+
+```bash
+# 依存インストール
+npm install
+
+# 開発サーバー
+npm run dev            # http://localhost:3000
+
+# 本番ビルド & 起動
+npm run build
+npm run start
+```
 
 ## 環境変数
 `.env.local` に以下を設定してください。
 
-STRIPE_SECRET_KEY=xxxx
-
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=xxxx
-
+```
+STRIPE_SECRET_KEY=sk_test_xxxx
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
 
-## 今後の拡張予定
-- useRef / useMemo / カスタムフック導入によるパフォーマンス改善
-- SSRを利用した商品詳細ページの表示速度向上
-- 認証・注文履歴など、ECとしての機能拡張
+## ディレクトリ構成
+```
+app/
+  page.tsx              トップ（ランディング）
+  product/page.js       商品一覧（検索・絞り込み）
+  product/[id]/page.js  商品詳細
+  cart/page.js          カート
+  checkout/route.js     Stripe Checkout Session 作成 API
+  success / cancel      決済結果
+  orders / login / account
+components/              Header / Footer / ProductCard / CartItem / HeroSlider / SideMenu
+store/                  productStore / cartStore / authStore / orderStore（Zustand）
+lib/format.js           金額・日付の整形ユーティリティ
+```
 
 ## 補足
-
-本プロジェクトは現在も継続的に改善・拡張を行っています。  
-完成度よりも、設計・実装方針や技術選定の考え方を見ていただくことを目的としています。
+- 認証は現状バックエンドを持たないデモ実装です（パスワード検証なし・localStorage 保持）。
+- 商品カタログはモックデータです（`store/productStore.js`）。
+- 完成度そのものより、設計・実装方針や UI/UX の考え方をご覧いただくことを目的としています。

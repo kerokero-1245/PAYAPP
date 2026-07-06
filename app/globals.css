@@ -1,26 +1,362 @@
 @import "tailwindcss";
 
+/*
+ * PAYAPP — Luxury Dark Design System
+ * ---------------------------------------------------
+ * 黒基調 × シャンパンゴールドのラグジュアリーEC。
+ * デザイントークンは @theme に集約し、Tailwind の
+ * bg-ink / text-gold / border-line などから参照する。
+ */
+
+@theme {
+  /* ---- Surfaces ---- */
+  --color-ink: #0b0b0d; /* ページ背景（ほぼ黒） */
+  --color-ink-2: #0e0e11; /* わずかに明るい下地 */
+  --color-surface: #141418; /* カード等の面 */
+  --color-surface-2: #1b1b21; /* さらに浮いた面 */
+  --color-line: rgba(255, 255, 255, 0.08); /* 罫線 */
+  --color-line-strong: rgba(255, 255, 255, 0.16);
+
+  /* ---- Text ---- */
+  --color-cream: #f5f3ec; /* 主要テキスト（温白） */
+  --color-muted: #a2a2ac; /* 補助テキスト */
+  --color-faint: #6d6d76; /* さらに控えめ */
+
+  /* ---- Gold accent ---- */
+  --color-gold: #c6a664; /* シャンパンゴールド */
+  --color-gold-soft: #d8c18a;
+  --color-gold-bright: #e8d9a8;
+  --color-gold-deep: #9c7f45;
+
+  /* ---- Feedback ---- */
+  --color-success: #6fbf8b;
+  --color-danger: #d98a7a;
+
+  /* ---- Fonts (layout.tsx の next/font が変数を供給) ---- */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+
+  /* ---- Radius ---- */
+  --radius-lux: 2px; /* シャープで上品な角 */
+}
+
+/* ---------------------------------------------------
+ * Base
+ * ------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  border-color: var(--color-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ink);
+  color: var(--color-cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* うっすらとしたゴールドのビネットで奥行きを出す */
+  background-image:
+    radial-gradient(80rem 40rem at 50% -10%, rgba(198, 166, 100, 0.06), transparent 60%),
+    radial-gradient(60rem 40rem at 100% 100%, rgba(198, 166, 100, 0.04), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(198, 166, 100, 0.28);
+  color: var(--color-cream);
+}
+
+/* Focus ring — ゴールド */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-ink);
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a31;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-deep);
+}
+
+/* ---------------------------------------------------
+ * Typography helpers
+ * ------------------------------------------------- */
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* 小さなラベル見出し（例: NEW ARRIVALS） */
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+    font-weight: 500;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(100deg, var(--color-gold-bright), var(--color-gold) 45%, var(--color-gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ---- Layout ---- */
+  .container-lux {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-lux {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* 細いゴールドの区切り線 */
+  .hairline {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, var(--color-line-strong), transparent);
+  }
+  .hairline-gold {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(198, 166, 100, 0.55), transparent);
+  }
+  /* 見出し下などに置く短いゴールド線 */
+  .rule-gold {
+    display: inline-block;
+    width: 3rem;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-gold), transparent);
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    border-radius: var(--radius-lux);
+    transition: all 0.25s ease;
+    cursor: pointer;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ゴールドのソリッド（主要CTA） */
+  .btn-gold {
+    background: linear-gradient(180deg, var(--color-gold-soft), var(--color-gold));
+    color: #1a1408;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 24px -12px rgba(198, 166, 100, 0.7);
+  }
+  .btn-gold:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--color-gold-bright), var(--color-gold-soft));
+    transform: translateY(-1px);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 12px 30px -12px rgba(198, 166, 100, 0.85);
+  }
+
+  /* ゴールドの枠線（副次アクション） */
+  .btn-outline {
+    background: transparent;
+    color: var(--color-gold-soft);
+    border: 1px solid rgba(198, 166, 100, 0.45);
+  }
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--color-gold);
+    color: var(--color-gold-bright);
+    background: rgba(198, 166, 100, 0.08);
+  }
+
+  /* 目立たないゴースト */
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-muted);
+    border: 1px solid var(--color-line);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--color-cream);
+    border-color: var(--color-line-strong);
+  }
+
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.7rem;
+  }
+  .btn-block {
+    width: 100%;
+  }
+
+  /* ---- Surfaces ---- */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+    transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card-hover:hover {
+    border-color: rgba(198, 166, 100, 0.35);
+    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.8);
+    transform: translateY(-3px);
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--color-surface), var(--color-ink-2));
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+  }
+
+  /* ---- Form ---- */
+  .input-lux {
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+    color: var(--color-cream);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    width: 100%;
+  }
+  .input-lux::placeholder {
+    color: var(--color-faint);
+  }
+  .input-lux:focus {
+    border-color: rgba(198, 166, 100, 0.6);
+    background: var(--color-surface);
+    outline: none;
+  }
+
+  /* ---- Badge / chip ---- */
+  .badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 999px;
+    background: var(--color-gold);
+    color: #1a1408;
+    line-height: 1;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    color: var(--color-muted);
+    background: transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .chip:hover {
+    color: var(--color-cream);
+    border-color: var(--color-line-strong);
+  }
+  .chip-active {
+    color: #1a1408;
+    background: var(--color-gold);
+    border-color: var(--color-gold);
+    font-weight: 600;
+  }
+
+  /* リンクの下線アニメ */
+  .link-underline {
+    position: relative;
+  }
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 100%;
+    height: 1px;
+    background: var(--color-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  .link-underline:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ---------------------------------------------------
+ * Animations
+ * ------------------------------------------------- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.6s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
