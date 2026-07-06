@@ -1,41 +1,62 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { CATEGORIES } from "@/store/productStore";
 
 /**
- * 製品一覧画面用のサイドメニューコンポーネント
+ * ショップ（商品一覧）用サイドカテゴリメニュー
  *
  * @description
- * 商品一覧ページに表示されるカテゴリナビゲーション。
- * 現在はリンクをべた書きしているため、製品一覧画面専用の実装。
+ * productStore の CATEGORIES を動的にマップし、現在の URL クエリ
+ * （?category=slug）に応じて選択中カテゴリをゴールドでハイライトする。
+ * "all" は /product（クエリなし）へリンクする。
  *
- * @todo
- * - 表示するメニューの出し分け
- * - カテゴリを動的に生成する処理の追加
+ * @remarks
+ * usePathname / useSearchParams を使用するため、呼び出し側（shop ページ）の
+ * <Suspense> 境界内に配置される前提。default export・props なし。
  *
  * @returns {JSX.Element} サイドメニューUI
  */
 export default function SideMenu() {
-  return (
-    <aside className="w-56 bg-white border-r p-4 sticky top-0 h-screen">
-      <h2 className="font-bold mb-4">カテゴリ</h2>
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-      <ul className="space-y-2">
-        <li>
-          <Link href="/product" className="text-gray-600 font-semibold hover:text-blue-600">
-            全商品
-          </Link>
-        </li>
-        <li>
-          <Link href="/product?category=a" className="text-gray-600 font-semibold">カテゴリA</Link>
-        </li>
-        <li>
-          <Link href="/product?category=b" className="text-gray-600 font-semibold">カテゴリB</Link>
-        </li>
-        <li>
-          <Link href="/cart" className="text-blue-600 font-semibold">
-            カート
-          </Link>
-        </li>
-      </ul>
+  const currentCategory = searchParams.get("category") || "all";
+  const onShop = pathname === "/product";
+
+  return (
+    <aside className="w-56 shrink-0 sticky top-24 self-start">
+      <p className="eyebrow mb-4">CATEGORIES</p>
+      <div className="hairline mb-5" />
+
+      <nav>
+        <ul className="space-y-1">
+          {CATEGORIES.map((cat) => {
+            const href = cat.slug === "all" ? "/product" : `/product?category=${cat.slug}`;
+            const active = onShop && cat.slug === currentCategory;
+
+            return (
+              <li key={cat.slug}>
+                <Link
+                  href={href}
+                  aria-current={active ? "true" : undefined}
+                  className={`flex items-baseline gap-2 border-l-2 pl-4 py-2 text-sm tracking-wide transition-colors ${
+                    active
+                      ? "border-gold text-gold"
+                      : "border-transparent text-muted hover:text-cream"
+                  }`}
+                >
+                  <span>{cat.label}</span>
+                  <span className="text-[0.62rem] tracking-[0.2em] uppercase text-faint">
+                    {cat.jp}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </aside>
   );
 }
