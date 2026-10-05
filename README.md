@@ -27,9 +27,9 @@
 - **トップ（ランディング）** — ヒーロースライダー / 新着 / カテゴリショーケース / ブランドプレッジ
 - **商品一覧** — カテゴリ絞り込み・キーワード検索（名前 / 説明の部分一致）・件数表示・空状態
 - **商品詳細** — 画像ギャラリー（サムネ切替）・数量指定でカート追加・関連商品
-- **カート** — 追加 / 削除 / 数量増減・小計 / 合計・localStorage 永続化
-- **決済** — Stripe Checkout へ遷移（`/checkout` API で Checkout Session を作成）
-- **決済結果** — 成功 `/success`（注文を履歴へ記録しカートを空に）/ キャンセル `/cancel`
+- **カート** — 追加 / 削除 / 数量増減（1 商品 1〜99 点）・小計 / 合計・localStorage 永続化（価格と商品名は常にカタログから引き直し）
+- **決済** — Stripe Checkout へ遷移（`/checkout` API で Checkout Session を作成。価格はサーバ側のカタログから決定）
+- **決済結果** — 成功 `/success`（Stripe で支払い済みを確認できたときだけ、支払った内容で注文を履歴へ記録し、購入した分をカートから取り除く）/ キャンセル `/cancel`
 - **注文履歴** `/orders` — 過去の注文を新しい順に表示
 - **会員** `/login` `/account` — ログイン / ログアウト（※ ポートフォリオ用のモック認証）
 - 共通ヘッダー（カート点数バッジ・検索・アカウント）/ フッター / レスポンシブ対応
@@ -41,7 +41,7 @@
 
 ## セットアップ
 
-> **Node.js 18.18 以上が必要です**（Next.js 16 の要件）。
+> **Node.js 20.9 以上が必要です**（Next.js 16 の要件）。
 
 ```bash
 # 依存インストール
@@ -53,16 +53,39 @@ npm run dev            # http://localhost:3000
 # 本番ビルド & 起動
 npm run build
 npm run start
+
+# テスト（決済まわりの純粋な関数。Stripe には通信しません）
+npm test               # node --test tests/*.test.mjs（Node 20 / 24 で確認）
 ```
 
 ## 環境変数
-`.env.local` に以下を設定してください。
+`.env.example` を `.env.local` にコピーして設定してください。
+
+| 変数 | 必須 / 任意 | 用途 |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | **必須**（決済を使う場合） | Checkout Session の作成（`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください |
+| `NEXT_PUBLIC_BASE_URL` | 任意（**本番では設定してください**） | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります |
 
 ```
 STRIPE_SECRET_KEY=sk_test_xxxx
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+# NEXT_PUBLIC_BASE_URL=https://your-domain.example
 ```
+
+## 決済の流れ
+1. カートの「購入手続きへ」で、商品の **id と数量だけ** を `POST /checkout` に送ります。
+2. `/checkout` は価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
+   - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、16KB を超える本文は Stripe に送る前に 400 / 413 で返し、カートにその理由を表示します。ブラウザで価格を書き換えても請求額は変わりません。
+   - 戻り先 URL は `NEXT_PUBLIC_BASE_URL`、無ければリクエスト URL の origin から作ります（`Origin` ヘッダーは使いません）。
+3. Stripe の決済ページから `/success?session_id={CHECKOUT_SESSION_ID}` に戻ります。
+4. `/success` は `GET /api/checkout/session?session_id=...` で Stripe に Session を問い合わせ、結果を 3 つに分けます。
+   - **支払い済み**（`payment_status` が `paid`）: 確認ルートが metadata の id と数量をカタログに当てて作った注文（品目・単価・数量・合計）をそのまま履歴へ記録し、購入した品目と数量だけをカートから取り除きます（決済後にカートへ足した品は残ります。カートが空でも注文は記録されます）。
+   - **未払い**（未払いの Session・`session_id` が無い / 形が不正）: 「決済を確認できませんでした」と表示し、何も記録しません。
+   - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・記録時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
+   - 同じ `session_id` で注文を二重に記録しません（再読み込みしても 1 件のまま）。
+
+価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.mjs` `lib/cart.mjs` `lib/site.mjs` の純粋な関数に分けてあり、`tests/` で検証しています。
+
+> **注文履歴はブラウザごとです。** このデモにはサーバ側の保存先（DB）が無く、注文履歴は決済を確認したブラウザの localStorage にだけ記録されます。別のブラウザで同じ決済の戻り URL を開くと、そのブラウザにも記録されます。本番運用では Stripe Webhook と DB で注文を確定させる構成にしてください。
 
 ## ディレクトリ構成
 ```
@@ -72,14 +95,23 @@ app/
   product/[id]/page.js  商品詳細
   cart/page.js          カート
   checkout/route.js     Stripe Checkout Session 作成 API
+  api/checkout/session/route.js  決済確認 API（payment_status が paid か）
   success / cancel      決済結果
+  not-found.js          404 ページ
   orders / login / account
 components/              Header / Footer / ProductCard / CartItem / HeroSlider / SideMenu
 store/                  productStore / cartStore / authStore / orderStore（Zustand）
+lib/catalog.mjs         商品カタログ（クライアントとサーバで共有）
+lib/checkout.mjs        価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
+lib/cart.mjs            カートをカタログに合わせる・購入分を取り除く（純粋な関数）
+lib/site.mjs            サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
+lib/stripe.js           Stripe クライアント（サーバ専用）
 lib/format.js           金額・日付の整形ユーティリティ
+tests/                  node --test のテスト
 ```
 
 ## 補足
 - 認証は現状バックエンドを持たないデモ実装です（パスワード検証なし・localStorage 保持）。
-- 商品カタログはモックデータです（`store/productStore.js`）。
+- 商品カタログはモックデータです（`lib/catalog.mjs`）。
+- 注文履歴はブラウザの localStorage に保存するデモ実装です（Webhook による注文確定は今後の拡張候補）。
 - 完成度そのものより、設計・実装方針や UI/UX の考え方をご覧いただくことを目的としています。
