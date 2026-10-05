@@ -123,9 +123,10 @@ export default function Home() {
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
-              <div className="absolute inset-0 flex flex-col items-center justify-end p-6 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-end p-4 sm:p-6 text-center">
                 <p className="eyebrow text-[0.6rem]! tracking-[0.28em]">{cat.jp}</p>
-                <h3 className="font-display text-2xl text-cream mt-1">
+                {/* 狭い 2 列でも「フレグランス」を語の途中で折り返さない */}
+                <h3 className="font-display text-lg sm:text-2xl text-cream mt-1 whitespace-nowrap">
                   {cat.label}
                 </h3>
               </div>
@@ -159,7 +160,10 @@ export default function Home() {
         <div className="flex flex-col items-center text-center gap-6">
           <p className="eyebrow">Maison — New Season</p>
           <h2 className="font-display text-3xl md:text-5xl text-cream max-w-2xl leading-tight">
-            <span className="text-gradient-gold">時を超える</span>、静かな贅沢。
+            <span className="inline-block">
+              <span className="text-gradient-gold">時を超える</span>、
+            </span>
+            <span className="inline-block">静かな贅沢。</span>
           </h2>
           <p className="text-muted max-w-xl leading-relaxed">
             職人の手仕事と選び抜かれた素材が織りなす、あなただけの一品を。

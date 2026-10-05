@@ -9,9 +9,10 @@ import { formatYen } from "@/lib/format";
 /**
  * 商品カード（一覧・トップ・関連商品で共通利用）
  *
- * @param {{ product: object }} props
+ * @param {{ product: object, eager?: boolean }} props
+ *   eager: 最初の画面に入るカードは true（画像を遅延読み込みしない）
  */
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, eager = false }) {
   const addItem = useCartStore((s) => s.addItem);
   const [added, setAdded] = useState(false);
   const image = product.images?.[0] ?? product.image;
@@ -32,6 +33,7 @@ export default function ProductCard({ product }) {
               src={image}
               alt={product.name}
               fill
+              loading={eager ? "eager" : undefined}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
             />
@@ -59,11 +61,13 @@ export default function ProductCard({ product }) {
           <p className="text-xs text-muted line-clamp-1">{product.tagline}</p>
         )}
 
-        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+        {/* 狭いカード（スマホの 2 列）では価格の下にボタンを全幅で置き、はみ出しを防ぐ */}
+        <div className="mt-auto pt-3 flex flex-wrap items-center justify-between gap-2">
           <span className="text-cream text-base tracking-wide">{formatYen(product.price)}</span>
           <button
+            type="button"
             onClick={handleAdd}
-            className={`btn btn-sm ${added ? "btn-gold" : "btn-outline"}`}
+            className={`btn btn-sm w-full sm:w-auto ${added ? "btn-gold" : "btn-outline"}`}
           >
             {added ? "追加済み ✓" : "カートへ"}
           </button>
