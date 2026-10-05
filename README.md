@@ -3,6 +3,12 @@
 ラグジュアリーブランドをイメージした、ダークテーマのECサイト（ポートフォリオ用個人開発）。
 商品閲覧からカート、Stripe 決済、注文履歴までの購入体験を、拡張しやすい構成で実装しています。
 
+## スクリーンショット
+
+<img src="docs/screenshots/top.png" width="720" alt="MAISON のトップページ">
+
+<img src="docs/screenshots/product.png" width="720" alt="MAISON の商品詳細ページ">
+
 ## 概要
 - 黒基調 × シャンパンゴールドの世界観（デザインシステムを `globals.css` に集約）
 - 商品一覧 / 詳細 / カート / 決済 / 注文履歴 / 会員（モック認証）まで一通りの EC フロー
