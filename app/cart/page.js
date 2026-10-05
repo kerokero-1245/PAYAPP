@@ -1,39 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import CartItem from "@/components/CartItem";
 import { useCartStore } from "@/store/cartStore";
 import { formatYen } from "@/lib/format";
+import { useMounted } from "@/lib/useMounted";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
   const totalPrice = useCartStore((s) => s.totalPrice());
   const totalItems = useCartStore((s) => s.totalItems());
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState(null);
 
-  useEffect(() => setMounted(true), []);
-
-  // 既存の checkout 呼び出しロジックを維持（/checkout にPOST → data.url → Stripe へ遷移）
+  // /checkout に POST → data.url → Stripe へ遷移。失敗したらサーバが返した理由を出す
   const handleCheckout = async () => {
     setLoading(true);
+    setCheckoutError(null);
     try {
       const res = await fetch("/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        // 価格と商品名はサーバがカタログから引くので、id と数量だけを送る
+        body: JSON.stringify({
+          items: items.map(({ id, quantity }) => ({ id, quantity })),
+        }),
       });
 
-      const data = await res.json();
-      if (!data.url) {
-        throw new Error("Checkout URL が取得できません");
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (!res.ok || !data?.url) {
+        setCheckoutError(
+          typeof data?.error === "string" && data.error
+            ? data.error
+            : "決済処理に失敗しました。時間をおいてもう一度お試しください"
+        );
+        setLoading(false);
+        return;
       }
       window.location.href = data.url;
-    } catch (e) {
-      console.error("Checkout error:", e);
-      alert("決済処理に失敗しました");
+    } catch {
+      setCheckoutError("通信に失敗しました。時間をおいてもう一度お試しください");
       setLoading(false);
     }
   };
@@ -98,7 +112,8 @@ export default function CartPage() {
         <div className="hairline mt-6" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-10 mt-8">
+      {/* grid-cols-1（minmax(0,1fr)）で、長い商品名が列幅を押し広げて横スクロールが出るのを防ぐ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-8">
         {/* 左: 商品リスト */}
         <div className="lg:col-span-2">
           {items.map((item) => (
@@ -139,6 +154,12 @@ export default function CartPage() {
             >
               {loading ? "Stripeへ移動中…" : "購入手続きへ"}
             </button>
+
+            {checkoutError && (
+              <p role="alert" className="mt-3 text-sm text-danger leading-relaxed">
+                {checkoutError}
+              </p>
+            )}
 
             <Link
               href="/product"
