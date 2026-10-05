@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { useMounted } from "@/lib/useMounted";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,8 +16,7 @@ export default function LoginPage() {
 
   // persist ストアのため、初期描画では user を参照せず
   // マウント後に「ログイン済み」表示を出して hydration ズレを防ぐ
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -37,8 +37,7 @@ export default function LoginPage() {
             </h1>
             <span className="rule-gold mt-4" />
             <p className="text-muted mt-4 leading-relaxed">
-              <span className="text-gold-soft">{user.name}</span> 様として
-              サインインしています。
+              <span className="text-gold-soft">{user.name}</span> 様としてサインインしています。
             </p>
             <div className="mt-8 flex flex-col gap-3">
               <Link href="/account" className="btn btn-gold btn-block">
@@ -109,8 +108,7 @@ export default function LoginPage() {
             <div className="hairline my-7" />
 
             <p className="text-xs text-faint leading-relaxed text-center">
-              ※ これはポートフォリオ用のデモ認証です。パスワードは検証されず、
-              入力内容はこのブラウザにのみ保存されます。
+              ※ これはポートフォリオ用のデモ認証です。パスワードは検証されず、入力内容はこのブラウザにのみ保存されます。
             </p>
           </div>
         )}

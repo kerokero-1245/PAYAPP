@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useMounted } from "@/lib/useMounted";
 
 /**
  * アカウントページ
@@ -18,8 +18,7 @@ export default function AccountPage() {
   const router = useRouter();
 
   // persist ストアの hydration ズレを避けるため mounted 後に描画
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const handleLogout = () => {
     logout();
@@ -31,7 +30,7 @@ export default function AccountPage() {
     (user?.name || user?.email || "").trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <main className="container-lux py-14 md:py-20">
+    <div className="container-lux py-14 md:py-20">
       {/* ページ見出し */}
       <header className="animate-fade-up">
         <p className="eyebrow">MAISON — MY ACCOUNT</p>
@@ -93,6 +92,6 @@ export default function AccountPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
