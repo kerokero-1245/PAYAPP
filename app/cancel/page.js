@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+export const metadata = { title: "決済のキャンセル" };
+
 export default function CancelPage() {
   return (
     <div className="container-lux py-24 text-center max-w-xl mx-auto animate-fade-up">
@@ -41,8 +43,7 @@ export default function CancelPage() {
       </div>
 
       <p className="text-muted leading-relaxed mt-6">
-        お支払いは完了していません。ご請求は発生しておりませんのでご安心ください。
-        カートの内容はそのまま保持されていますので、いつでもお手続きを再開いただけます。
+        お支払いは完了していません。ご請求は発生しておりませんのでご安心ください。カートの内容はそのまま保持されていますので、いつでもお手続きを再開いただけます。
       </p>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
