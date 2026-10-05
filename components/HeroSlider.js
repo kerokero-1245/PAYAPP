@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -19,16 +19,34 @@ const slides = [
   },
 ];
 
+/** OS の「視差効果を減らす」設定（prefers-reduced-motion: reduce）を購読する */
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+function subscribeReducedMotion(onChange) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false
+  );
+}
+
 export default function HeroSlider() {
   const [index, setIndex] = useState(0);
+  const reducedMotion = usePrefersReducedMotion();
 
+  // 自動切り替え。動きを減らす設定のときは止める（インジケータでの手動切り替えは残す）
   useEffect(() => {
+    if (reducedMotion) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % slides.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <section className="relative h-[70vh] min-h-[520px] overflow-hidden bg-ink">
@@ -58,12 +76,13 @@ export default function HeroSlider() {
             <p className="eyebrow">MAISON — NEW SEASON</p>
             <span className="rule-gold mt-4" />
             <h1 className="font-display mt-5 text-4xl leading-tight text-cream sm:text-5xl md:text-6xl lg:text-7xl">
-              時を超える、<br className="hidden sm:block" />
-              静かな贅沢。
+              {/* 句の途中で改行しないよう、句ごとに折り返し単位をまとめる */}
+              <span className="inline-block">時を超える、</span>
+              <br className="hidden sm:block" />
+              <span className="inline-block">静かな贅沢。</span>
             </h1>
             <p className="mt-6 max-w-md text-base leading-relaxed text-muted md:text-lg">
-              選び抜かれた素材と職人の手仕事。長く寄り添うための、
-              変わらない美しさをまとうコレクション。
+              選び抜かれた素材と職人の手仕事。長く寄り添うための、変わらない美しさをまとうコレクション。
             </p>
             <div className="mt-9">
               <Link href="/product" className="btn btn-gold">
