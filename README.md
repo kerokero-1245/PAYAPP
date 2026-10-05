@@ -41,7 +41,7 @@
 
 ## セットアップ
 
-> **Node.js 20.9 以上が必要です**（Next.js 16 の要件）。
+> **Node.js 22 を使ってください**（22.23.3 で lint・ビルド・テストを確認。Next.js 16 自体の要件は 20.9.0 以上）。
 
 ```bash
 # 依存インストール
@@ -55,7 +55,7 @@ npm run build
 npm run start
 
 # テスト（決済まわりの純粋な関数。Stripe には通信しません）
-npm test               # node --test tests/*.test.mjs（Node 20 / 24 で確認）
+npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認）
 ```
 
 ## 環境変数
