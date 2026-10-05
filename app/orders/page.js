@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useOrderStore } from "@/store/orderStore";
 import { formatYen, formatDate } from "@/lib/format";
+import { useMounted } from "@/lib/useMounted";
 
 export default function OrdersPage() {
   const orders = useOrderStore((s) => s.orders);
 
   // persist ストアの hydration ズレを避けるため mounted 後に描画
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   return (
-    <main className="container-lux py-14 md:py-20">
+    <div className="container-lux py-14 md:py-20">
       {/* ページ見出し */}
       <header className="animate-fade-up">
         <p className="eyebrow">MAISON — ORDER HISTORY</p>
@@ -117,6 +116,6 @@ export default function OrdersPage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

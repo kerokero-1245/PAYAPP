@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import SideMenu from "@/components/SideMenu";
@@ -21,18 +21,17 @@ function ShopInner() {
   const categoryParam = searchParams.get("category") ?? "all";
   const activeCategory =
     CATEGORIES.find((c) => c.slug === categoryParam) ?? CATEGORIES[0];
+  const activeSlug = activeCategory.slug;
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      const inCategory =
-        activeCategory.slug === "all" || p.category === activeCategory.slug;
-      if (!inCategory) return false;
-      if (!query) return true;
-      const haystack =
-        `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [products, activeCategory.slug, query]);
+  // 10 件程度の絞り込みなので毎回計算する（useMemo は React Compiler の lint と相性が悪く外した）
+  const filtered = products.filter((p) => {
+    const inCategory = activeSlug === "all" || p.category === activeSlug;
+    if (!inCategory) return false;
+    if (!query) return true;
+    const haystack =
+      `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase();
+    return haystack.includes(query);
+  });
 
   // カテゴリ遷移用の href（検索語 q は維持、all は素の /product）
   const buildHref = (slug) => {
@@ -57,7 +56,7 @@ function ShopInner() {
           <SideMenu />
         </div>
 
-        <main className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0">
           {/* 見出し + 件数 */}
           <header className="animate-fade-up">
             <p className="eyebrow">Shop</p>
@@ -92,8 +91,9 @@ function ShopInner() {
           {/* グリッド or 0件 */}
           {filtered.length > 0 ? (
             <div className="mt-8 grid grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {filtered.map((product, i) => (
+                // 1 行目付近は最初の画面に入るので遅延読み込みしない（LCP 対策）
+                <ProductCard key={product.id} product={product} eager={i < 3} />
               ))}
             </div>
           ) : (
@@ -110,7 +110,7 @@ function ShopInner() {
               </Link>
             </div>
           )}
-        </main>
+        </div>
       </div>
     </section>
   );
