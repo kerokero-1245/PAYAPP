@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatYen } from "@/lib/format";
+import { MAX_QUANTITY } from "@/lib/cart.mjs";
 
 /**
  * カート内の1商品を表す行コンポーネント
@@ -46,9 +47,10 @@ export default function CartItem({ item }) {
             )}
           </div>
           <button
+            type="button"
             onClick={() => removeItem(item.id)}
             className="text-faint hover:text-danger transition-colors text-xs shrink-0"
-            aria-label="削除"
+            aria-label={`${item.name} を削除`}
           >
             削除
           </button>
@@ -58,18 +60,21 @@ export default function CartItem({ item }) {
           {/* 数量ステッパー */}
           <div className="inline-flex items-center border border-line rounded-[2px]">
             <button
+              type="button"
               onClick={dec}
               disabled={item.quantity <= 1}
               className="w-8 h-8 text-muted hover:text-gold disabled:opacity-30 transition-colors"
-              aria-label="数量を減らす"
+              aria-label={`${item.name} の数量を減らす`}
             >
               −
             </button>
             <span className="w-8 text-center text-sm text-cream tabular-nums">{item.quantity}</span>
             <button
+              type="button"
               onClick={inc}
-              className="w-8 h-8 text-muted hover:text-gold transition-colors"
-              aria-label="数量を増やす"
+              disabled={item.quantity >= MAX_QUANTITY}
+              className="w-8 h-8 text-muted hover:text-gold disabled:opacity-30 transition-colors"
+              aria-label={`${item.name} の数量を増やす`}
             >
               +
             </button>
