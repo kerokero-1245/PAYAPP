@@ -5,8 +5,15 @@
   color-scheme: dark;
 }
 
-* {
-  border-color: var(--color-line);
+/*
+ * 枠の既定色。この 1 つだけは @layer base に入れる。層の外に置くと、層の中の枠の色
+ * （.btn-outline の金・.chip-active・ユーティリティの border-gold など）に詳細度に関係なく勝ち、
+ * それらがすべて線の色（--color-line）になっていた。
+ */
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
 }
 
 html {
