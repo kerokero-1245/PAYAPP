@@ -24,21 +24,21 @@
   }
   .price-lg {
     font-size: 1.125rem;
-    line-height: calc(1.75 / 1.125);
+    line-height: var(--lh-lg);
   }
   .price-xl {
     font-size: 1.5rem;
-    line-height: calc(2 / 1.5);
+    line-height: var(--lh-2xl);
   }
   /* 商品詳細の価格（md で 1 段大きく） */
   .price-hero {
     font-size: 1.5rem;
-    line-height: calc(2 / 1.5);
+    line-height: var(--lh-2xl);
   }
   @media (min-width: 48rem) {
     .price-hero {
       font-size: 1.875rem;
-      line-height: calc(2.25 / 1.875);
+      line-height: var(--lh-3xl);
     }
   }
 

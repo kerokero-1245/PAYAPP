@@ -30,19 +30,19 @@
   }
   .field-label {
     font-size: 0.75rem;
-    line-height: calc(1 / 0.75);
+    line-height: var(--lh-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-muted);
   }
   .field-hint {
     font-size: 0.75rem;
-    line-height: calc(1 / 0.75);
+    line-height: var(--lh-xs);
     color: var(--color-faint);
   }
   .field-error {
     font-size: 0.75rem;
-    line-height: calc(1 / 0.75);
+    line-height: var(--lh-xs);
     color: var(--color-danger);
   }
   .field-required {

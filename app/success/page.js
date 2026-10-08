@@ -1,8 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import StatusMessage from "@/components/ui/StatusMessage";
+import Section from "@/components/ui/Section";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Button from "@/components/ui/Button";
+import Loading from "@/components/ui/Loading";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderStore } from "@/store/orderStore";
 import {
@@ -130,136 +134,86 @@ function SuccessInner() {
   );
 }
 
-/** 確認中 */
+/** 確認中（読み上げは上の role="status" が担うので、ここでは announce しない） */
 function SuccessChecking() {
   return (
-    <div className="container-lux py-24 text-center max-w-xl animate-fade-in">
-      <p className="eyebrow">MAISON</p>
-      <p className="text-faint text-sm mt-6">決済を確認しています…</p>
-    </div>
-  );
-}
-
-/** 円 + 「!」のマーク */
-function NoticeMark() {
-  return (
-    <svg
-      viewBox="0 0 80 80"
-      className="mx-auto h-24 w-24 text-gold"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="40" cy="40" r="36" strokeWidth="1.5" strokeOpacity="0.45" />
-      <path d="M40 24 L40 46" strokeWidth="2.5" />
-      <path d="M40 55 L40 56" strokeWidth="3" />
-    </svg>
+    <Section spacing="lg" width="narrow" className="text-center animate-fade-in" as="div">
+      <Eyebrow>MAISON</Eyebrow>
+      <Loading label="決済を確認しています…" announce={false} className="mt-6" />
+    </Section>
   );
 }
 
 /** 未払いと確認できた（session_id なしを含む） */
 function PaymentUnpaid() {
   return (
-    <div className="container-lux py-24 text-center max-w-xl animate-fade-up">
-      <NoticeMark />
-      <p className="eyebrow mt-8">Payment Not Completed</p>
-      <h1 className="font-display mt-4 text-3xl md:text-4xl text-cream">
-        決済を確認できませんでした
-      </h1>
-      <span className="rule-gold mt-6" />
-
-      <p className="mt-6 text-muted leading-relaxed">
-        お支払いの完了を確認できなかったため、ご注文は確定していません。カートの内容はそのまま保持されています。
-      </p>
-
-      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <Link href="/cart" className="btn btn-gold">
-          カートに戻る
-        </Link>
-        <Link href="/orders" className="btn btn-outline">
-          注文履歴を見る
-        </Link>
-      </div>
-    </div>
+    <StatusMessage
+      icon="notice"
+      eyebrow="Payment Not Completed"
+      title="決済を確認できませんでした"
+      lead="お支払いの完了を確認できなかったため、ご注文は確定していません。カートの内容はそのまま保持されています。"
+      actions={
+        <>
+          <Button href="/cart">カートに戻る</Button>
+          <Button href="/orders" variant="outline">
+            注文履歴を見る
+          </Button>
+        </>
+      }
+    />
   );
 }
 
 /** 確認できなかった（通信失敗など）。買い直しは促さず、再確認を出す */
 function PaymentUnverified({ onRetry }) {
   return (
-    <div className="container-lux py-24 text-center max-w-xl animate-fade-up">
-      <NoticeMark />
-      <p className="eyebrow mt-8">Payment Pending</p>
-      <h1 className="font-display mt-4 text-3xl md:text-4xl text-cream">
-        決済の確認が取れていません
-      </h1>
-      <span className="rule-gold mt-6" />
-
-      <p className="mt-6 text-muted leading-relaxed">
-        二重に購入しないでください。通信の状況などにより、お支払いの状況を確認できませんでした。決済が完了している可能性がありますので、少し時間をおいてからもう一度確認してください。
-      </p>
-
-      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <button type="button" onClick={onRetry} className="btn btn-gold">
-          もう一度確認する
-        </button>
-        <Link href="/orders" className="btn btn-outline">
-          注文履歴を見る
-        </Link>
-      </div>
-    </div>
+    <StatusMessage
+      icon="notice"
+      eyebrow="Payment Pending"
+      title="決済の確認が取れていません"
+      lead="二重に購入しないでください。通信の状況などにより、お支払いの状況を確認できませんでした。決済が完了している可能性がありますので、少し時間をおいてからもう一度確認してください。"
+      actions={
+        <>
+          <Button onClick={onRetry}>もう一度確認する</Button>
+          <Button href="/orders" variant="outline">
+            注文履歴を見る
+          </Button>
+        </>
+      }
+    />
   );
 }
 
 /** 決済確認済み */
 function OrderConfirmed({ orderId }) {
   return (
-    <div className="container-lux py-24 text-center max-w-xl animate-fade-up">
-      {/* ゴールドのチェックマーク（円 + チェック） */}
-      <svg
-        viewBox="0 0 80 80"
-        className="mx-auto h-24 w-24 text-gold"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="40" cy="40" r="36" strokeWidth="1.5" strokeOpacity="0.45" />
-        <path d="M25 41.5 L36 52 L56 29" strokeWidth="2.5" />
-      </svg>
-
-      <p className="eyebrow mt-8">Order Confirmed</p>
-      <h1 className="font-display mt-4 text-3xl md:text-4xl text-cream">
-        ご購入ありがとうございます
-      </h1>
-      <span className="rule-gold mt-6" />
-
-      <p className="mt-6 text-muted leading-relaxed">
-        ご注文を承りました。心を込めてお包みし、お届けいたします。
-        <br className="hidden sm:block" />
-        確認のご連絡を追ってお送りいたします。
-      </p>
-
+    <StatusMessage
+      icon="check"
+      eyebrow="Order Confirmed"
+      title="ご購入ありがとうございます"
+      lead={
+        <>
+          ご注文を承りました。心を込めてお包みし、お届けいたします。
+          <br className="hidden sm:block" />
+          確認のご連絡を追ってお送りいたします。
+        </>
+      }
+      actions={
+        <>
+          <Button href="/orders">注文履歴を見る</Button>
+          <Button href="/product" variant="outline">
+            買い物を続ける
+          </Button>
+        </>
+      }
+    >
       {orderId && (
-        <div className="mt-8 inline-flex items-center gap-3 border border-line rounded-[2px] px-5 py-3">
-          <span className="eyebrow">Order No.</span>
-          <span className="text-gold-soft tracking-widest text-sm">
-            {orderId}
-          </span>
+        <div className="status-ref mt-8">
+          <Eyebrow as="span">Order No.</Eyebrow>
+          <span className="status-ref-value">{orderId}</span>
         </div>
       )}
-
-      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <Link href="/orders" className="btn btn-gold">
-          注文履歴を見る
-        </Link>
-        <Link href="/product" className="btn btn-outline">
-          買い物を続ける
-        </Link>
-      </div>
-    </div>
+    </StatusMessage>
   );
 }
 

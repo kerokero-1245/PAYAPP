@@ -46,6 +46,6 @@
   .stepper-value-sm {
     width: 2rem;
     font-size: 0.875rem;
-    line-height: calc(1.25 / 0.875);
+    line-height: var(--lh-sm);
   }
 }

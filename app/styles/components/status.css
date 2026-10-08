@@ -19,7 +19,7 @@
   }
   .status-ref-value {
     font-size: 0.875rem;
-    line-height: calc(1.25 / 0.875);
+    line-height: var(--lh-sm);
     letter-spacing: 0.1em;
     color: var(--color-gold-soft);
   }

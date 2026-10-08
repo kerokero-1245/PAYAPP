@@ -13,7 +13,7 @@
   /* 件数・日付などの補足 */
   .meta {
     font-size: 0.875rem;
-    line-height: calc(1.25 / 0.875);
+    line-height: var(--lh-sm);
     color: var(--color-muted);
   }
   .meta-faint {
@@ -23,7 +23,7 @@
   /* 注記（いちばん小さい文字） */
   .fine {
     font-size: 0.75rem;
-    line-height: calc(1 / 0.75);
+    line-height: var(--lh-xs);
     color: var(--color-faint);
   }
   .fine-relaxed {
@@ -33,7 +33,7 @@
   /* 「読み込み中…」 */
   .loading-text {
     font-size: 0.875rem;
-    line-height: calc(1.25 / 0.875);
+    line-height: var(--lh-sm);
     color: var(--color-faint);
   }
 

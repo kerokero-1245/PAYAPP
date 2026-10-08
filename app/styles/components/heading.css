@@ -13,27 +13,27 @@
   /* h1（全ページ共通）と、トップの h2 */
   .heading-page {
     font-size: 1.875rem;
-    line-height: calc(2.25 / 1.875);
+    line-height: var(--lh-3xl);
   }
   /* 節の見出し（h2） */
   .heading-section {
     font-size: 1.5rem;
-    line-height: calc(2 / 1.5);
+    line-height: var(--lh-2xl);
   }
   /* 大きさが変わらない h2（空状態・プロフィールの名前） */
   .heading-block {
     font-size: 1.5rem;
-    line-height: calc(2 / 1.5);
+    line-height: var(--lh-2xl);
   }
   /* カードの見出し（注文番号・注文サマリー） */
   .heading-card {
     font-size: 1.25rem;
-    line-height: calc(1.75 / 1.25);
+    line-height: var(--lh-xl);
   }
   /* 一覧の項目の見出し（商品名・プレッジ） */
   .heading-item {
     font-size: 1.125rem;
-    line-height: calc(1.75 / 1.125);
+    line-height: var(--lh-lg);
   }
   /* トップの CTA */
   .heading-display {
@@ -48,7 +48,7 @@
   /* カテゴリのタイル */
   .heading-tile {
     font-size: 1.125rem;
-    line-height: calc(1.75 / 1.125);
+    line-height: var(--lh-lg);
     white-space: nowrap;
   }
 
@@ -58,17 +58,17 @@
     }
     .heading-tile {
       font-size: 1.5rem;
-      line-height: calc(2 / 1.5);
+      line-height: var(--lh-2xl);
     }
   }
   @media (min-width: 48rem) {
     .heading-page {
       font-size: 2.25rem;
-      line-height: calc(2.5 / 2.25);
+      line-height: var(--lh-4xl);
     }
     .heading-section {
       font-size: 1.875rem;
-      line-height: calc(2.25 / 1.875);
+      line-height: var(--lh-3xl);
     }
     .heading-display {
       font-size: 3rem;
