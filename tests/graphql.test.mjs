@@ -9,14 +9,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { PRODUCTS, getProductById } from "../lib/catalog.mjs";
-import {
-  CHECKOUT_ERRORS,
-  MAX_BODY_BYTES,
-  buildLineItems,
-  encodeOrderMetadata,
-} from "../lib/checkout.mjs";
+import { CHECKOUT_ERRORS, buildLineItems, encodeOrderMetadata } from "../lib/checkout.mjs";
 import { UNSUPPORTED_MEDIA_TYPE, isJsonContentType } from "../lib/checkout-session.mjs";
-import { createGraphqlHandler, TOO_MANY_MUTATIONS } from "../lib/graphql/handler.ts";
+import {
+  MAX_GRAPHQL_BODY_BYTES,
+  TOO_MANY_FIELDS,
+  TOO_MANY_MUTATIONS,
+  TOO_MANY_STRIPE_FIELDS,
+  createGraphqlHandler,
+} from "../lib/graphql/handler.ts";
 import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
 
 const URL_ = "http://localhost/api/graphql";
@@ -25,6 +26,7 @@ const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
 /** 呼ばれた引数を記録する偽の Stripe。retrieve は session id で返し分ける */
 function fakeStripe() {
   const created = [];
+  const retrieved = [];
   const sessions = {
     cs_test_paid: {
       id: "cs_test_paid",
@@ -35,6 +37,7 @@ function fakeStripe() {
   };
   return {
     created,
+    retrieved,
     checkout: {
       sessions: {
         async create(args) {
@@ -42,6 +45,7 @@ function fakeStripe() {
           return { url: "https://checkout.stripe.test/x" };
         },
         async retrieve(id) {
+          retrieved.push(id);
           if (sessions[id]) return sessions[id];
           if (id === "cs_test_missing") throw Object.assign(new Error("No such session"), { statusCode: 404 });
           throw Object.assign(new Error(SECRET), { statusCode: 500 });
@@ -209,23 +213,29 @@ test("GraphQL: Stripe が失敗したら固定の文言だけを返す（例外�
 
 /* ---------- ⑤-6 本文の上限 ---------- */
 
-test("GraphQL: 本文が 16KB を超えたら 413（Stripe を呼ばない）", async () => {
-  const { handler, stripe } = setup();
-  const body = JSON.stringify({
-    query: CREATE,
-    variables: { items: [{ id: "1", quantity: 1 }] },
-    pad: "x".repeat(MAX_BODY_BYTES),
-  });
-  const res = await handler.fetch(
-    new Request(URL_, { method: "POST", headers: { "content-type": "application/json" }, body })
-  );
-  assert.equal(res.status, 413);
-  assert.equal(stripe.created.length, 0);
+/** ちょうど size バイトの JSON 本文（query は categories。長さはクエリ内のコメントで合わせる） */
+function bodyOfSize(size) {
+  const make = (pad) => JSON.stringify({ query: `#${pad}\n{ categories { slug } }` });
+  const body = make("x".repeat(size - make("").length));
+  assert.equal(Buffer.byteLength(body), size);
+  return body;
+}
 
-  // content-length を偽っても（ストリームで）上限を当てる
+test("GraphQL: 本文は 4KB まで（4,096 バイトは通り、4,097 バイトは 413。Stripe を呼ばない）", async () => {
+  const { handler, stripe } = setup();
+  const send = (body) =>
+    handler.fetch(
+      new Request(URL_, { method: "POST", headers: { "content-type": "application/json" }, body })
+    );
+  assert.equal(MAX_GRAPHQL_BODY_BYTES, 4096);
+  assert.equal((await send(bodyOfSize(4096))).status, 200);
+  const over = await send(bodyOfSize(4097));
+  assert.equal(over.status, 413);
+
+  // content-length の無いストリームの本文でも上限を当てる
   const stream = new ReadableStream({
     start(c) {
-      c.enqueue(new TextEncoder().encode(body));
+      c.enqueue(new TextEncoder().encode(bodyOfSize(4097)));
       c.close();
     },
   });
@@ -322,4 +332,51 @@ test("GraphQL: 1 リクエストに Mutation を 2 つ以上並べると拒否�
   const one = await post(handler, `mutation { __typename createCheckoutSession(${item}) { url } }`);
   assert.equal(one.body.data.createCheckoutSession.url, "https://checkout.stripe.test/x");
   assert.equal(stripe.created.length, 1);
+});
+
+/* ---------- Stripe を呼ぶフィールドとクエリのコスト ---------- */
+
+test("GraphQL: orderBySession を 2 つ並べると拒否し、Stripe の retrieve を呼ばない（エイリアス・フラグメント・@include）", async () => {
+  const { handler, stripe } = setup();
+  const queries = [
+    `{ a: orderBySession(sessionId: "cs_test_paid") { state } b: orderBySession(sessionId: "cs_test_paid") { state } }`,
+    `{ ...F b: orderBySession(sessionId: "cs_test_paid") { state } }
+     fragment F on Query { a: orderBySession(sessionId: "cs_test_paid") { state } }`,
+    `{ ...F ...F } fragment F on Query { orderBySession(sessionId: "cs_test_paid") { state } }`,
+    `{ a: orderBySession(sessionId: "cs_test_paid") @include(if: false) { state }
+       b: orderBySession(sessionId: "cs_test_paid") { state } }`,
+  ];
+  for (const query of queries) {
+    const r = await post(handler, query);
+    assert.equal(r.body.data, undefined, query);
+    assert.ok(r.body.errors.some((e) => e.message === TOO_MANY_STRIPE_FIELDS), r.text);
+  }
+  assert.equal(stripe.retrieved.length, 0);
+
+  // 1 つだけなら通る
+  const one = await post(handler, `{ orderBySession(sessionId: "cs_test_paid") { state } }`);
+  assert.equal(one.body.data.orderBySession.state, "PAID");
+  assert.equal(stripe.retrieved.length, 1);
+});
+
+test("GraphQL: 選択するフィールドは 200 まで（同名の重複・フラグメントの展開も数える）", async () => {
+  const { handler } = setup();
+  const many = `{${"products{id}".repeat(300)}}`;
+  const r = await post(handler, many);
+  assert.equal(r.body.data, undefined);
+  assert.ok(r.body.errors.some((e) => e.message === TOO_MANY_FIELDS), r.text.slice(0, 300));
+
+  // フラグメントを入れ子で何度も展開して数を増やす形も弾く（2^8 = 256 回展開される）
+  const nested = `{ ...A } fragment A on Query { ...B ...B } fragment B on Query { ...C ...C }
+    fragment C on Query { ...D ...D } fragment D on Query { ...E ...E } fragment E on Query { ...G ...G }
+    fragment G on Query { ...H ...H } fragment H on Query { ...I ...I } fragment I on Query { ...J ...J }
+    fragment J on Query { categories { slug } }`;
+  const r2 = await post(handler, nested);
+  assert.equal(r2.body.data, undefined);
+  assert.ok(r2.body.errors.some((e) => e.message === TOO_MANY_FIELDS), r2.text.slice(0, 300));
+
+  // 100 フィールドなら通る
+  const ok = await post(handler, `{${"products{id}".repeat(50)}}`);
+  assert.equal(ok.body.errors, undefined);
+  assert.equal(ok.body.data.products.length, 10);
 });
