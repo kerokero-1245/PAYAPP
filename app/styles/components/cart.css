@@ -1,0 +1,64 @@
+/* カート */
+@layer components {
+  /* h1 の中の点数（「（3点）」） */
+  .title-meta {
+    font-family: var(--font-sans);
+    font-size: 1.125rem;
+    line-height: var(--lh-lg);
+    color: var(--color-muted);
+    vertical-align: middle;
+  }
+
+  /* カートの 1 行 */
+  .cart-row {
+    border-bottom: 1px solid var(--color-line);
+  }
+  .remove-btn {
+    font-size: 0.75rem;
+    line-height: var(--lh-xs);
+    color: var(--color-faint);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .remove-btn:hover {
+    color: var(--color-danger);
+  }
+
+  /* 注文サマリー */
+  .summary-list {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+  }
+  .summary-term {
+    color: var(--color-muted);
+  }
+  .summary-free {
+    color: var(--color-gold);
+  }
+  .summary-total-label {
+    color: var(--color-cream);
+    letter-spacing: 0.025em;
+  }
+  .summary-note {
+    font-size: 0.7rem;
+    line-height: 1.625;
+    color: var(--color-faint);
+  }
+
+  /* 送信の失敗などの短いエラー */
+  .form-error {
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--color-danger);
+  }
+
+  /* 目立たないテキストリンク（「買い物を続ける」） */
+  .quiet-link {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    color: var(--color-muted);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .quiet-link:hover {
+    color: var(--color-cream);
+  }
+}

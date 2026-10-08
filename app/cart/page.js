@@ -4,9 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import CartItem from "@/components/CartItem";
 import { useCartStore } from "@/store/cartStore";
-import { formatYen } from "@/lib/format";
 import { useMounted } from "@/lib/useMounted";
 import { createCheckoutSession } from "@/lib/graphql/client";
+import Section from "@/components/ui/Section";
+import PageHeader from "@/components/ui/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import Card from "@/components/ui/Card";
+import Divider from "@/components/ui/Divider";
+import Price from "@/components/ui/Price";
+import Button from "@/components/ui/Button";
+import Loading from "@/components/ui/Loading";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
@@ -43,21 +50,26 @@ export default function CartPage() {
   // hydration 対策: persist ストアの動的値が固まるまでは簡易スケルトンを出す
   if (!mounted) {
     return (
-      <div className="container-lux py-12">
-        <p className="eyebrow">SHOPPING CART</p>
-        <h1 className="font-display text-3xl md:text-4xl text-cream mt-2">カート</h1>
-        <div className="hairline mt-6" />
-        <p className="text-faint text-sm mt-10">読み込み中…</p>
-      </div>
+      <Section spacing="sm" as="div">
+        <PageHeader
+          animate={false}
+          eyebrow="SHOPPING CART"
+          title="カート"
+          titleClassName="mt-2"
+          dividerClassName="mt-6"
+        />
+        <Loading className="mt-10" />
+      </Section>
     );
   }
 
   // 空カート状態
   if (items.length === 0) {
     return (
-      <div className="container-lux py-12">
-        <div className="max-w-md mx-auto text-center animate-fade-up">
-          <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full border border-line text-gold">
+      <Section spacing="sm" as="div">
+        <EmptyState
+          className="max-w-md mx-auto animate-fade-up"
+          icon={
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="34"
@@ -74,31 +86,34 @@ export default function CartPage() {
               <path d="M3 6h18" />
               <path d="M16 10a4 4 0 0 1-8 0" />
             </svg>
-          </div>
-          <p className="eyebrow">SHOPPING CART</p>
-          <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">カートは空です</h1>
-          <p className="text-muted mt-4 leading-relaxed">
-            まだ商品が追加されていません。コレクションから、あなたにふさわしい一品をお選びください。
-          </p>
-          <Link href="/product" className="btn btn-outline mt-8">
-            コレクションを見る
-          </Link>
-        </div>
-      </div>
+          }
+          eyebrow="SHOPPING CART"
+          title="カートは空です"
+          titleAs="h1"
+          titleSize="page"
+          titleClassName="mt-3"
+          description="まだ商品が追加されていません。コレクションから、あなたにふさわしい一品をお選びください。"
+          descriptionClassName="mt-4"
+          action={{ href: "/product", label: "コレクションを見る", variant: "outline" }}
+        />
+      </Section>
     );
   }
 
   // カート中身
   return (
-    <div className="container-lux py-12">
-      <div className="animate-fade-up">
-        <p className="eyebrow">SHOPPING CART</p>
-        <h1 className="font-display text-3xl md:text-4xl text-cream mt-2">
-          カート
-          <span className="text-muted font-sans text-lg align-middle ml-3">（{totalItems}点）</span>
-        </h1>
-        <div className="hairline mt-6" />
-      </div>
+    <Section spacing="sm" as="div">
+      <PageHeader
+        eyebrow="SHOPPING CART"
+        title={
+          <>
+            カート
+            <span className="title-meta ml-3">（{totalItems}点）</span>
+          </>
+        }
+        titleClassName="mt-2"
+        dividerClassName="mt-6"
+      />
 
       {/* grid-cols-1（minmax(0,1fr)）で、長い商品名が列幅を押し広げて横スクロールが出るのを防ぐ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-8">
@@ -111,57 +126,48 @@ export default function CartPage() {
 
         {/* 右: 注文サマリー（合計は map 外・1回だけ） */}
         <aside className="lg:col-span-1">
-          <div className="panel p-5 sticky top-24">
-            <h2 className="font-display text-xl text-cream">注文サマリー</h2>
-            <div className="hairline my-5" />
+          <Card variant="panel" padding="sm" className="sticky top-24">
+            <h2 className="heading heading-card">注文サマリー</h2>
+            <Divider className="my-5" />
 
-            <dl className="space-y-3 text-sm">
+            <dl className="summary-list flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <dt className="text-muted">小計（{totalItems}点）</dt>
-                <dd className="text-cream tabular-nums">{formatYen(totalPrice)}</dd>
+                <dt className="summary-term">小計（{totalItems}点）</dt>
+                <Price as="dd" amount={totalPrice} tone="cream" tabular />
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-muted">送料</dt>
-                <dd className="text-gold">無料</dd>
+                <dt className="summary-term">送料</dt>
+                <dd className="summary-free">無料</dd>
               </div>
             </dl>
 
-            <div className="hairline my-5" />
+            <Divider className="my-5" />
 
             <div className="flex items-baseline justify-between">
-              <span className="text-cream tracking-wide">合計</span>
-              <span className="font-display text-2xl text-gold tabular-nums">
-                {formatYen(totalPrice)}
-              </span>
+              <span className="summary-total-label">合計</span>
+              <Price amount={totalPrice} display size="xl" tone="gold" tabular />
             </div>
 
-            <button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="btn btn-gold btn-block mt-6"
-            >
+            <Button block onClick={handleCheckout} disabled={loading} className="mt-6">
               {loading ? "Stripeへ移動中…" : "購入手続きへ"}
-            </button>
+            </Button>
 
             {checkoutError && (
-              <p role="alert" className="mt-3 text-sm text-danger leading-relaxed">
+              <p role="alert" className="form-error mt-3">
                 {checkoutError}
               </p>
             )}
 
-            <Link
-              href="/product"
-              className="block text-center mt-4 text-sm text-muted hover:text-cream transition-colors"
-            >
+            <Link href="/product" className="quiet-link block text-center mt-4">
               買い物を続ける
             </Link>
 
-            <p className="text-faint text-[0.7rem] leading-relaxed mt-5 text-center">
+            <p className="summary-note mt-5 text-center">
               決済は Stripe の安全な決済ページで行われます。
             </p>
-          </div>
+          </Card>
         </aside>
       </div>
-    </div>
+    </Section>
   );
 }

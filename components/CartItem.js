@@ -3,8 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { formatYen } from "@/lib/format";
 import { MAX_QUANTITY } from "@/lib/cart.mjs";
+import MediaFrame from "@/components/ui/MediaFrame";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Price from "@/components/ui/Price";
+import QuantityStepper from "@/components/ui/QuantityStepper";
 
 /**
  * カート内の1商品を表す行コンポーネント
@@ -19,16 +22,13 @@ export default function CartItem({ item }) {
   const inc = () => updateQuantity(item.id, item.quantity + 1);
 
   return (
-    <div className="flex gap-4 py-5 border-b border-line">
+    <div className="cart-row flex gap-4 py-5">
       {/* サムネイル */}
-      <Link
-        href={`/product/${item.id}`}
-        className="relative w-20 h-24 shrink-0 overflow-hidden bg-surface-2 rounded-[2px]"
-      >
+      <MediaFrame as={Link} href={`/product/${item.id}`} thumb="md">
         {item.image && (
           <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
         )}
-      </Link>
+      </MediaFrame>
 
       {/* 詳細 */}
       <div className="flex-1 min-w-0 flex flex-col">
@@ -36,20 +36,20 @@ export default function CartItem({ item }) {
           <div className="min-w-0">
             <Link
               href={`/product/${item.id}`}
-              className="font-display text-lg text-cream hover:text-gold transition-colors block truncate"
+              className="heading heading-item heading-link block truncate"
             >
               {item.name}
             </Link>
             {item.category && (
-              <p className="eyebrow text-[0.6rem]! tracking-[0.2em] text-faint mt-0.5">
+              <Eyebrow size="sm" tone="faint" tracking="sm" className="mt-0.5">
                 {item.category}
-              </p>
+              </Eyebrow>
             )}
           </div>
           <button
             type="button"
             onClick={() => removeItem(item.id)}
-            className="text-faint hover:text-danger transition-colors text-xs shrink-0"
+            className="remove-btn shrink-0"
             aria-label={`${item.name} を削除`}
           >
             削除
@@ -58,33 +58,20 @@ export default function CartItem({ item }) {
 
         <div className="mt-auto pt-3 flex items-end justify-between gap-3">
           {/* 数量ステッパー */}
-          <div className="inline-flex items-center border border-line rounded-[2px]">
-            <button
-              type="button"
-              onClick={dec}
-              disabled={item.quantity <= 1}
-              className="w-8 h-8 text-muted hover:text-gold disabled:opacity-30 transition-colors"
-              aria-label={`${item.name} の数量を減らす`}
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-sm text-cream tabular-nums">{item.quantity}</span>
-            <button
-              type="button"
-              onClick={inc}
-              disabled={item.quantity >= MAX_QUANTITY}
-              className="w-8 h-8 text-muted hover:text-gold disabled:opacity-30 transition-colors"
-              aria-label={`${item.name} の数量を増やす`}
-            >
-              +
-            </button>
-          </div>
+          <QuantityStepper
+            size="sm"
+            value={item.quantity}
+            max={MAX_QUANTITY}
+            onDecrement={dec}
+            onIncrement={inc}
+            label={`${item.name} の`}
+          />
 
           {/* 小計 */}
           <div className="text-right">
-            <p className="text-cream tracking-wide">{formatYen(item.price * item.quantity)}</p>
+            <Price as="p" amount={item.price * item.quantity} tone="cream" wide />
             {item.quantity > 1 && (
-              <p className="text-[0.7rem] text-faint">{formatYen(item.price)} × {item.quantity}</p>
+              <Price as="p" amount={item.price} size="xs" tone="faint" suffix={<> × {item.quantity}</>} />
             )}
           </div>
         </div>
