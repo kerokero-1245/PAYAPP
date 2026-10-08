@@ -34,6 +34,14 @@ jobs:
       - name: lint
         run: npm run lint
 
+      # GraphQL の型（lib/graphql/__generated__）は生成物をコミットしている。
+      # SDL（lib/graphql/sdl.ts）を変えて npm run codegen を忘れたら、ここで落とす。
+      - name: GraphQL の生成物が最新か
+        run: |
+          npm run codegen
+          git diff --exit-code -- lib/graphql/__generated__
+          test -z "$(git status --porcelain -- lib/graphql/__generated__)"
+
       - name: テスト
         run: npm test
 
