@@ -1,0 +1,28 @@
+/* 項目と内容の一覧（配送について・特定商取引法に基づく表記） */
+@layer components {
+  .info-list {
+    border-top: 1px solid var(--color-line);
+  }
+  .info-row {
+    display: grid;
+    gap: 0.375rem;
+    padding-block: 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+  @media (min-width: 40rem) {
+    .info-row {
+      grid-template-columns: 12rem minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+  }
+  .info-term {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    letter-spacing: 0.025em;
+    color: var(--color-gold-soft);
+  }
+  .info-desc {
+    color: var(--color-muted);
+    line-height: 1.625;
+  }
+}
