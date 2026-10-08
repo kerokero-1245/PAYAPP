@@ -9,9 +9,19 @@ import {
   CATEGORIES,
 } from "@/store/productStore";
 import { useCartStore } from "@/store/cartStore";
-import { formatYen } from "@/lib/format";
 import { MAX_QUANTITY } from "@/lib/cart.mjs";
+import { PRODUCT_DETAIL_POINTS } from "@/lib/policies.mjs";
 import ProductCard from "@/components/ProductCard";
+import Section from "@/components/ui/Section";
+import Card from "@/components/ui/Card";
+import MediaFrame from "@/components/ui/MediaFrame";
+import Badge from "@/components/ui/Badge";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Divider from "@/components/ui/Divider";
+import Price from "@/components/ui/Price";
+import Button from "@/components/ui/Button";
+import QuantityStepper from "@/components/ui/QuantityStepper";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 /**
  * 商品詳細（クライアント側の本体）
@@ -50,20 +60,20 @@ export default function ProductDetail({ id }) {
   };
 
   return (
-    <div className="container-lux py-12 animate-fade-up">
+    <Section spacing="sm" as="div" className="animate-fade-up">
       {/* パンくず */}
-      <nav className="mb-8 text-xs text-muted">
-        <Link href="/product" className="link-underline hover:text-cream">
+      <nav className="breadcrumb mb-8">
+        <Link href="/product" className="link-underline breadcrumb-link">
           商品一覧
         </Link>
-        <span className="mx-2 text-faint">/</span>
-        <span className="text-faint">{categoryLabel}</span>
+        <span className="breadcrumb-quiet mx-2">/</span>
+        <span className="breadcrumb-quiet">{categoryLabel}</span>
       </nav>
 
       <div className="grid md:grid-cols-2 gap-10 md:gap-14">
         {/* 左: 画像ギャラリー */}
         <div>
-          <div className="relative aspect-4/5 card overflow-hidden bg-surface-2">
+          <MediaFrame ratio="4/5" className="card">
             {images[activeImage] && (
               <Image
                 src={images[activeImage]}
@@ -75,25 +85,24 @@ export default function ProductDetail({ id }) {
               />
             )}
             {product.badge && (
-              <span className="absolute top-4 left-4 chip chip-active text-[0.62rem]! py-1! px-2.5!">
+              <Badge size="lg" className="absolute top-4 left-4">
                 {product.badge}
-              </span>
+              </Badge>
             )}
-          </div>
+          </MediaFrame>
 
           {images.length > 1 && (
             <div className="grid grid-cols-3 gap-3 mt-3">
               {images.map((src, i) => (
-                <button
+                <MediaFrame
+                  as="button"
                   key={src}
                   type="button"
+                  ratio="4/5"
                   onClick={() => setActiveImage(i)}
                   aria-label={`${product.name} 画像 ${i + 1} を表示`}
-                  className={`relative aspect-4/5 card overflow-hidden bg-surface-2 transition ${
-                    i === activeImage
-                      ? "border-gold"
-                      : "opacity-60 hover:opacity-100"
-                  }`}
+                  data-active={i === activeImage}
+                  className="card thumb-option"
                 >
                   <Image
                     src={src}
@@ -102,7 +111,7 @@ export default function ProductDetail({ id }) {
                     sizes="(max-width: 768px) 33vw, 16vw"
                     className="object-cover"
                   />
-                </button>
+                </MediaFrame>
               ))}
             </div>
           )}
@@ -110,82 +119,49 @@ export default function ProductDetail({ id }) {
 
         {/* 右: 商品情報 */}
         <div className="flex flex-col">
-          <p className="eyebrow">{categoryLabel}</p>
-          <h1 className="font-display text-3xl md:text-4xl text-cream mt-3 leading-tight">
-            {product.name}
-          </h1>
-          {product.tagline && (
-            <p className="text-muted mt-3">{product.tagline}</p>
-          )}
+          <Eyebrow>{categoryLabel}</Eyebrow>
+          <h1 className="heading heading-page heading-tight mt-3">{product.name}</h1>
+          {product.tagline && <p className="subtle mt-3">{product.tagline}</p>}
 
-          <p className="text-2xl md:text-3xl text-gold-soft tracking-wide mt-6">
-            {formatYen(product.price)}
-          </p>
+          <Price as="p" amount={product.price} size="hero" tone="gold-soft" wide className="mt-6" />
 
-          <div className="hairline my-7" />
+          <Divider className="my-7" />
 
-          {product.description && (
-            <p className="text-muted leading-relaxed">{product.description}</p>
-          )}
+          {product.description && <p className="lead">{product.description}</p>}
 
           {/* 数量セレクタ + カート追加 */}
           <div className="mt-8 flex items-center gap-4">
-            <div className="flex items-center border border-line rounded-[2px]">
-              <button
-                type="button"
-                onClick={decrement}
-                aria-label="数量を減らす"
-                className="w-11 h-11 flex items-center justify-center text-cream hover:text-gold transition-colors disabled:opacity-40"
-                disabled={quantity <= 1}
-              >
-                −
-              </button>
-              <span className="w-12 text-center text-cream tabular-nums">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={increment}
-                aria-label="数量を増やす"
-                disabled={quantity >= MAX_QUANTITY}
-                className="w-11 h-11 flex items-center justify-center text-cream hover:text-gold transition-colors disabled:opacity-40"
-              >
-                +
-              </button>
-            </div>
-            <span className="text-xs text-faint">在庫あり</span>
+            <QuantityStepper
+              value={quantity}
+              max={MAX_QUANTITY}
+              onDecrement={decrement}
+              onIncrement={increment}
+            />
+            <span className="fine">在庫あり</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="btn btn-gold btn-block mt-5"
-          >
+          <Button block onClick={handleAdd} className="mt-5">
             カートに追加
-          </button>
+          </Button>
 
           {added && (
-            <div className="mt-4 panel px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
-              <span className="text-sm text-cream">
-                <span className="text-gold">✓</span> カートに追加しました
+            <Card variant="panel" className="mt-4 px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
+              <span className="notice-text">
+                <span className="notice-mark">✓</span> カートに追加しました
               </span>
-              <Link
-                href="/cart"
-                className="text-sm text-gold-soft link-underline hover:text-gold-bright"
-              >
+              <Link href="/cart" className="notice-link link-underline">
                 カートを見る
               </Link>
-            </div>
+            </Card>
           )}
 
-          {/* 配送・素材などの小さな箇条書き */}
+          {/* 配送・素材などの小さな箇条書き（文面は lib/policies.mjs と共有） */}
           <div className="mt-10">
-            <p className="eyebrow">DETAILS</p>
-            <ul className="mt-3 space-y-2 text-sm text-muted">
-              <li>全国送料無料 ・ 2〜4営業日でお届け</li>
-              <li>ギフトラッピング承ります</li>
-              <li>2年間の国際保証付き</li>
-              <li>30日間の返品保証</li>
+            <Eyebrow>DETAILS</Eyebrow>
+            <ul className="detail-points mt-3 flex flex-col gap-2">
+              {PRODUCT_DETAIL_POINTS.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
             </ul>
           </div>
         </div>
@@ -194,11 +170,7 @@ export default function ProductDetail({ id }) {
       {/* 関連商品（同カテゴリ・最大4件） */}
       {related.length > 0 && (
         <section className="mt-20 md:mt-28">
-          <p className="eyebrow">RELATED</p>
-          <h2 className="font-display text-2xl md:text-3xl text-cream mt-2">
-            同じカテゴリの商品
-          </h2>
-          <span className="rule-gold mt-4" />
+          <SectionHeading align="start" eyebrow="RELATED" title="同じカテゴリの商品" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mt-8">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />
@@ -206,6 +178,6 @@ export default function ProductDetail({ id }) {
           </div>
         </section>
       )}
-    </div>
+    </Section>
   );
 }

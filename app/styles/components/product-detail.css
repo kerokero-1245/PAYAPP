@@ -1,0 +1,61 @@
+/* 商品詳細 */
+@layer components {
+  /* パンくず */
+  .breadcrumb {
+    font-size: 0.75rem;
+    line-height: var(--lh-xs);
+    color: var(--color-muted);
+  }
+  .breadcrumb-link:hover {
+    color: var(--color-cream);
+  }
+  .breadcrumb-quiet {
+    color: var(--color-faint);
+  }
+
+  /* サムネイルの選択（状態はボタン自身の data-active） */
+  .thumb-option {
+    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+    transition-duration: 0.15s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .thumb-option[data-active="false"] {
+    opacity: 0.6;
+  }
+  .thumb-option[data-active="false"]:hover {
+    opacity: 1;
+  }
+  .thumb-option[data-active="true"] {
+    border-color: var(--color-gold);
+  }
+
+  /* 一言説明 */
+  .subtle {
+    color: var(--color-muted);
+  }
+
+  /* 「カートに追加しました」 */
+  .notice-text {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    color: var(--color-cream);
+  }
+  .notice-mark {
+    color: var(--color-gold);
+  }
+  .notice-link {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    color: var(--color-gold-soft);
+  }
+  .notice-link:hover {
+    color: var(--color-gold-bright);
+  }
+
+  /* DETAILS の箇条書き */
+  .detail-points {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    color: var(--color-muted);
+  }
+}
