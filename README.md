@@ -43,7 +43,7 @@
 
 ## セットアップ
 
-> **Node.js 22 を使ってください**（22.23.3 で lint・ビルド・テストを確認。Next.js 16 自体の要件は 20.9.0 以上）。
+> **Node.js 22 を使ってください**（22.23.3 で lint・ビルド・テストを確認）。graphql 17 と、テストから `.ts` を型消去で直接読み込むために **22.18 以上** が必要です（`package.json` の `engines`）。
 
 ```bash
 # 依存インストール
@@ -95,9 +95,9 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 `main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
 
 ## 決済の流れ
-1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.mjs`）を使う REST の入口として残しています。
+1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.mjs`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
 2. サーバは価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
-   - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、16KB を超える本文は Stripe に送る前に弾き（GraphQL では `errors` / HTTP 413、`/checkout` では 400 / 413）、カートにその理由を表示します。ブラウザで価格を書き換えても請求額は変わりません。
+   - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、大きすぎる本文（GraphQL は 4KB、`/checkout` は 16KB を超えるもの）は Stripe に送る前に弾きます（GraphQL では `errors` の UserError / HTTP 413、`/checkout` では 400 / 413）。カートに表示する理由は UserError の文言（`CHECKOUT_ERRORS`）と 413 の文言に限り、GraphQL 層の型エラーや隠された例外のときは既定の文言（「決済処理に失敗しました…」）を出します。ブラウザで価格を書き換えても請求額は変わりません。
    - 戻り先 URL は `NEXT_PUBLIC_BASE_URL`、無ければリクエスト URL の origin から作ります（`Origin` ヘッダーは使いません）。
 3. Stripe の決済ページから `/success?session_id={CHECKOUT_SESSION_ID}` に戻ります。
 4. `/success` は `GET /api/checkout/session?session_id=...` で Stripe に Session を問い合わせ、結果を 3 つに分けます。
@@ -112,7 +112,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 
 ## GraphQL API
 
-エンドポイントは `/api/graphql`（`POST` は `Content-Type: application/json`。`GET` でクエリを送るか、ブラウザで開くと GraphiQL が使えます）。スキーマは `lib/graphql/sdl.ts`、resolver は `lib/graphql/schema.ts` です。
+エンドポイントは `/api/graphql`（`POST` は `Content-Type: application/json`。`GET` でもクエリを送れます。開発中はブラウザで開くと GraphiQL が使えます）。スキーマは `lib/graphql/sdl.ts`、resolver は `lib/graphql/schema.ts` です。
 
 商品をカテゴリとキーワードで絞り込む:
 
@@ -164,7 +164,11 @@ curl -s http://localhost:3000/api/graphql \
 - **無状態**: サーバはカートも注文も保存しません（Vercel のサーバレスでは関数のメモリに状態を置けないため）。カートと注文履歴はこれまでどおりブラウザの localStorage にあり、API は送られた id と数量から毎回計算します。
 - **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.mjs` から引きます（`/checkout` と同じ関数を共有）。
 - **決済の確認は REST のまま**: 成功ページは `GET /api/checkout/session` の HTTP ステータスで「支払い済み / 未払い / 確認できなかった」を分けて二重購入を防いでいるので、GraphQL には置き換えていません。GraphQL の `orderBySession` は読み取り用に足したものです。
-- **入口の保護**: 本文は `/checkout` と同じ 16KB 上限、1 リクエストで実行できる Mutation は 1 つまで（エイリアスで Stripe へ多重に要求させない）、Stripe の例外文は返さない（yoga の maskedErrors）。
+- **入口の保護**:
+  - 本文は 4KB まで（超えたら 413）。POST は `Content-Type: application/json` だけ（それ以外は 415）。
+  - Stripe を呼ぶフィールド（`createCheckoutSession`・`orderBySession`）は 1 リクエスト合計 1 つまで。エイリアス・フラグメント・`@include` 経由も数えるので、1 リクエストで Stripe に多重に要求させられません。Mutation も 1 つまで。
+  - 選択するフィールドの総数は 1 リクエスト 200 まで（エイリアス・同名フィールドの重複・フラグメントの展開も数える）。解析・検証結果のキャッシュは 100 件まで。
+  - Stripe の例外文は返さない（yoga の maskedErrors）。CORS ヘッダーは付けない（他オリジンを反射しない）。応答はすべて `Cache-Control: no-store`。GraphiQL は本番（`NODE_ENV=production`）では出さない。
 - テスト（`tests/graphql.test.mjs`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
 
 ## ディレクトリ構成
