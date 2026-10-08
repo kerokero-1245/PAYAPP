@@ -10,7 +10,11 @@ import assert from "node:assert/strict";
 
 import { PRODUCTS, getProductById } from "../lib/catalog.mjs";
 import { CHECKOUT_ERRORS, buildLineItems, encodeOrderMetadata } from "../lib/checkout.mjs";
-import { UNSUPPORTED_MEDIA_TYPE, isJsonContentType } from "../lib/checkout-session.mjs";
+import {
+  UNSUPPORTED_MEDIA_TYPE,
+  createCheckoutSessionCore,
+  isJsonContentType,
+} from "../lib/checkout-session.mjs";
 import {
   MAX_GRAPHQL_BODY_BYTES,
   TOO_MANY_FIELDS,
@@ -19,6 +23,7 @@ import {
   createGraphqlHandler,
 } from "../lib/graphql/handler.ts";
 import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
+import { createCheckoutSession as clientCreateCheckoutSession } from "../lib/graphql/client.ts";
 
 const URL_ = "http://localhost/api/graphql";
 const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
@@ -55,9 +60,9 @@ function fakeStripe() {
   };
 }
 
-function setup({ getStripe } = {}) {
+function setup({ getStripe, baseUrl } = {}) {
   const stripe = fakeStripe();
-  const handler = createGraphqlHandler({ getStripe: getStripe ?? (() => stripe) });
+  const handler = createGraphqlHandler({ getStripe: getStripe ?? (() => stripe), baseUrl });
   return { stripe, handler };
 }
 
@@ -179,7 +184,7 @@ test("GraphQL: 不正な入力は CHECKOUT_ERRORS の文言とコードで返し
 
 /* ---------- ⑤-5 Stripe に渡す内容 ---------- */
 
-test("GraphQL: createCheckoutSession は buildLineItems / encodeOrderMetadata と同じ内容を Stripe に渡す", async () => {
+test("GraphQL: createCheckoutSession は buildLineItems と同じ line_items、metadata は id:数量 の並びで Stripe に渡す", async () => {
   const { handler, stripe } = setup();
   const items = [{ id: "1", quantity: 2 }, { id: "5", quantity: 1 }];
   const r = await post(handler, CREATE, { items });
@@ -189,9 +194,10 @@ test("GraphQL: createCheckoutSession は buildLineItems / encodeOrderMetadata �
   });
   assert.equal(stripe.created.length, 1);
   const args = stripe.created[0];
-  const expected = buildLineItems(items);
-  assert.deepEqual(args.line_items, expected.lineItems);
-  assert.deepEqual(args.metadata, encodeOrderMetadata(expected.items));
+  assert.deepEqual(args.line_items, buildLineItems(items).lineItems);
+  // 期待値は encodeOrderMetadata で作らず、リテラルで固定する（エンコードの変更に気づくため）
+  assert.deepEqual(args.metadata, { order_items_0: "1:2,5:1" });
+  assert.deepEqual(args.line_items.map((l) => l.price_data.unit_amount), [248000, 26800]);
   assert.equal(args.mode, "payment");
   assert.equal(args.success_url, "http://localhost/success?session_id={CHECKOUT_SESSION_ID}");
   assert.equal(args.cancel_url, "http://localhost/cancel");
@@ -424,5 +430,62 @@ test("GraphQL: GraphiQL は本番（NODE_ENV=production）では返さない", a
   } finally {
     if (saved === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = saved;
+  }
+});
+
+/* ---------- 共有の本体・戻り先 ---------- */
+
+test("createCheckoutSessionCore: REST 形の本文の price は無視し、カタログの価格で作る", async () => {
+  const stripe = fakeStripe();
+  const r = await createCheckoutSessionCore({
+    items: [{ id: "1", quantity: 2, price: 1, name: "書き換えた名前" }],
+    requestUrl: "http://localhost/checkout",
+    getStripe: () => stripe,
+  });
+  assert.deepEqual(r, { ok: true, url: "https://checkout.stripe.test/x" });
+  assert.equal(stripe.created[0].line_items[0].price_data.unit_amount, 248000);
+  assert.equal(stripe.created[0].line_items[0].price_data.product_data.name, "Éclat Automatic 41");
+  assert.deepEqual(stripe.created[0].metadata, { order_items_0: "1:2" });
+});
+
+test("GraphQL: handler に渡した baseUrl が戻り先（success_url / cancel_url）になる", async () => {
+  const { handler, stripe } = setup({ baseUrl: "https://shop.example/some/path" });
+  await post(handler, CREATE, { items: [{ id: "1", quantity: 1 }] });
+  assert.equal(stripe.created[0].success_url, "https://shop.example/success?session_id={CHECKOUT_SESSION_ID}");
+  assert.equal(stripe.created[0].cancel_url, "https://shop.example/cancel");
+});
+
+/* ---------- ブラウザ用クライアントの文言の振り分け ---------- */
+
+test("client: createCheckoutSession は UserError と 413 の文言だけを見せ、それ以外は既定の文言にする", async () => {
+  const saved = globalThis.fetch;
+  const respond = (status, body) => {
+    globalThis.fetch = async (url, init) => {
+      assert.equal(url, "/api/graphql");
+      assert.equal(init.method, "POST");
+      return Response.json(body, { status });
+    };
+  };
+  try {
+    respond(200, { data: { createCheckoutSession: { url: "https://checkout.stripe.test/x", errors: [] } } });
+    assert.deepEqual(await clientCreateCheckoutSession([{ id: "1", quantity: 1 }]), {
+      url: "https://checkout.stripe.test/x",
+    });
+
+    respond(200, {
+      data: { createCheckoutSession: { url: null, errors: [{ code: "EMPTY", message: CHECKOUT_ERRORS.empty }] } },
+    });
+    assert.deepEqual(await clientCreateCheckoutSession([]), { error: CHECKOUT_ERRORS.empty });
+
+    respond(413, { errors: [{ message: "リクエストが大きすぎます" }] });
+    assert.deepEqual(await clientCreateCheckoutSession([]), { error: "リクエストが大きすぎます" });
+
+    // 型の検証エラー（GraphQL 層）や隠された例外は見せない → 呼び出し側が既定の文言を出す
+    respond(400, { errors: [{ message: 'Variable "$items" got invalid value "<script>"' }] });
+    assert.deepEqual(await clientCreateCheckoutSession([]), { error: null });
+    respond(200, { data: null, errors: [{ message: "Unexpected error." }] });
+    assert.deepEqual(await clientCreateCheckoutSession([]), { error: null });
+  } finally {
+    globalThis.fetch = saved;
   }
 });
