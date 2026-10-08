@@ -231,6 +231,7 @@ test("GraphQL: 本文は 4KB まで（4,096 バイトは通り、4,097 バイト
   assert.equal((await send(bodyOfSize(4096))).status, 200);
   const over = await send(bodyOfSize(4097));
   assert.equal(over.status, 413);
+  assert.equal(over.headers.get("cache-control"), "no-store");
 
   // content-length の無いストリームの本文でも上限を当てる
   const stream = new ReadableStream({
@@ -262,6 +263,7 @@ test("GraphQL: POST は application/json だけ受け付ける（フォーム送
   );
   assert.equal(res.status, 415);
   assert.deepEqual(await res.json(), { errors: [{ message: UNSUPPORTED_MEDIA_TYPE }] });
+  assert.equal(res.headers.get("cache-control"), "no-store");
   assert.equal(stripe.created.length, 0);
 });
 
@@ -379,4 +381,48 @@ test("GraphQL: 選択するフィールドは 200 まで（同名の重複・フ
   const ok = await post(handler, `{${"products{id}".repeat(50)}}`);
   assert.equal(ok.body.errors, undefined);
   assert.equal(ok.body.data.products.length, 10);
+});
+
+/* ---------- 応答ヘッダー・GraphiQL ---------- */
+
+test("GraphQL: CORS ヘッダーを返さず、応答は no-store", async () => {
+  const { handler } = setup();
+  const res = await handler.fetch(
+    new Request(URL_, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ query: "{ categories { slug } }" }),
+    })
+  );
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("access-control-allow-origin"), null);
+  assert.equal(res.headers.get("cache-control"), "no-store");
+
+  const preflight = await handler.fetch(
+    new Request(URL_, {
+      method: "OPTIONS",
+      headers: { origin: "https://evil.example", "access-control-request-method": "POST" },
+    })
+  );
+  assert.equal(preflight.headers.get("access-control-allow-origin"), null);
+});
+
+test("GraphQL: GraphiQL は本番（NODE_ENV=production）では返さない", async () => {
+  const saved = process.env.NODE_ENV;
+  const html = (h) =>
+    h.fetch(new Request(URL_, { headers: { accept: "text/html" } })).then(async (r) => ({
+      status: r.status,
+      text: await r.text(),
+    }));
+  try {
+    process.env.NODE_ENV = "production";
+    const prod = await html(setup().handler);
+    assert.ok(!prod.text.includes("GraphiQL"), prod.text.slice(0, 200));
+    process.env.NODE_ENV = "development";
+    const dev = await html(setup().handler);
+    assert.ok(dev.text.includes("GraphiQL"));
+  } finally {
+    if (saved === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = saved;
+  }
 });

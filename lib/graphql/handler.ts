@@ -10,6 +10,8 @@
  * - Mutation のフィールドは 1 リクエスト 1 つまで
  * - 選択するフィールドの総数（エイリアス・同名の重複・フラグメントの展開を含む）は 200 まで
  * - maskedErrors を明示的に有効にし、Stripe の例外文やスタックを返さない
+ * - CORS は付けない（他オリジンを反射しない）。GraphiQL は本番以外だけ
+ * - 応答はすべて Cache-Control: no-store
  */
 import { GraphQLError, Kind } from "graphql";
 import type {
@@ -202,11 +204,20 @@ function jsonError(message: string, status: number): Response {
   return Response.json({ errors: [{ message }] }, { status });
 }
 
+/** 応答に Cache-Control: no-store を付ける（ヘッダーが変更できない応答もあるので作り直す） */
+function noStore(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "no-store");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
   const yoga = createYoga<object, GraphqlContext>({
     schema,
     graphqlEndpoint: GRAPHQL_ENDPOINT,
     maskedErrors: { isDev: false },
+    cors: false,
+    graphiql: process.env.NODE_ENV !== "production",
     parserAndValidationCache: {
       documentCache: boundedCache(PARSE_CACHE_MAX),
       errorCache: boundedCache(PARSE_CACHE_MAX),
@@ -216,7 +227,7 @@ export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
   });
 
   /** Content-Type と本文の上限を先に当ててから yoga に渡す */
-  async function fetch(request: Request): Promise<Response> {
+  async function handle(request: Request): Promise<Response> {
     if (request.method !== "POST") return yoga.fetch(request);
 
     if (!isJsonContentType(request.headers.get("content-type"))) {
@@ -236,6 +247,10 @@ export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
     return yoga.fetch(
       new Request(request.url, { method: "POST", headers, body: text, signal: request.signal })
     );
+  }
+
+  async function fetch(request: Request): Promise<Response> {
+    return noStore(await handle(request));
   }
 
   return { fetch };
