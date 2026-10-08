@@ -17,10 +17,9 @@ export default function OrdersPage() {
       {/* ページ見出し */}
       <header className="animate-fade-up">
         <p className="eyebrow">MAISON — ORDER HISTORY</p>
-        <h1 className="font-display text-4xl md:text-5xl text-cream mt-3">
+        <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
           注文履歴
         </h1>
-        <span className="rule-gold mt-5" />
       </header>
 
       <div className="hairline mt-8 mb-10" />
@@ -50,7 +49,7 @@ export default function OrdersPage() {
                 {/* ヘッダー行: 注文番号 / 日付 / 合計 */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                   <div>
-                    <p className="eyebrow text-[0.62rem]! tracking-[0.2em] text-faint">
+                    <p className="eyebrow text-[0.6rem]! tracking-[0.2em] text-faint">
                       ORDER
                     </p>
                     <p className="font-display text-xl text-cream mt-1">
