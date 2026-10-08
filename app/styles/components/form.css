@@ -1,0 +1,22 @@
+/* フォーム */
+@layer components {
+  /* ---- Form ---- */
+  .input-lux {
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+    color: var(--color-cream);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    width: 100%;
+  }
+  .input-lux::placeholder {
+    color: var(--color-faint);
+  }
+  .input-lux:focus {
+    border-color: rgba(198, 166, 100, 0.6);
+    background: var(--color-surface);
+    outline: none;
+  }
+}

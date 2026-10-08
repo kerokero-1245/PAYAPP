@@ -1,0 +1,14 @@
+/* レイアウトの部品 */
+@layer components {
+  .container-lux {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-lux {
+      padding-inline: 2rem;
+    }
+  }
+}

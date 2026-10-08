@@ -1,0 +1,24 @@
+/* 文字の部品 */
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* 小さなラベル見出し（例: NEW ARRIVALS） */
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+    font-weight: 500;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(100deg, var(--color-gold-bright), var(--color-gold) 45%, var(--color-gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
