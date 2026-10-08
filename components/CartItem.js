@@ -41,7 +41,7 @@ export default function CartItem({ item }) {
               {item.name}
             </Link>
             {item.category && (
-              <p className="eyebrow text-[0.58rem]! tracking-[0.2em] text-faint mt-0.5">
+              <p className="eyebrow text-[0.6rem]! tracking-[0.2em] text-faint mt-0.5">
                 {item.category}
               </p>
             )}

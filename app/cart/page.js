@@ -47,7 +47,7 @@ export default function CartPage() {
         <p className="eyebrow">SHOPPING CART</p>
         <h1 className="font-display text-3xl md:text-4xl text-cream mt-2">カート</h1>
         <div className="hairline mt-6" />
-        <p className="text-muted mt-10">読み込み中…</p>
+        <p className="text-faint text-sm mt-10">読み込み中…</p>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export default function CartPage() {
   // 空カート状態
   if (items.length === 0) {
     return (
-      <div className="container-lux py-20 md:py-28">
+      <div className="container-lux py-12">
         <div className="max-w-md mx-auto text-center animate-fade-up">
           <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full border border-line text-gold">
             <svg
@@ -111,7 +111,7 @@ export default function CartPage() {
 
         {/* 右: 注文サマリー（合計は map 外・1回だけ） */}
         <aside className="lg:col-span-1">
-          <div className="panel p-6 sticky top-24">
+          <div className="panel p-5 sticky top-24">
             <h2 className="font-display text-xl text-cream">注文サマリー</h2>
             <div className="hairline my-5" />
 
