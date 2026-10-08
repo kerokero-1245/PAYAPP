@@ -1,0 +1,21 @@
+/* ブランドの約束の帯（トップ・ブランドストーリー） */
+@layer components {
+  .pledge-band {
+    padding: 3rem 1.5rem;
+  }
+  @media (min-width: 48rem) {
+    .pledge-band {
+      padding: 3.5rem 3rem;
+    }
+  }
+  .pledge-icon {
+    color: var(--color-gold);
+  }
+  .pledge-svg {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .pledge-text {
+    max-width: 16rem;
+  }
+}
