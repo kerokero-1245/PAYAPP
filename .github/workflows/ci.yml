@@ -1,0 +1,42 @@
+# main と PR で lint・テスト・本番ビルドを回し、壊れた変更が main に入る（＝ Vercel に出る）のを防ぐ。
+name: CI（lint・テスト・ビルド）
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint・テスト・ビルド
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: lint
+        run: npm run lint
+
+      - name: テスト
+        run: npm test
+
+      # Stripe のキーはリクエスト時にだけ読む（lib/stripe.js の getStripe）ので、ビルドに環境変数は要らない。
+      - name: 本番ビルド
+        run: npm run build
