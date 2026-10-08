@@ -124,7 +124,7 @@ export default function Header() {
     <header className="sticky top-0 z-50">
       {/* アナウンスバー */}
       <div className="bg-ink-2 border-b border-line text-center py-2">
-        <p className="eyebrow text-[0.62rem]! tracking-[0.28em] text-gold-soft">
+        <p className="eyebrow text-[0.6rem]! tracking-[0.28em] text-gold-soft">
           全国送料無料 — 選び抜かれた逸品を、あなたのもとへ
         </p>
       </div>
