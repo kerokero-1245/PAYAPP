@@ -1,10 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useOrderStore } from "@/store/orderStore";
-import { formatYen, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useMounted } from "@/lib/useMounted";
+import Section from "@/components/ui/Section";
+import PageHeader from "@/components/ui/PageHeader";
+import Card from "@/components/ui/Card";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Divider from "@/components/ui/Divider";
+import EmptyState from "@/components/ui/EmptyState";
+import Loading from "@/components/ui/Loading";
+import MediaFrame from "@/components/ui/MediaFrame";
+import Price from "@/components/ui/Price";
 
 export default function OrdersPage() {
   const orders = useOrderStore((s) => s.orders);
@@ -13,60 +21,43 @@ export default function OrdersPage() {
   const mounted = useMounted();
 
   return (
-    <div className="container-lux py-14 md:py-20">
-      {/* ページ見出し */}
-      <header className="animate-fade-up">
-        <p className="eyebrow">MAISON — ORDER HISTORY</p>
-        <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
-          注文履歴
-        </h1>
-      </header>
-
-      <div className="hairline mt-8 mb-10" />
+    <Section spacing="md" as="div">
+      <PageHeader eyebrow="MAISON — ORDER HISTORY" title="注文履歴" dividerClassName="mt-8 mb-10" dividerOutside />
 
       {/* mounted 前はプレースホルダ（hydration 対策） */}
       {!mounted ? (
-        <p className="text-faint text-sm">読み込み中…</p>
+        <Loading />
       ) : orders.length === 0 ? (
         /* 空状態 */
-        <div className="card p-10 md:p-16 text-center animate-fade-in">
-          <h2 className="font-display text-2xl md:text-3xl text-cream">
-            まだご注文はありません
-          </h2>
-          <p className="text-muted mt-3 leading-relaxed">
-            気になる一品を見つけて、最初のご注文をお楽しみください。
-          </p>
-          <Link href="/product" className="btn btn-gold mt-8">
-            商品を見る
-          </Link>
-        </div>
+        <EmptyState
+          framed="card"
+          padding="lg"
+          className="animate-fade-in"
+          title="まだご注文はありません"
+          description="気になる一品を見つけて、最初のご注文をお楽しみください。"
+          action={{ href: "/product", label: "商品を見る" }}
+        />
       ) : (
         /* 注文一覧（ストアが新しい順で保持） */
         <ul className="flex flex-col gap-5 animate-fade-in">
           {orders.map((order) => (
             <li key={order.id}>
-              <article className="card p-5">
+              <Card as="article" padding="sm">
                 {/* ヘッダー行: 注文番号 / 日付 / 合計 */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                   <div>
-                    <p className="eyebrow text-[0.6rem]! tracking-[0.2em] text-faint">
+                    <Eyebrow size="sm" tone="faint" tracking="sm">
                       ORDER
-                    </p>
-                    <p className="font-display text-xl text-cream mt-1">
-                      {order.id}
-                    </p>
+                    </Eyebrow>
+                    <p className="heading heading-card mt-1">{order.id}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-muted">
-                      {formatDate(order.date)}
-                    </p>
-                    <p className="font-display text-lg text-gold mt-1">
-                      {formatYen(order.total)}
-                    </p>
+                    <p className="meta">{formatDate(order.date)}</p>
+                    <Price as="p" amount={order.total} display size="lg" tone="gold" className="mt-1" />
                   </div>
                 </div>
 
-                <div className="hairline my-4" />
+                <Divider className="my-4" />
 
                 {/* サムネイル列（画像がある商品のみ） */}
                 {order.items?.some((item) => item.image) && (
@@ -74,10 +65,7 @@ export default function OrdersPage() {
                     {order.items
                       .filter((item) => item.image)
                       .map((item) => (
-                        <div
-                          key={`${order.id}-thumb-${item.id}`}
-                          className="relative w-14 h-16 shrink-0 overflow-hidden bg-surface-2 rounded-[2px] border border-line"
-                        >
+                        <MediaFrame key={`${order.id}-thumb-${item.id}`} thumb="sm">
                           <Image
                             src={item.image}
                             alt={item.name}
@@ -85,36 +73,34 @@ export default function OrdersPage() {
                             sizes="56px"
                             className="object-cover"
                           />
-                        </div>
+                        </MediaFrame>
                       ))}
                   </div>
                 )}
 
                 {/* 商品名 × 数量リスト */}
-                <ul className="flex flex-col gap-1.5">
+                <ul className="order-lines flex flex-col gap-1.5">
                   {order.items?.map((item) => (
                     <li
                       key={`${order.id}-item-${item.id}`}
-                      className="flex items-baseline justify-between gap-4 text-sm"
+                      className="flex items-baseline justify-between gap-4"
                     >
-                      <span className="text-cream min-w-0 truncate">
+                      <span className="order-line-name min-w-0 truncate">
                         {item.name}
-                        <span className="text-faint">
+                        <span className="order-line-qty">
                           {" "}
                           × {item.quantity}
                         </span>
                       </span>
-                      <span className="text-muted shrink-0">
-                        {formatYen(item.price * item.quantity)}
-                      </span>
+                      <Price amount={item.price * item.quantity} tone="muted" className="shrink-0" />
                     </li>
                   ))}
                 </ul>
-              </article>
+              </Card>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </Section>
   );
 }
