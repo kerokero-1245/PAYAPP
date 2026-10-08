@@ -10,6 +10,7 @@ import { cx } from "./cx";
  *   meta?: React.ReactNode,   h1 の横に並べる補足（「10 件」）
  *   note?: React.ReactNode,   h1 の下の補足
  *   divider?: "hairline" | "none",
+ *   dividerOutside?: boolean,  線を <header> の外（後ろ）に置く。header の fade-up の外に出したいとき
  *   titleClassName?: string, dividerClassName?: string, className?: string,  配置だけ
  * }} props
  */
@@ -19,12 +20,14 @@ export default function PageHeader({
   meta,
   note,
   divider = "hairline",
+  dividerOutside = false,
   titleClassName = "mt-3",
   dividerClassName = "mt-5",
   className,
 }) {
   const h1 = <h1 className={cx("heading heading-page", !meta && titleClassName)}>{title}</h1>;
-  return (
+  const line = divider === "hairline" && <Divider className={dividerClassName} />;
+  const header = (
     <header className={cx("animate-fade-up", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
       {meta ? (
@@ -36,7 +39,14 @@ export default function PageHeader({
         h1
       )}
       {note && <p className="meta meta-faint mt-2">{note}</p>}
-      {divider === "hairline" && <Divider className={dividerClassName} />}
+      {!dividerOutside && line}
     </header>
+  );
+  if (!dividerOutside) return header;
+  return (
+    <>
+      {header}
+      {line}
+    </>
   );
 }

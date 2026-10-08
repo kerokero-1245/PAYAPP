@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
+import Section from "@/components/ui/Section";
+import PageHeader from "@/components/ui/PageHeader";
+import Card from "@/components/ui/Card";
+import Divider from "@/components/ui/Divider";
+import Button from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
+import Loading from "@/components/ui/Loading";
 
 /**
  * アカウントページ
@@ -30,67 +37,48 @@ export default function AccountPage() {
     (user?.name || user?.email || "").trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className="container-lux py-14 md:py-20">
-      {/* ページ見出し */}
-      <header className="animate-fade-up">
-        <p className="eyebrow">MAISON — MY ACCOUNT</p>
-        <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
-          アカウント
-        </h1>
-      </header>
-
-      <div className="hairline mt-8 mb-10" />
+    <Section spacing="md" as="div">
+      <PageHeader eyebrow="MAISON — MY ACCOUNT" title="アカウント" dividerClassName="mt-8 mb-10" dividerOutside />
 
       {!mounted ? (
         /* mounted 前はプレースホルダ（hydration 対策） */
-        <p className="text-faint text-sm">読み込み中…</p>
+        <Loading />
       ) : !user ? (
         /* 未ログイン時: ログインへ誘導 */
-        <div className="panel p-8 text-center max-w-md mx-auto animate-fade-in">
-          <h2 className="font-display text-2xl md:text-3xl text-cream">
-            ログインが必要です
-          </h2>
-          <p className="text-muted mt-3 leading-relaxed">
-            アカウント情報をご覧いただくには、ログインしてください。
-          </p>
-          <Link href="/login" className="btn btn-gold mt-8">
-            ログインへ
-          </Link>
-        </div>
+        <EmptyState
+          framed="panel"
+          padding="md"
+          className="max-w-md mx-auto animate-fade-in"
+          title="ログインが必要です"
+          description="アカウント情報をご覧いただくには、ログインしてください。"
+          action={{ href: "/login", label: "ログインへ" }}
+        />
       ) : (
         /* ログイン時: プロフィール + 導線 */
-        <div className="panel p-8 max-w-md mx-auto animate-fade-in">
+        <Card variant="panel" padding="md" className="max-w-md mx-auto animate-fade-in">
           {/* アバター（頭文字の丸）+ name + email */}
           <div className="flex items-center gap-5">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-surface-2 border border-gold-deep text-gold font-display text-3xl">
-              {initial}
-            </div>
+            <div className="avatar">{initial}</div>
             <div className="min-w-0">
-              <p className="font-display text-2xl text-cream truncate">
-                {user.name}
-              </p>
-              <p className="text-muted text-sm mt-1 truncate">{user.email}</p>
+              <p className="heading heading-block truncate">{user.name}</p>
+              <p className="meta mt-1 truncate">{user.email}</p>
             </div>
           </div>
 
-          <div className="hairline my-7" />
+          <Divider className="my-7" />
 
           {/* 導線 */}
           <div className="flex flex-col gap-4">
-            <Link href="/orders" className="link-underline text-gold-soft w-fit">
+            <Link href="/orders" className="link-underline accent w-fit">
               注文履歴を見る
             </Link>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="btn btn-outline btn-block mt-2"
-            >
+            <Button variant="outline" block onClick={handleLogout} className="mt-2">
               ログアウト
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
-    </div>
+    </Section>
   );
 }

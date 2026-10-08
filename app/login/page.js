@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
+import Section from "@/components/ui/Section";
+import Card from "@/components/ui/Card";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Divider from "@/components/ui/Divider";
+import Actions from "@/components/ui/Actions";
+import Button from "@/components/ui/Button";
+import FormField from "@/components/ui/FormField";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,93 +32,71 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="container-lux py-14 md:py-20">
+    <Section spacing="md" as="div">
       <div className="max-w-md mx-auto animate-fade-up">
         {mounted && user ? (
           // ── 既にログイン済み ──
-          <div className="panel p-8 text-center">
-            <p className="eyebrow">ACCOUNT</p>
-            <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
-              ログイン中です
-            </h1>
-            <span className="rule-gold mt-4" />
-            <p className="text-muted mt-4 leading-relaxed">
-              <span className="text-gold-soft">{user.name}</span> 様としてサインインしています。
+          <Card variant="panel" padding="md" className="text-center">
+            <Eyebrow>ACCOUNT</Eyebrow>
+            <h1 className="heading heading-page mt-3">ログイン中です</h1>
+            <Divider variant="rule" className="mt-4" />
+            <p className="lead mt-4">
+              <span className="accent">{user.name}</span> 様としてサインインしています。
             </p>
-            <div className="mt-8 flex flex-col gap-3">
-              <Link href="/account" className="btn btn-gold btn-block">
+            <Actions layout="stack" className="mt-8">
+              <Button href="/account" block>
                 アカウントへ
-              </Link>
-              <Link href="/product" className="btn btn-outline btn-block">
+              </Button>
+              <Button href="/product" variant="outline" block>
                 買い物を続ける
-              </Link>
-            </div>
-          </div>
+              </Button>
+            </Actions>
+          </Card>
         ) : (
           // ── ログインフォーム ──
-          <div className="panel p-8">
+          <Card variant="panel" padding="md">
             <div className="text-center">
-              <p className="eyebrow">MAISON</p>
-              <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
-                サインイン
-              </h1>
-              <span className="rule-gold mt-4" />
+              <Eyebrow>MAISON</Eyebrow>
+              <h1 className="heading heading-page mt-3">サインイン</h1>
+              <Divider variant="rule" className="mt-4" />
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="email"
-                  className="text-xs tracking-widest uppercase text-muted"
-                >
-                  メールアドレス
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="input-lux"
-                />
-              </div>
+              <FormField
+                id="email"
+                label="メールアドレス"
+                type="email"
+                required
+                requiredMark={false}
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <FormField
+                id="name"
+                label="表示名（任意）"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="山田 花子"
+                hint="未入力の場合はメールアドレスから自動で設定されます。"
+              />
 
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="name"
-                  className="text-xs tracking-widest uppercase text-muted"
-                >
-                  表示名（任意）
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  autoComplete="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="山田 花子"
-                  className="input-lux"
-                />
-                <p className="text-xs text-faint">
-                  未入力の場合はメールアドレスから自動で設定されます。
-                </p>
-              </div>
-
-              <button type="submit" className="btn btn-gold btn-block mt-1">
+              <Button type="submit" block className="mt-1">
                 ログイン
-              </button>
+              </Button>
             </form>
 
-            <div className="hairline my-7" />
+            <Divider className="my-7" />
 
-            <p className="text-xs text-faint leading-relaxed text-center">
+            <p className="fine fine-relaxed text-center">
               ※ これはポートフォリオ用のデモ認証です。パスワードは検証されず、入力内容はこのブラウザにのみ保存されます。
             </p>
-          </div>
+          </Card>
         )}
       </div>
-    </div>
+    </Section>
   );
 }
