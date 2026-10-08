@@ -1,0 +1,87 @@
+import Section from "@/components/ui/Section";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionHeading from "@/components/ui/SectionHeading";
+import FaqItem from "@/components/ui/FaqItem";
+import Actions from "@/components/ui/Actions";
+import Button from "@/components/ui/Button";
+import { POLICIES } from "@/lib/policies.mjs";
+
+export const metadata = {
+  title: "よくある質問",
+  description: "ご注文・お支払い・配送についてのよくある質問。",
+};
+
+const GROUPS = [
+  {
+    eyebrow: "Order",
+    title: "ご注文について",
+    items: [
+      {
+        q: "注文の内容はどこで確かめられますか？",
+        a: "決済が確認できた注文は「注文履歴」に表示されます。注文履歴はこのブラウザにだけ保存されるため、別の端末やブラウザからは見えません。",
+      },
+      {
+        q: "ログインしないと購入できませんか？",
+        a: "ログインしなくてもカートに入れて購入手続きへ進めます。ログインはデモのため、パスワードの確認は行いません。",
+      },
+    ],
+  },
+  {
+    eyebrow: "Payment",
+    title: "お支払いについて",
+    items: [
+      {
+        q: "どの支払い方法が使えますか？",
+        a: "Stripe の決済ページでのクレジットカード払いです。このサイトはテストモードのため、実際の請求は発生しません。",
+      },
+      {
+        q: "テスト用のカード番号はありますか？",
+        a: "Stripe のテストカード 4242 4242 4242 4242（有効期限は未来の日付、セキュリティコードは任意の 3 桁）が使えます。",
+      },
+      {
+        q: "決済の画面から戻ったら「確認が取れていません」と出ました。",
+        a: "通信の状況などで支払いの確認ができなかったときの表示です。二重に購入せず、少し時間をおいて「もう一度確認する」を押してください。",
+      },
+    ],
+  },
+  {
+    eyebrow: "Shipping",
+    title: "配送・返品について",
+    items: [
+      { q: "送料はかかりますか？", a: `${POLICIES.shippingFee}です。` },
+      { q: "どのくらいで届きますか？", a: `ご注文の確定から${POLICIES.deliveryDays}します。` },
+      { q: "返品はできますか？", a: `${POLICIES.returns}があります。お届けから 30 日以内で、未使用のものに限ります。` },
+    ],
+  },
+];
+
+/** よくある質問（/faq）。開閉は <details> で JS を使わない */
+export default function FaqPage() {
+  return (
+    <Section spacing="md">
+      <PageHeader eyebrow="FAQ" title="よくある質問" dividerClassName="mt-8 mb-10" />
+
+      <div className="flex flex-col gap-14 max-w-3xl">
+        {GROUPS.map((g) => (
+          <section key={g.title}>
+            <SectionHeading align="start" eyebrow={g.eyebrow} title={g.title} />
+            <div className="mt-6">
+              {g.items.map((item) => (
+                <FaqItem key={item.q} question={item.q}>
+                  {item.a}
+                </FaqItem>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <Actions align="start" className="mt-12">
+        <Button href="/contact">お問い合わせ</Button>
+        <Button href="/shipping" variant="outline">
+          配送について
+        </Button>
+      </Actions>
+    </Section>
+  );
+}
