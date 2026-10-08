@@ -1,0 +1,26 @@
+/* 結果画面（404・決済の結果）の部品 */
+@layer components {
+  .status-icon {
+    display: block;
+    margin-inline: auto;
+    width: 6rem;
+    height: 6rem;
+    color: var(--color-gold);
+  }
+
+  /* 注文番号などの参照番号の枠 */
+  .status-ref {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+    padding: 0.75rem 1.25rem;
+  }
+  .status-ref-value {
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    letter-spacing: 0.1em;
+    color: var(--color-gold-soft);
+  }
+}

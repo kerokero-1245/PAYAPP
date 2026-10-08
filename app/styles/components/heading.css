@@ -1,0 +1,93 @@
+/*
+ * 見出し。.heading（書体・色）+ 大きさのクラス 1 つ（.heading-page など）の足し算で使う。
+ * 値は Tailwind の text-* と同じ（font-size と line-height の組）。
+ */
+@layer components {
+  .heading {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--color-cream);
+  }
+
+  /* h1（全ページ共通）と、トップの h2 */
+  .heading-page {
+    font-size: 1.875rem;
+    line-height: calc(2.25 / 1.875);
+  }
+  /* 節の見出し（h2） */
+  .heading-section {
+    font-size: 1.5rem;
+    line-height: calc(2 / 1.5);
+  }
+  /* 大きさが変わらない h2（空状態・プロフィールの名前） */
+  .heading-block {
+    font-size: 1.5rem;
+    line-height: calc(2 / 1.5);
+  }
+  /* カードの見出し（注文番号・注文サマリー） */
+  .heading-card {
+    font-size: 1.25rem;
+    line-height: calc(1.75 / 1.25);
+  }
+  /* 一覧の項目の見出し（商品名・プレッジ） */
+  .heading-item {
+    font-size: 1.125rem;
+    line-height: calc(1.75 / 1.125);
+  }
+  /* トップの CTA */
+  .heading-display {
+    font-size: 1.875rem;
+    line-height: 1.25;
+  }
+  /* ヒーローの h1 */
+  .heading-hero {
+    font-size: 2.25rem;
+    line-height: 1.25;
+  }
+  /* カテゴリのタイル */
+  .heading-tile {
+    font-size: 1.125rem;
+    line-height: calc(1.75 / 1.125);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 40rem) {
+    .heading-hero {
+      font-size: 3rem;
+    }
+    .heading-tile {
+      font-size: 1.5rem;
+      line-height: calc(2 / 1.5);
+    }
+  }
+  @media (min-width: 48rem) {
+    .heading-page {
+      font-size: 2.25rem;
+      line-height: calc(2.5 / 2.25);
+    }
+    .heading-section {
+      font-size: 1.875rem;
+      line-height: calc(2.25 / 1.875);
+    }
+    .heading-display {
+      font-size: 3rem;
+    }
+    .heading-hero {
+      font-size: 3.75rem;
+    }
+  }
+  @media (min-width: 64rem) {
+    .heading-hero {
+      font-size: 4.5rem;
+    }
+  }
+
+  /* 行の高さの修飾（大きさのクラスより後ろに置く） */
+  .heading-tight {
+    line-height: 1.25;
+  }
+  .heading-snug {
+    line-height: 1.375;
+  }
+}

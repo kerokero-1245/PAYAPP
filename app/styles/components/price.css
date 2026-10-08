@@ -1,0 +1,60 @@
+/*
+ * 金額。.price に、大きさ・色・書体の修飾を 1 つずつ足す。
+ * 大きさを付けないときは親の文字の大きさを受け継ぐ。
+ */
+@layer components {
+  .price-wide {
+    letter-spacing: 0.025em;
+  }
+  .price-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .price-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .price-xs {
+    font-size: 0.7rem;
+  }
+  .price-base {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .price-lg {
+    font-size: 1.125rem;
+    line-height: calc(1.75 / 1.125);
+  }
+  .price-xl {
+    font-size: 1.5rem;
+    line-height: calc(2 / 1.5);
+  }
+  /* 商品詳細の価格（md で 1 段大きく） */
+  .price-hero {
+    font-size: 1.5rem;
+    line-height: calc(2 / 1.5);
+  }
+  @media (min-width: 48rem) {
+    .price-hero {
+      font-size: 1.875rem;
+      line-height: calc(2.25 / 1.875);
+    }
+  }
+
+  .price-cream {
+    color: var(--color-cream);
+  }
+  .price-gold {
+    color: var(--color-gold);
+  }
+  .price-gold-soft {
+    color: var(--color-gold-soft);
+  }
+  .price-muted {
+    color: var(--color-muted);
+  }
+  .price-faint {
+    color: var(--color-faint);
+  }
+}

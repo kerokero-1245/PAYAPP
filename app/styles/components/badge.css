@@ -10,9 +10,9 @@
     padding: 0 0.3rem;
     font-size: 0.65rem;
     font-weight: 600;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--color-gold);
-    color: #1a1408;
+    color: var(--color-on-gold);
     line-height: 1;
   }
 
@@ -24,7 +24,7 @@
     font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     border: 1px solid var(--color-line);
     color: var(--color-muted);
     background: transparent;
@@ -36,9 +36,31 @@
     border-color: var(--color-line-strong);
   }
   .chip-active {
-    color: #1a1408;
+    color: var(--color-on-gold);
     background: var(--color-gold);
     border-color: var(--color-gold);
     font-weight: 600;
+  }
+}
+
+/* 商品画像の上の札（NEW・LIMITED）。chip-active の色で、小さい文字と余白を最初から持つ */
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.625rem;
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-gold);
+    color: var(--color-on-gold);
+    background: var(--color-gold);
+  }
+  /* 商品詳細の大きい画像の上 */
+  .badge-lg {
+    font-size: 0.62rem;
   }
 }

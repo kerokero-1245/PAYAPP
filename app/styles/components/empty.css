@@ -1,0 +1,25 @@
+/* 空の表示（該当なし・注文なし・カートが空） */
+@layer components {
+  .empty {
+    text-align: center;
+  }
+  /* 縦に詰めて並べる形（商品一覧の該当なし） */
+  .empty-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  /* 円の中のアイコン（カートが空） */
+  .empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5rem;
+    height: 5rem;
+    margin-inline: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    color: var(--color-gold);
+  }
+}

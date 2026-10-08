@@ -32,3 +32,46 @@
   /* ---- Radius ---- */
   --radius-lux: 2px; /* シャープで上品な角 */
 }
+
+/*
+ * @theme に無いトークン（Tailwind のユーティリティを作らせないもの）。部品の CSS から var() で使う
+ */
+:root {
+  /* 金（#c6a664）の半透明 */
+  --gold-a04: rgba(198, 166, 100, 0.04);
+  --gold-a06: rgba(198, 166, 100, 0.06);
+  --gold-a08: rgba(198, 166, 100, 0.08);
+  --gold-a28: rgba(198, 166, 100, 0.28);
+  --gold-a35: rgba(198, 166, 100, 0.35);
+  --gold-a45: rgba(198, 166, 100, 0.45);
+  --gold-a55: rgba(198, 166, 100, 0.55);
+  --gold-a60: rgba(198, 166, 100, 0.6);
+
+  /* 金の面の上の文字色 */
+  --color-on-gold: #1a1408;
+
+  /* 影 */
+  --shadow-gold: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 24px -12px rgba(198, 166, 100, 0.7);
+  --shadow-gold-hover: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 12px 30px -12px rgba(198, 166, 100, 0.85);
+  --shadow-lift: 0 24px 60px -30px rgba(0, 0, 0, 0.8);
+
+  /* 角丸 */
+  --radius-pill: 999px;
+
+  /* ページの上下余白（sm: 一覧・詳細・カート / md: 注文・アカウント・ログイン・新ページ / lg: 結果画面 / top: トップ専用） */
+  --space-section-sm: 3rem;
+  --space-section-md: 3.5rem;
+  --space-section-md-wide: 5rem;
+  --space-section-lg: 6rem;
+  --space-section-top: 4rem;
+  --space-section-top-wide: 6rem;
+
+  /* 文字の大きさ（Tailwind の目盛りに無いもの） */
+  --fs-eyebrow: 0.72rem;
+  --fs-micro: 0.6rem;
+  --fs-btn: 0.8rem;
+  --fs-btn-sm: 0.7rem;
+
+  /* 動き */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+}

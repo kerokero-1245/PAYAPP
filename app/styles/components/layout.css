@@ -12,3 +12,58 @@
     }
   }
 }
+
+/* 幅の狭いコンテナ（.container-lux と同じ要素に付ける。後ろに置いて max-width を上書きする） */
+@layer components {
+  .container-narrow {
+    max-width: 36rem;
+  }
+  .container-form {
+    max-width: 28rem;
+  }
+}
+
+/* ページの上下余白（⑤-0: sm / md / lg + トップ専用） */
+@layer components {
+  .section-sm {
+    padding-block: var(--space-section-sm);
+  }
+  .section-md {
+    padding-block: var(--space-section-md);
+  }
+  .section-lg {
+    padding-block: var(--space-section-lg);
+  }
+  .section-top {
+    padding-block: var(--space-section-top);
+  }
+  @media (min-width: 48rem) {
+    .section-md {
+      padding-block: var(--space-section-md-wide);
+    }
+    .section-top {
+      padding-block: var(--space-section-top-wide);
+    }
+  }
+}
+
+/* ボタンの並び。.actions は縦積み → sm から横並び（中央）。.actions-stack は常に縦積み */
+@layer components {
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+  @media (min-width: 40rem) {
+    .actions {
+      flex-direction: row;
+    }
+  }
+  .actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}

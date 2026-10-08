@@ -7,7 +7,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-btn);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     font-weight: 500;
@@ -25,25 +25,25 @@
   /* ゴールドのソリッド（主要CTA） */
   .btn-gold {
     background: linear-gradient(180deg, var(--color-gold-soft), var(--color-gold));
-    color: #1a1408;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 24px -12px rgba(198, 166, 100, 0.7);
+    color: var(--color-on-gold);
+    box-shadow: var(--shadow-gold);
   }
   .btn-gold:hover:not(:disabled) {
     background: linear-gradient(180deg, var(--color-gold-bright), var(--color-gold-soft));
     transform: translateY(-1px);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 12px 30px -12px rgba(198, 166, 100, 0.85);
+    box-shadow: var(--shadow-gold-hover);
   }
 
   /* ゴールドの枠線（副次アクション） */
   .btn-outline {
     background: transparent;
     color: var(--color-gold-soft);
-    border: 1px solid rgba(198, 166, 100, 0.45);
+    border: 1px solid var(--gold-a45);
   }
   .btn-outline:hover:not(:disabled) {
     border-color: var(--color-gold);
     color: var(--color-gold-bright);
-    background: rgba(198, 166, 100, 0.08);
+    background: var(--gold-a08);
   }
 
   /* 目立たないゴースト */
@@ -59,7 +59,7 @@
 
   .btn-sm {
     padding: 0.5rem 1rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-btn-sm);
   }
   .btn-block {
     width: 100%;

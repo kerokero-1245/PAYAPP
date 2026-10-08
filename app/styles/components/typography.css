@@ -8,7 +8,7 @@
 
   /* 小さなラベル見出し（例: NEW ARRIVALS） */
   .eyebrow {
-    font-size: 0.72rem;
+    font-size: var(--fs-eyebrow);
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--color-gold);
@@ -20,5 +20,27 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+}
+
+/* eyebrow の修飾（大きさ・色・字間）。.eyebrow より後ろに置いて上書きする */
+@layer components {
+  .eyebrow-sm {
+    font-size: var(--fs-micro);
+  }
+  .eyebrow-faint {
+    color: var(--color-faint);
+  }
+  .eyebrow-soft {
+    color: var(--color-gold-soft);
+  }
+  .eyebrow-track-sm {
+    letter-spacing: 0.2em;
+  }
+  .eyebrow-track-md {
+    letter-spacing: 0.22em;
+  }
+  .eyebrow-track-lg {
+    letter-spacing: 0.28em;
   }
 }

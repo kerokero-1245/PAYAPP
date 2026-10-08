@@ -1,0 +1,26 @@
+/* 画像の枠（next/image の fill を入れる箱） */
+@layer components {
+  .media {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface-2);
+  }
+  .media-4x5 {
+    aspect-ratio: 4 / 5;
+  }
+  /* 注文履歴のサムネイル */
+  .thumb-sm {
+    width: 3.5rem;
+    height: 4rem;
+    flex-shrink: 0;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+  }
+  /* カートのサムネイル */
+  .thumb-md {
+    width: 5rem;
+    height: 6rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-lux);
+  }
+}

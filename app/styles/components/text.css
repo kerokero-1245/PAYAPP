@@ -1,0 +1,44 @@
+/* 本文まわりの文字 */
+@layer components {
+  /* 説明文（色と行の高さ。大きさは親から受け継ぐ） */
+  .lead {
+    color: var(--color-muted);
+    line-height: 1.625;
+  }
+  /* 小さい説明文 */
+  .lead-sm {
+    font-size: 0.875rem;
+  }
+
+  /* 件数・日付などの補足 */
+  .meta {
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    color: var(--color-muted);
+  }
+  .meta-faint {
+    color: var(--color-faint);
+  }
+
+  /* 注記（いちばん小さい文字） */
+  .fine {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    color: var(--color-faint);
+  }
+  .fine-relaxed {
+    line-height: 1.625;
+  }
+
+  /* 「読み込み中…」 */
+  .loading-text {
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    color: var(--color-faint);
+  }
+
+  /* 強調（金の淡色） */
+  .accent {
+    color: var(--color-gold-soft);
+  }
+}

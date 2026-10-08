@@ -28,14 +28,14 @@ body {
   text-rendering: optimizeLegibility;
   /* うっすらとしたゴールドのビネットで奥行きを出す */
   background-image:
-    radial-gradient(80rem 40rem at 50% -10%, rgba(198, 166, 100, 0.06), transparent 60%),
-    radial-gradient(60rem 40rem at 100% 100%, rgba(198, 166, 100, 0.04), transparent 55%);
+    radial-gradient(80rem 40rem at 50% -10%, var(--gold-a06), transparent 60%),
+    radial-gradient(60rem 40rem at 100% 100%, var(--gold-a04), transparent 55%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
 ::selection {
-  background: rgba(198, 166, 100, 0.28);
+  background: var(--gold-a28);
   color: var(--color-cream);
 }
 
@@ -79,7 +79,7 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: #2a2a31;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 2px solid var(--color-ink);
 }
 ::-webkit-scrollbar-thumb:hover {

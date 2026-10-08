@@ -1,0 +1,26 @@
+import Eyebrow from "./Eyebrow";
+import Divider from "./Divider";
+import Actions from "./Actions";
+import StatusIcon from "./StatusIcon";
+import { cx } from "./cx";
+
+/**
+ * 結果画面（404・決済の結果・お問い合わせの送信済み）の骨組み:
+ * マーク → eyebrow → h1 → 金の短い線 → 本文 → （追加の中身）→ ボタンの並び。中央寄せ・上下余白 lg。
+ *
+ * @param {{ icon?: "check" | "notice" | "cancel", eyebrow: React.ReactNode, title: React.ReactNode,
+ *   lead: React.ReactNode, actions?: React.ReactNode, children?: React.ReactNode, titleAs?: string, className?: string }} props
+ */
+export default function StatusMessage({ icon, eyebrow, title, lead, actions, children, titleAs: Title = "h1", className }) {
+  return (
+    <div className={cx("container-lux container-narrow section-lg text-center animate-fade-up", className)}>
+      {icon && <StatusIcon kind={icon} />}
+      <Eyebrow className={icon ? "mt-8" : undefined}>{eyebrow}</Eyebrow>
+      <Title className="heading heading-page mt-4">{title}</Title>
+      <Divider variant="rule" className="mt-6" />
+      <p className="lead mt-6">{lead}</p>
+      {children}
+      {actions && <Actions className="mt-10">{actions}</Actions>}
+    </div>
+  );
+}

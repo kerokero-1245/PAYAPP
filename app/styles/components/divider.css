@@ -8,7 +8,7 @@
   }
   .hairline-gold {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(198, 166, 100, 0.55), transparent);
+    background: linear-gradient(90deg, transparent, var(--gold-a55), transparent);
   }
   /* 見出し下などに置く短いゴールド線 */
   .rule-gold {

@@ -1,0 +1,51 @@
+/*
+ * 数量の増減。大きさの修飾は子要素にもそれぞれ付ける（.stepper-sm .stepper-btn とは書けないため）
+ */
+@layer components {
+  .stepper {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lux);
+  }
+  .stepper-sm {
+    display: inline-flex;
+  }
+
+  .stepper-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    color: var(--color-cream);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .stepper-btn:hover {
+    color: var(--color-gold);
+  }
+  .stepper-btn:disabled {
+    opacity: 0.4;
+  }
+  .stepper-btn-sm {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-muted);
+  }
+  .stepper-btn-sm:disabled {
+    opacity: 0.3;
+  }
+
+  .stepper-value {
+    width: 3rem;
+    text-align: center;
+    color: var(--color-cream);
+    font-variant-numeric: tabular-nums;
+  }
+  .stepper-value-sm {
+    width: 2rem;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+  }
+}

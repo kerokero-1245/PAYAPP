@@ -15,8 +15,44 @@
     color: var(--color-faint);
   }
   .input-lux:focus {
-    border-color: rgba(198, 166, 100, 0.6);
+    border-color: var(--gold-a60);
     background: var(--color-surface);
     outline: none;
+  }
+}
+
+/* 入力欄 1 つ分（ラベル・入力・補足・エラー） */
+@layer components {
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .field-label {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .field-hint {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    color: var(--color-faint);
+  }
+  .field-error {
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    color: var(--color-danger);
+  }
+  .field-required {
+    color: var(--color-gold);
+  }
+  .input-lux[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+  .input-area {
+    min-height: 9rem;
+    resize: vertical;
   }
 }

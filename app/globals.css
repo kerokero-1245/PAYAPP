@@ -14,6 +14,8 @@
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/components/typography.css";
+@import "./styles/components/heading.css";
+@import "./styles/components/text.css";
 @import "./styles/components/layout.css";
 @import "./styles/components/divider.css";
 @import "./styles/components/button.css";
@@ -21,4 +23,9 @@
 @import "./styles/components/form.css";
 @import "./styles/components/badge.css";
 @import "./styles/components/link.css";
+@import "./styles/components/status.css";
+@import "./styles/components/media.css";
+@import "./styles/components/price.css";
+@import "./styles/components/stepper.css";
+@import "./styles/components/empty.css";
 @import "./styles/motion.css";
