@@ -34,10 +34,9 @@ export default function AccountPage() {
       {/* ページ見出し */}
       <header className="animate-fade-up">
         <p className="eyebrow">MAISON — MY ACCOUNT</p>
-        <h1 className="font-display text-4xl md:text-5xl text-cream mt-3">
+        <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
           アカウント
         </h1>
-        <span className="rule-gold mt-5" />
       </header>
 
       <div className="hairline mt-8 mb-10" />
@@ -47,7 +46,7 @@ export default function AccountPage() {
         <p className="text-faint text-sm">読み込み中…</p>
       ) : !user ? (
         /* 未ログイン時: ログインへ誘導 */
-        <div className="panel p-8 md:p-10 text-center max-w-md mx-auto animate-fade-in">
+        <div className="panel p-8 text-center max-w-md mx-auto animate-fade-in">
           <h2 className="font-display text-2xl md:text-3xl text-cream">
             ログインが必要です
           </h2>

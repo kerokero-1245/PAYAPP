@@ -26,13 +26,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="container-lux py-20">
+    <div className="container-lux py-14 md:py-20">
       <div className="max-w-md mx-auto animate-fade-up">
         {mounted && user ? (
           // ── 既にログイン済み ──
           <div className="panel p-8 text-center">
             <p className="eyebrow">ACCOUNT</p>
-            <h1 className="font-display text-2xl md:text-3xl text-cream mt-3">
+            <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
               ログイン中です
             </h1>
             <span className="rule-gold mt-4" />
@@ -53,7 +53,7 @@ export default function LoginPage() {
           <div className="panel p-8">
             <div className="text-center">
               <p className="eyebrow">MAISON</p>
-              <h1 className="font-display text-2xl md:text-3xl text-cream mt-3">
+              <h1 className="font-display text-3xl md:text-4xl text-cream mt-3">
                 サインイン
               </h1>
               <span className="rule-gold mt-4" />
