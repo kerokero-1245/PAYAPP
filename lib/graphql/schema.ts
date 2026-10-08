@@ -3,7 +3,7 @@
  * ---------------------------------------------------
  * 既存の純粋な関数（lib/catalog.mjs・lib/checkout.mjs）と、/checkout と共有する
  * createCheckoutSessionCore（lib/checkout-session.mjs）を呼ぶだけで、サーバに状態を持たない。
- * Stripe は context.getStripe() 経由でだけ触る（lib/stripe.js は import しない）。
+ * Stripe は context.getStripe() 経由でだけ触る（server-only の Stripe クライアントのモジュールは import しない）。
  */
 import { createSchema } from "graphql-yoga";
 import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.mjs";
