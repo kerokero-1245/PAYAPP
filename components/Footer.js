@@ -31,6 +31,13 @@ export default function Footer() {
     },
   ];
 
+  /** 下段の小さなリンク（4 列の grid に 5 列目を足すと md で窮屈になるため、ここに並べる） */
+  const legalLinks = [
+    { href: "/legal", label: "特定商取引法に基づく表記" },
+    { href: "/privacy", label: "プライバシーポリシー" },
+    { href: "/faq", label: "よくある質問" },
+  ];
+
   return (
     <footer className="mt-24 border-t border-line bg-ink-2">
       <div className="container-lux py-14">
@@ -65,8 +72,15 @@ export default function Footer() {
 
         <div className="hairline my-10" />
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-faint">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-3 text-xs text-faint">
           <p>© 2026 MAISON (PAYAPP). All rights reserved.</p>
+          <nav aria-label="規約とご案内" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+            {legalLinks.map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-cream transition-colors">
+                {l.label}
+              </Link>
+            ))}
+          </nav>
           <p className="tracking-widest uppercase">Crafted with care</p>
         </div>
       </div>
