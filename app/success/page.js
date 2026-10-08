@@ -135,7 +135,7 @@ function SuccessChecking() {
   return (
     <div className="container-lux py-24 text-center max-w-xl animate-fade-in">
       <p className="eyebrow">MAISON</p>
-      <p className="text-muted mt-6">決済を確認しています…</p>
+      <p className="text-faint text-sm mt-6">決済を確認しています…</p>
     </div>
   );
 }
