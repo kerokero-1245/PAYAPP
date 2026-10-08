@@ -24,9 +24,9 @@ export default function Footer() {
     {
       title: "メゾンについて",
       links: [
-        { href: "/", label: "ブランドストーリー" },
-        { href: "/", label: "配送について" },
-        { href: "/", label: "お問い合わせ" },
+        { href: "/about", label: "ブランドストーリー" },
+        { href: "/shipping", label: "配送について" },
+        { href: "/contact", label: "お問い合わせ" },
       ],
     },
   ];
@@ -51,8 +51,8 @@ export default function Footer() {
             <div key={col.title}>
               <h4 className="eyebrow mb-4">{col.title}</h4>
               <ul className="space-y-2.5">
-                {col.links.map((l, i) => (
-                  <li key={`${l.label}-${i}`}>
+                {col.links.map((l) => (
+                  <li key={l.href}>
                     <Link href={l.href} className="text-sm text-muted hover:text-cream transition-colors">
                       {l.label}
                     </Link>
