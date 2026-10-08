@@ -87,3 +87,24 @@
   /* 動き */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/*
+ * グラデーションの色を <color> として登録する（Tailwind の --tw-gradient-from/via/to と同じ扱い）。
+ * 色を一度 <color> に解決してから linear-gradient に渡すので、color-mix を直接書いたときと丸めが違う
+ * （直書きだと 1 階調ずれる画素が出た）。.tile-shade と .hero-shade-* が使う
+ */
+@property --shade-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --shade-via {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --shade-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}

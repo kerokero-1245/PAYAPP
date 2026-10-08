@@ -5,7 +5,7 @@ const WIDTH = { wide: null, narrow: "container-narrow", form: "container-form" }
 
 /**
  * ページの節。コンテナ（.container-lux）と上下余白（⑤-0 の sm / md / lg / top）を 1 つの要素に付ける。
- * @param {{ as?: string, spacing?: "sm" | "md" | "lg" | "top", width?: "wide" | "narrow" | "form", className?: string }} props
+ * @param {{ as?: string, spacing?: "sm" | "md" | "lg" | "top", width?: "wide" | "narrow" | "form", className?: string, children?: React.ReactNode }} props
  */
 export default function Section({ as: Tag = "section", spacing = "md", width = "wide", className, children, ...rest }) {
   return (

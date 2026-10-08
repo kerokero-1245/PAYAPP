@@ -28,11 +28,9 @@
     opacity: 0.7;
   }
   .tile-shade {
-    background-image: linear-gradient(
-      to top in oklab,
-      var(--color-ink) 0%,
-      color-mix(in oklab, var(--color-ink) 40%, transparent) 50%,
-      transparent 100%
-    );
+    --shade-from: var(--color-ink);
+    --shade-via: color-mix(in oklab, var(--color-ink) 40%, transparent);
+    --shade-to: transparent;
+    background-image: linear-gradient(to top in oklab, var(--shade-from) 0%, var(--shade-via) 50%, var(--shade-to) 100%);
   }
 }
