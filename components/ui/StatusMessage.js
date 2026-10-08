@@ -9,11 +9,23 @@ import { cx } from "./cx";
  * マーク → eyebrow → h1 → 金の短い線 → 本文 → （追加の中身）→ ボタンの並び。中央寄せ・上下余白 lg。
  *
  * @param {{ icon?: "check" | "notice" | "cancel", eyebrow: React.ReactNode, title: React.ReactNode,
- *   lead: React.ReactNode, actions?: React.ReactNode, children?: React.ReactNode, titleAs?: string, className?: string }} props
+ *   lead: React.ReactNode, actions?: React.ReactNode, children?: React.ReactNode, titleAs?: string,
+ *   contained?: boolean, className?: string }} props
+ *   contained=false: ページの中に置くとき（コンテナと上下余白を付けない。お問い合わせの送信済み）
  */
-export default function StatusMessage({ icon, eyebrow, title, lead, actions, children, titleAs: Title = "h1", className }) {
+export default function StatusMessage({
+  icon,
+  eyebrow,
+  title,
+  lead,
+  actions,
+  children,
+  titleAs: Title = "h1",
+  contained = true,
+  className,
+}) {
   return (
-    <div className={cx("container-lux container-narrow section-lg text-center animate-fade-up", className)}>
+    <div className={cx(contained && "container-lux container-narrow section-lg", "text-center animate-fade-up", className)}>
       {icon && <StatusIcon kind={icon} />}
       <Eyebrow className={icon ? "mt-8" : undefined}>{eyebrow}</Eyebrow>
       <Title className="heading heading-page mt-4">{title}</Title>
