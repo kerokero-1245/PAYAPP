@@ -71,6 +71,24 @@ STRIPE_SECRET_KEY=sk_test_xxxx
 # NEXT_PUBLIC_BASE_URL=https://your-domain.example
 ```
 
+## 公開（Vercel）
+Vercel の GitHub 連携でデプロイします。`vercel.json` は置いていません（Next.js は Vercel が自動で認識し、画像の許可ドメインは `next.config.ts` にあるため、追加の設定が要りません）。
+
+1. Vercel にログインし、**Add New… → Project** でこの GitHub リポジトリを **Import** します（Framework Preset は Next.js のまま、Build Command・Output Directory も既定のまま）。
+2. **Environment Variables** に次を設定します（名前は上の「環境変数」の表と同じです）。
+
+   | 変数 | 設定する環境 | 値 |
+   | --- | --- | --- |
+   | `STRIPE_SECRET_KEY` | Production・Preview | Stripe のテストモードのキー `sk_test_...` |
+   | `NEXT_PUBLIC_BASE_URL` | Production だけ | 本番の URL（例: `https://<プロジェクト名>.vercel.app`） |
+
+   - `NEXT_PUBLIC_BASE_URL` を Preview にも入れると、プレビューで決済したときの戻り先が本番になります。Preview では未設定にしておけば、戻り先はそのプレビューの URL になります。
+   - `NEXT_PUBLIC_` で始まる値はビルド時に埋め込まれるので、変えたら再デプロイしてください。
+3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
+4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
+
+`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
+
 ## 決済の流れ
 1. カートの「購入手続きへ」で、商品の **id と数量だけ** を `POST /checkout` に送ります。
 2. `/checkout` は価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
