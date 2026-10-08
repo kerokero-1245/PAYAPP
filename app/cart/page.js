@@ -6,6 +6,7 @@ import CartItem from "@/components/CartItem";
 import { useCartStore } from "@/store/cartStore";
 import { formatYen } from "@/lib/format";
 import { useMounted } from "@/lib/useMounted";
+import { createCheckoutSession } from "@/lib/graphql/client";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
@@ -16,36 +17,23 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
 
-  // /checkout に POST → data.url → Stripe へ遷移。失敗したらサーバが返した理由を出す
+  // GraphQL の createCheckoutSession → url → Stripe へ遷移。失敗したらサーバが返した理由を出す
   const handleCheckout = async () => {
     setLoading(true);
     setCheckoutError(null);
     try {
-      const res = await fetch("/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // 価格と商品名はサーバがカタログから引くので、id と数量だけを送る
-        body: JSON.stringify({
-          items: items.map(({ id, quantity }) => ({ id, quantity })),
-        }),
-      });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = null;
-      }
-      if (!res.ok || !data?.url) {
+      // 価格と商品名はサーバがカタログから引くので、id と数量だけを送る
+      const result = await createCheckoutSession(
+        items.map(({ id, quantity }) => ({ id, quantity }))
+      );
+      if (!("url" in result)) {
         setCheckoutError(
-          typeof data?.error === "string" && data.error
-            ? data.error
-            : "決済処理に失敗しました。時間をおいてもう一度お試しください"
+          result.error ?? "決済処理に失敗しました。時間をおいてもう一度お試しください"
         );
         setLoading(false);
         return;
       }
-      window.location.href = data.url;
+      window.location.href = result.url;
     } catch {
       setCheckoutError("通信に失敗しました。時間をおいてもう一度お試しください");
       setLoading(false);
