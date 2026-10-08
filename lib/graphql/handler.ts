@@ -14,7 +14,11 @@ import type { SelectionSetNode, ValidationContext, ValidationRule } from "graphq
 import { createYoga } from "graphql-yoga";
 import type { Plugin } from "graphql-yoga";
 import { MAX_BODY_BYTES } from "../checkout.mjs";
-import { readBodyWithLimit } from "../checkout-session.mjs";
+import {
+  UNSUPPORTED_MEDIA_TYPE,
+  isJsonContentType,
+  readBodyWithLimit,
+} from "../checkout-session.mjs";
 import { schema } from "./schema.ts";
 import type { GraphqlContext } from "./schema.ts";
 
@@ -23,42 +27,46 @@ export const MAX_MUTATION_FIELDS = 1;
 export const TOO_MANY_MUTATIONS = "1 回のリクエストで実行できる Mutation は 1 つまでです";
 const TOO_LARGE = "リクエストが大きすぎます";
 const BAD_REQUEST = "リクエストの形式が不正です";
-const UNSUPPORTED_TYPE = "Content-Type は application/json にしてください";
 
-/** 選択セットの中の（フラグメントを展開した）フィールドの数。__typename は数えない */
+/**
+ * ルートの選択セットのうち、条件に合うフィールドの数（フラグメントを展開する）。
+ * @include / @skip は見ずに数える（実行時の変数で増やせないように）。
+ */
 function countRootFields(
   selectionSet: SelectionSetNode,
   context: ValidationContext,
+  match: (name: string) => boolean,
   seen: Set<string>
 ): number {
   let count = 0;
   for (const selection of selectionSet.selections) {
     if (selection.kind === Kind.FIELD) {
-      if (selection.name.value !== "__typename") count += 1;
+      if (match(selection.name.value)) count += 1;
     } else if (selection.kind === Kind.INLINE_FRAGMENT) {
-      count += countRootFields(selection.selectionSet, context, seen);
+      count += countRootFields(selection.selectionSet, context, match, seen);
     } else if (selection.kind === Kind.FRAGMENT_SPREAD) {
       const name = selection.name.value;
       if (seen.has(name)) continue;
       seen.add(name);
       const fragment = context.getFragment(name);
-      if (fragment) count += countRootFields(fragment.selectionSet, context, seen);
+      if (fragment) count += countRootFields(fragment.selectionSet, context, match, seen);
     }
   }
   return count;
 }
 
-/** Mutation のフィールドを 1 リクエストに 1 つまでにする validation rule */
+/** Mutation のフィールド（__typename を除く）を 1 リクエストに 1 つまでにする */
 export const singleMutationRule: ValidationRule = (context) => ({
   OperationDefinition(node) {
     if (node.operation !== "mutation") return;
-    if (countRootFields(node.selectionSet, context, new Set()) > MAX_MUTATION_FIELDS) {
+    const n = countRootFields(node.selectionSet, context, (f) => f !== "__typename", new Set());
+    if (n > MAX_MUTATION_FIELDS) {
       context.reportError(new GraphQLError(TOO_MANY_MUTATIONS, { nodes: [node] }));
     }
   },
 });
 
-const singleMutationPlugin: Plugin = {
+const limitsPlugin: Plugin = {
   onValidate({ addValidationRule }) {
     addValidationRule(singleMutationRule);
   },
@@ -80,17 +88,16 @@ export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
     schema,
     graphqlEndpoint: GRAPHQL_ENDPOINT,
     maskedErrors: { isDev: false },
-    plugins: [singleMutationPlugin],
+    plugins: [limitsPlugin],
     context: ({ request }) => ({ request, getStripe, baseUrl }),
   });
 
-  /** 本文の上限と Content-Type を先に当ててから yoga に渡す */
+  /** Content-Type と本文の上限を先に当ててから yoga に渡す */
   async function fetch(request: Request): Promise<Response> {
     if (request.method !== "POST") return yoga.fetch(request);
 
-    const type = request.headers.get("content-type") ?? "";
-    if (!/^application\/(graphql-response\+)?json\b/i.test(type)) {
-      return jsonError(UNSUPPORTED_TYPE, 415);
+    if (!isJsonContentType(request.headers.get("content-type"))) {
+      return jsonError(UNSUPPORTED_MEDIA_TYPE, 415);
     }
     let text: string | null;
     try {

@@ -15,6 +15,7 @@ import {
   buildLineItems,
   encodeOrderMetadata,
 } from "../lib/checkout.mjs";
+import { UNSUPPORTED_MEDIA_TYPE, isJsonContentType } from "../lib/checkout-session.mjs";
 import { createGraphqlHandler, TOO_MANY_MUTATIONS } from "../lib/graphql/handler.ts";
 import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
 
@@ -250,7 +251,17 @@ test("GraphQL: POST は application/json だけ受け付ける（フォーム送
     })
   );
   assert.equal(res.status, 415);
+  assert.deepEqual(await res.json(), { errors: [{ message: UNSUPPORTED_MEDIA_TYPE }] });
   assert.equal(stripe.created.length, 0);
+});
+
+test("Content-Type の判定: application/json（引数・大文字可）だけを受け付ける", () => {
+  for (const ok of ["application/json", "application/json; charset=utf-8", "APPLICATION/JSON", "application/json ;charset=UTF-8"]) {
+    assert.equal(isJsonContentType(ok), true, ok);
+  }
+  for (const ng of [null, "", "text/plain", "application/graphql-response+json", "application/json-seq", "application/jsonx", "application/x-www-form-urlencoded", "multipart/form-data"]) {
+    assert.equal(isJsonContentType(ng), false, String(ng));
+  }
 });
 
 /* ---------- ⑤-7 決済の照会 ---------- */

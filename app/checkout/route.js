@@ -1,6 +1,11 @@
 import { getStripe } from "@/lib/stripe";
 import { MAX_BODY_BYTES } from "@/lib/checkout.mjs";
-import { createCheckoutSessionCore, readBodyWithLimit } from "@/lib/checkout-session.mjs";
+import {
+  UNSUPPORTED_MEDIA_TYPE,
+  createCheckoutSessionCore,
+  isJsonContentType,
+  readBodyWithLimit,
+} from "@/lib/checkout-session.mjs";
 
 const TOO_LARGE = "リクエストが大きすぎます";
 const BAD_REQUEST = "リクエストの形式が不正です";
@@ -13,6 +18,11 @@ const BAD_REQUEST = "リクエストの形式が不正です";
  * 本体は lib/checkout-session.mjs（GraphQL の createCheckoutSession と共有）。
  */
 export async function POST(request) {
+  // フォーム送信など JSON 以外は受け付けない（GraphQL の入口と同じ判定）
+  if (!isJsonContentType(request.headers.get("content-type"))) {
+    return Response.json({ error: UNSUPPORTED_MEDIA_TYPE }, { status: 415 });
+  }
+
   let text;
   try {
     text = await readBodyWithLimit(request, MAX_BODY_BYTES);
