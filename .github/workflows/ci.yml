@@ -34,6 +34,11 @@ jobs:
       - name: lint
         run: npm run lint
 
+      # 部品の CSS に結合子・入れ子・!important を、ページに Tailwind の ! 接尾辞・group-hover・space-y・任意値を
+      # 持ち込んでいないか（scripts/check-flat-css.mjs）
+      - name: 平坦な CSS の検査
+        run: npm run check:css
+
       # GraphQL の型（lib/graphql/__generated__）は生成物をコミットしている。
       # SDL（lib/graphql/sdl.ts）を変えて npm run codegen を忘れたら、ここで落とす。
       - name: GraphQL の生成物が最新か

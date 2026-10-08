@@ -104,7 +104,8 @@ const JS_RULES = [
   [new RegExp(`${D}(?:[a-z0-9-]+:)*-?space-[xy]-`, "gm"), "space-x/space-y（子セレクタ）"],
   [new RegExp(`${D}(?:[a-z0-9-]+:)*divide-`, "gm"), "divide-（子セレクタ）"],
   [new RegExp(`${D}(?:[a-z0-9-]+:)*-?[a-z][a-z0-9-]*-\\[[^\\]\\s]+\\]`, "gm"), "任意値 [...]"],
-  [new RegExp(`${D}\\[[^\\]\\s]+\\]:`, "gm"), "任意の変種 [...]:"],
+  // [&>*]: や [@media…]: の形だけを見る（JS の計算されたキー { [field]: v } は対象外）
+  [new RegExp(`${D}\\[[&@][^\\]\\s]*\\]:`, "gm"), "任意の変種 [&…]:"],
 ];
 
 for (const f of jsFiles) {
