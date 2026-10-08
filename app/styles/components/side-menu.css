@@ -1,0 +1,25 @@
+/* 商品一覧のサイドのカテゴリ */
+@layer components {
+  .side-link {
+    border-left: 2px solid transparent;
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    letter-spacing: 0.025em;
+    color: var(--color-muted);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .side-link:hover {
+    color: var(--color-cream);
+  }
+  /* 選択中（aria-current はリンク自身に付く） */
+  .side-link[aria-current="true"] {
+    border-left-color: var(--color-gold);
+    color: var(--color-gold);
+  }
+  .side-link-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+}

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/store/productStore";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Divider from "@/components/ui/Divider";
 
 /**
  * ショップ（商品一覧）用サイドカテゴリメニュー
@@ -10,7 +12,7 @@ import { CATEGORIES } from "@/store/productStore";
  * @description
  * productStore の CATEGORIES を動的にマップし、現在の URL クエリ
  * （?category=slug）に応じて選択中カテゴリをゴールドでハイライトする。
- * "all" は /product（クエリなし）へリンクする。
+ * "all" は /product（クエリなし）へリンクする。選択中の見た目はリンク自身の aria-current で付ける。
  *
  * @remarks
  * usePathname / useSearchParams を使用するため、呼び出し側（shop ページ）の
@@ -27,11 +29,11 @@ export default function SideMenu() {
 
   return (
     <aside className="w-56 shrink-0 sticky top-24 self-start">
-      <p className="eyebrow mb-4">CATEGORIES</p>
-      <div className="hairline mb-5" />
+      <Eyebrow className="mb-4">CATEGORIES</Eyebrow>
+      <Divider className="mb-5" />
 
       <nav>
-        <ul className="space-y-1">
+        <ul className="flex flex-col gap-1">
           {CATEGORIES.map((cat) => {
             const href = cat.slug === "all" ? "/product" : `/product?category=${cat.slug}`;
             const active = onShop && cat.slug === currentCategory;
@@ -41,16 +43,10 @@ export default function SideMenu() {
                 <Link
                   href={href}
                   aria-current={active ? "true" : undefined}
-                  className={`flex items-baseline gap-2 border-l-2 pl-4 py-2 text-sm tracking-wide transition-colors ${
-                    active
-                      ? "border-gold text-gold"
-                      : "border-transparent text-muted hover:text-cream"
-                  }`}
+                  className="side-link flex items-baseline gap-2 pl-4 py-2"
                 >
                   <span>{cat.label}</span>
-                  <span className="text-[0.62rem] tracking-[0.2em] uppercase text-faint">
-                    {cat.jp}
-                  </span>
+                  <span className="side-link-sub">{cat.jp}</span>
                 </Link>
               </li>
             );

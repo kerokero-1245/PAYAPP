@@ -1,0 +1,38 @@
+/* 商品カード・カテゴリのタイル */
+@layer components {
+  /* カード全体に乗ったときに画像を少し拡大する。状態は画像自身の data-active（React が付ける） */
+  .zoom {
+    transition: scale 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .zoom[data-active="true"] {
+    scale: 1.05;
+  }
+
+  /* 商品名などのリンクの見出し */
+  .heading-link {
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .heading-link:hover {
+    color: var(--color-gold);
+  }
+
+  /* 商品の一言説明 */
+  .tagline {
+    font-size: 0.75rem;
+    line-height: var(--lh-xs);
+    color: var(--color-muted);
+  }
+
+  /* カテゴリのタイル: 画像を少し沈め、下から暗くする */
+  .tile-img {
+    opacity: 0.7;
+  }
+  .tile-shade {
+    background-image: linear-gradient(
+      to top in oklab,
+      var(--color-ink) 0%,
+      color-mix(in oklab, var(--color-ink) 40%, transparent) 50%,
+      transparent 100%
+    );
+  }
+}

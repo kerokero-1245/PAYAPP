@@ -33,4 +33,6 @@
 @import "./styles/components/faq.css";
 @import "./styles/components/account.css";
 @import "./styles/components/orders.css";
+@import "./styles/components/product-card.css";
+@import "./styles/components/side-menu.css";
 @import "./styles/motion.css";
