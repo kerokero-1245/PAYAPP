@@ -2,7 +2,7 @@
  * ブラウザから /api/graphql を呼ぶ小さな関数（キャッシュ層は持たない）
  * ---------------------------------------------------
  * 戻り値の型は codegen が SDL から作った型（__generated__/types.ts）で付ける。
- * サーバ専用のもの（lib/stripe.js など）は import しない。
+ * サーバ専用のもの（server-only の Stripe クライアントなど）は import しない。
  */
 import type {
   CartItemInput,
