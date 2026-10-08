@@ -20,6 +20,7 @@
 - **Tailwind CSS v4**（`@theme` でデザイントークンを定義）
 - **Zustand**（状態管理・`persist` で localStorage 永続化）
 - **Stripe**（Checkout Session による決済）
+- **GraphQL**（graphql-yoga を Route Handler に載せた `/api/graphql`。型は GraphQL Code Generator で SDL から生成）
 - 画像は `next/image`、フォントは `next/font`（Playfair Display / Inter）
 
 ## 主な機能
@@ -28,7 +29,8 @@
 - **商品一覧** — カテゴリ絞り込み・キーワード検索（名前 / 説明の部分一致）・件数表示・空状態
 - **商品詳細** — 画像ギャラリー（サムネ切替）・数量指定でカート追加・関連商品
 - **カート** — 追加 / 削除 / 数量増減（1 商品 1〜99 点）・小計 / 合計・localStorage 永続化（価格と商品名は常にカタログから引き直し）
-- **決済** — Stripe Checkout へ遷移（`/checkout` API で Checkout Session を作成。価格はサーバ側のカタログから決定）
+- **決済** — Stripe Checkout へ遷移（GraphQL の `createCheckoutSession` で Checkout Session を作成。価格はサーバ側のカタログから決定）
+- **GraphQL API** `/api/graphql` — 商品・カテゴリの取得、カートの見積もり、決済セッションの作成、決済の照会（下の「GraphQL API」）
 - **決済結果** — 成功 `/success`（Stripe で支払い済みを確認できたときだけ、支払った内容で注文を履歴へ記録し、購入した分をカートから取り除く）/ キャンセル `/cancel`
 - **注文履歴** `/orders` — 過去の注文を新しい順に表示
 - **会員** `/login` `/account` — ログイン / ログアウト（※ ポートフォリオ用のモック認証）
@@ -54,8 +56,11 @@ npm run dev            # http://localhost:3000
 npm run build
 npm run start
 
-# テスト（決済まわりの純粋な関数。Stripe には通信しません）
+# テスト（決済まわりの純粋な関数と GraphQL API。Stripe には通信しません）
 npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認）
+
+# GraphQL の型を SDL から作り直す（lib/graphql/sdl.ts を変えたら実行してコミット）
+npm run codegen
 ```
 
 ## 環境変数
@@ -63,7 +68,7 @@ npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認�
 
 | 変数 | 必須 / 任意 | 用途 |
 | --- | --- | --- |
-| `STRIPE_SECRET_KEY` | **必須**（決済を使う場合） | Checkout Session の作成（`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください |
+| `STRIPE_SECRET_KEY` | **必須**（決済を使う場合） | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください |
 | `NEXT_PUBLIC_BASE_URL` | 任意（**本番では設定してください**） | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります |
 
 ```
@@ -90,9 +95,9 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 `main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
 
 ## 決済の流れ
-1. カートの「購入手続きへ」で、商品の **id と数量だけ** を `POST /checkout` に送ります。
-2. `/checkout` は価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
-   - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、16KB を超える本文は Stripe に送る前に 400 / 413 で返し、カートにその理由を表示します。ブラウザで価格を書き換えても請求額は変わりません。
+1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.mjs`）を使う REST の入口として残しています。
+2. サーバは価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
+   - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、16KB を超える本文は Stripe に送る前に弾き（GraphQL では `errors` / HTTP 413、`/checkout` では 400 / 413）、カートにその理由を表示します。ブラウザで価格を書き換えても請求額は変わりません。
    - 戻り先 URL は `NEXT_PUBLIC_BASE_URL`、無ければリクエスト URL の origin から作ります（`Origin` ヘッダーは使いません）。
 3. Stripe の決済ページから `/success?session_id={CHECKOUT_SESSION_ID}` に戻ります。
 4. `/success` は `GET /api/checkout/session?session_id=...` で Stripe に Session を問い合わせ、結果を 3 つに分けます。
@@ -105,6 +110,63 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 
 > **注文履歴はブラウザごとです。** このデモにはサーバ側の保存先（DB）が無く、注文履歴は決済を確認したブラウザの localStorage にだけ記録されます。別のブラウザで同じ決済の戻り URL を開くと、そのブラウザにも記録されます。本番運用では Stripe Webhook と DB で注文を確定させる構成にしてください。
 
+## GraphQL API
+
+エンドポイントは `/api/graphql`（`POST` は `Content-Type: application/json`。`GET` でクエリを送るか、ブラウザで開くと GraphiQL が使えます）。スキーマは `lib/graphql/sdl.ts`、resolver は `lib/graphql/schema.ts` です。
+
+商品をカテゴリとキーワードで絞り込む:
+
+```graphql
+query {
+  products(category: "watches", q: "automatic") {
+    id
+    name
+    price
+    images
+  }
+}
+```
+
+カート（localStorage の id と数量）をサーバのカタログ価格で見積もる:
+
+```graphql
+query Quote($items: [CartItemInput!]!) {
+  cartQuote(items: $items) {
+    quote { total totalQuantity items { product { name price } quantity subtotal } }
+    errors { code message }
+  }
+}
+# variables: { "items": [{ "id": "1", "quantity": 2 }, { "id": "5", "quantity": 1 }] }
+```
+
+Stripe Checkout Session を作る（カートの「購入手続きへ」が使っているもの）:
+
+```graphql
+mutation Create($items: [CartItemInput!]!) {
+  createCheckoutSession(items: $items) {
+    url
+    errors { code message }
+  }
+}
+```
+
+```bash
+curl -s http://localhost:3000/api/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ categories { slug label } }"}'
+```
+
+### 型の生成（codegen）
+
+`npm run codegen` が `lib/graphql/sdl.ts` の SDL から、スキーマの型と resolver の型（`Resolvers`）を `lib/graphql/__generated__/types.ts` に出します（設定は `codegen.ts`）。生成物はコミットし、CI は `npm run codegen` のあとに差分が無いことを確かめます。SDL を変えたら `npm run codegen` を実行して、生成物も一緒にコミットしてください。
+
+### 設計の要点
+- **無状態**: サーバはカートも注文も保存しません（Vercel のサーバレスでは関数のメモリに状態を置けないため）。カートと注文履歴はこれまでどおりブラウザの localStorage にあり、API は送られた id と数量から毎回計算します。
+- **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.mjs` から引きます（`/checkout` と同じ関数を共有）。
+- **決済の確認は REST のまま**: 成功ページは `GET /api/checkout/session` の HTTP ステータスで「支払い済み / 未払い / 確認できなかった」を分けて二重購入を防いでいるので、GraphQL には置き換えていません。GraphQL の `orderBySession` は読み取り用に足したものです。
+- **入口の保護**: 本文は `/checkout` と同じ 16KB 上限、1 リクエストで実行できる Mutation は 1 つまで（エイリアスで Stripe へ多重に要求させない）、Stripe の例外文は返さない（yoga の maskedErrors）。
+- テスト（`tests/graphql.test.mjs`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
+
 ## ディレクトリ構成
 ```
 app/
@@ -112,7 +174,8 @@ app/
   product/page.js       商品一覧（検索・絞り込み）
   product/[id]/page.js  商品詳細
   cart/page.js          カート
-  checkout/route.js     Stripe Checkout Session 作成 API
+  checkout/route.js     Stripe Checkout Session 作成 API（REST）
+  api/graphql/route.ts  GraphQL API（graphql-yoga）
   api/checkout/session/route.js  決済確認 API（payment_status が paid か）
   success / cancel      決済結果
   not-found.js          404 ページ
@@ -121,6 +184,8 @@ components/              Header / Footer / ProductCard / CartItem / HeroSlider /
 store/                  productStore / cartStore / authStore / orderStore（Zustand）
 lib/catalog.mjs         商品カタログ（クライアントとサーバで共有）
 lib/checkout.mjs        価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
+lib/checkout-session.mjs Checkout Session 作成の本体（/checkout と GraphQL で共有）
+lib/graphql/            GraphQL の SDL・resolver・handler・ブラウザ用クライアント・生成した型
 lib/cart.mjs            カートをカタログに合わせる・購入分を取り除く（純粋な関数）
 lib/site.mjs            サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
 lib/stripe.js           Stripe クライアント（サーバ専用）
