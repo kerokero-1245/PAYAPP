@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
+import Eyebrow from "@/components/ui/Eyebrow";
 
 const NAV_LINKS = [
   { href: "/", label: "ホーム" },
@@ -50,6 +51,7 @@ function ariaCurrentFor(href, pathname, search, active) {
 /**
  * ナビのリンク列。category（URL の ?category=）で現在地を判定する。
  * known=false（URL のクエリがまだ分からない Suspense の fallback）では、どの項目も光らせない。
+ * 現在地の見た目は linkClass のクラスが aria-current で付ける（.nav-link[aria-current] など）。
  */
 function NavItems({ pathname, category, search, known, linkClass, onNavigate }) {
   return NAV_LINKS.map((l) => {
@@ -59,7 +61,7 @@ function NavItems({ pathname, category, search, known, linkClass, onNavigate }) 
         key={l.label}
         href={l.href}
         aria-current={ariaCurrentFor(l.href, pathname, search, active)}
-        className={linkClass(active)}
+        className={linkClass}
         onClick={onNavigate}
       >
         {l.label}
@@ -123,14 +125,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50">
       {/* アナウンスバー */}
-      <div className="bg-ink-2 border-b border-line text-center py-2">
-        <p className="eyebrow text-[0.6rem]! tracking-[0.28em] text-gold-soft">
+      <div className="announce text-center py-2">
+        <Eyebrow size="sm" tone="soft" tracking="lg">
           全国送料無料 — 選び抜かれた逸品を、あなたのもとへ
-        </p>
+        </Eyebrow>
       </div>
 
       {/* メインヘッダー */}
-      <div className="bg-ink/85 backdrop-blur-md border-b border-line">
+      <div className="site-bar">
         <div className="container-lux flex items-center justify-between gap-4 h-16">
           {/* 左: モバイルメニュー + ブランド */}
           <div className="flex items-center gap-3">
@@ -139,12 +141,12 @@ export default function Header() {
               aria-label="メニュー"
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
-              className="md:hidden text-cream"
+              className="menu-btn md:hidden"
               onClick={() => setMenuOpen((o) => !o)}
             >
               <MenuIcon open={menuOpen} />
             </button>
-            <Link href="/" className="font-display text-2xl tracking-[0.18em] text-cream">
+            <Link href="/" className="brand">
               MAISON
             </Link>
           </div>
@@ -153,11 +155,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-5 lg:gap-8">
             <Nav
               pathname={pathname}
-              linkClass={(active) =>
-                `link-underline text-[0.82rem] tracking-[0.12em] transition-colors ${
-                  active ? "text-gold" : "text-muted hover:text-cream"
-                }`
-              }
+              linkClass="link-underline nav-link"
             />
           </nav>
 
@@ -169,10 +167,10 @@ export default function Header() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="検索"
-                className="input-lux py-1.5! pl-8! w-28 lg:w-40 text-sm"
+                className="input-lux input-search-sm w-28 lg:w-40"
                 aria-label="商品を検索"
               />
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint">
+              <span className="search-icon absolute left-2.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </span>
             </form>
@@ -180,11 +178,11 @@ export default function Header() {
             {/* アカウント */}
             <Link
               href={mounted && user ? "/account" : "/login"}
-              className="flex items-center gap-2 text-muted hover:text-cream transition-colors"
+              className="icon-link flex items-center gap-2"
               aria-label="アカウント"
             >
               <UserIcon />
-              <span className="hidden sm:inline md:hidden lg:inline text-[0.8rem] max-w-[7rem] truncate">
+              <span className="account-name hidden sm:inline md:hidden lg:inline truncate">
                 {mounted && user ? user.name : "ログイン"}
               </span>
             </Link>
@@ -192,7 +190,7 @@ export default function Header() {
             {/* カート */}
             <Link
               href="/cart"
-              className="relative text-cream hover:text-gold transition-colors"
+              className="cart-link relative"
               aria-label="カート"
             >
               <CartIcon />
@@ -208,7 +206,7 @@ export default function Header() {
       <div
         id="mobile-menu"
         hidden={!menuOpen}
-        className="md:hidden bg-ink border-b border-line animate-fade-in"
+        className="mobile-menu md:hidden animate-fade-in"
       >
         <div className="container-lux py-4 flex flex-col gap-1">
           <form onSubmit={submitSearch} className="relative mb-3">
@@ -216,10 +214,10 @@ export default function Header() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="商品を検索"
-              className="input-lux pl-9!"
+              className="input-lux input-search"
               aria-label="商品を検索"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint">
+            <span className="search-icon absolute left-3 top-1/2 -translate-y-1/2">
               <SearchIcon />
             </span>
           </form>
@@ -227,11 +225,7 @@ export default function Header() {
             pathname={pathname}
             // 同じパスのリンク（クエリ違いや今いるページ）を押しても閉じる
             onNavigate={() => setMenuOpen(false)}
-            linkClass={(active) =>
-              `py-2.5 text-sm tracking-wide border-b border-line/60 ${
-                active ? "text-gold" : "text-muted"
-              }`
-            }
+            linkClass="mobile-link py-2.5"
           />
         </div>
       </div>

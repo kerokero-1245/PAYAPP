@@ -37,4 +37,6 @@
 @import "./styles/components/side-menu.css";
 @import "./styles/components/product-detail.css";
 @import "./styles/components/hero.css";
+@import "./styles/components/header.css";
+@import "./styles/components/footer.css";
 @import "./styles/motion.css";

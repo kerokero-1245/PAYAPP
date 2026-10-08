@@ -1,0 +1,84 @@
+/* サイト共通ヘッダー */
+@layer components {
+  /* アナウンスバー */
+  .announce {
+    background: var(--color-ink-2);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  /* メインのバー（半透明 + 背景のぼかし） */
+  .site-bar {
+    background-color: color-mix(in oklab, var(--color-ink) 85%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  /* ブランド名（ヘッダー・フッター） */
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1.5rem;
+    line-height: var(--lh-2xl);
+    letter-spacing: 0.18em;
+    color: var(--color-cream);
+  }
+
+  /* デスクトップのナビ（現在地はリンク自身の aria-current） */
+  .nav-link {
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    color: var(--color-muted);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .nav-link:hover {
+    color: var(--color-cream);
+  }
+  .nav-link[aria-current] {
+    color: var(--color-gold);
+  }
+
+  /* モバイルメニュー */
+  .mobile-menu {
+    background: var(--color-ink);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .mobile-link {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+    letter-spacing: 0.025em;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent);
+    color: var(--color-muted);
+  }
+  .mobile-link[aria-current] {
+    color: var(--color-gold);
+  }
+
+  /* アイコンのボタン・リンク */
+  .menu-btn {
+    color: var(--color-cream);
+  }
+  .icon-link {
+    color: var(--color-muted);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .icon-link:hover {
+    color: var(--color-cream);
+  }
+  .cart-link {
+    color: var(--color-cream);
+    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .cart-link:hover {
+    color: var(--color-gold);
+  }
+  .account-name {
+    font-size: 0.8rem;
+    max-width: 7rem;
+  }
+
+  /* 検索欄の虫めがね */
+  .search-icon {
+    color: var(--color-faint);
+  }
+}

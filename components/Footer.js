@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Eyebrow from "@/components/ui/Eyebrow";
+import Divider from "@/components/ui/Divider";
 
 /** サイト共通フッター */
 export default function Footer() {
@@ -39,28 +41,28 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="mt-24 border-t border-line bg-ink-2">
+    <footer className="site-footer mt-24">
       <div className="container-lux py-14">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* ブランド */}
           <div>
-            <p className="font-display text-2xl tracking-[0.18em] text-cream mb-3">MAISON</p>
-            <p className="text-sm text-muted leading-relaxed max-w-xs">
+            <p className="brand mb-3">MAISON</p>
+            <p className="lead lead-sm max-w-xs">
               選び抜かれた逸品だけを集めた、ラグジュアリー・オンラインストア。
             </p>
-            <div className="mt-5 flex gap-4 text-faint">
-              <span aria-hidden className="hover:text-gold transition-colors cursor-pointer">Instagram</span>
-              <span aria-hidden className="hover:text-gold transition-colors cursor-pointer">X</span>
+            <div className="footer-social mt-5 flex gap-4">
+              <span aria-hidden className="footer-social-item">Instagram</span>
+              <span aria-hidden className="footer-social-item">X</span>
             </div>
           </div>
 
           {cols.map((col) => (
             <div key={col.title}>
-              <h4 className="eyebrow mb-4">{col.title}</h4>
-              <ul className="space-y-2.5">
+              <Eyebrow as="h4" className="mb-4">{col.title}</Eyebrow>
+              <ul className="flex flex-col gap-2.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-muted hover:text-cream transition-colors">
+                    <Link href={l.href} className="footer-link">
                       {l.label}
                     </Link>
                   </li>
@@ -70,18 +72,18 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="hairline my-10" />
+        <Divider className="my-10" />
 
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-3 text-xs text-faint">
+        <div className="footer-legal flex flex-col lg:flex-row items-center justify-between gap-3">
           <p>© 2026 MAISON (PAYAPP). All rights reserved.</p>
           <nav aria-label="規約とご案内" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {legalLinks.map((l) => (
-              <Link key={l.href} href={l.href} className="hover:text-cream transition-colors">
+              <Link key={l.href} href={l.href} className="footer-legal-link">
                 {l.label}
               </Link>
             ))}
           </nav>
-          <p className="tracking-widest uppercase">Crafted with care</p>
+          <p className="footer-tagline">Crafted with care</p>
         </div>
       </div>
     </footer>
