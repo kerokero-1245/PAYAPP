@@ -5,10 +5,12 @@
 ## 方針
 
 - **共通化の線引き**: 同じ意味の値・処理が **3 回以上** 出てきたら 1 か所（トークン・部品クラス・部品・lib の定数や関数）へ寄せる。2 回までは直書きでよい。値が偶然同じでも意味が違うもの（ボタンの余白とカードの余白など）は分けたままにする
-- **TypeScript**: 新しく作るファイルは TS（`.ts` / `.tsx`）で書く。既存の `.js` / `.mjs` も TS へ移す予定（全 TS 化）
-- **テスト**: 純粋な関数と API（`lib/`・`app/api/`）はテスト必須（`npm test` = `node --test tests/*.test.mjs`）。UI の変更は前後のスクリーンショットを撮って比べる。ブラウザを動かす E2E テストは追加予定
+- **TypeScript**: すべて TS（`.ts` / `.tsx`）で書く。JS で残すのはツールの設定（`eslint.config.mjs`・`postcss.config.mjs`）と、検査の見本 `tests/fixtures/flat-css/` だけ。`any` は使わない。型の検査は `npx next typegen` → `npx tsc --noEmit`（CI でも実行）
+- **型の置き場**: 3 か所以上で使うドメインの型は `lib/types.ts`、1 ファイルだけで使う型はそのファイルに書く。`as` で要素を差し替える部品の props は `components/ui/polymorphic.ts` の `PolymorphicProps`。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は、引数を `unknown` で受けて中で絞る
+- **Node 側の import**: `lib/`・`tests/`・`scripts/` は Node が型を剥がして直接読むので、相対パスに拡張子 `.ts` を付け、型だけの import は `import type` で書く（`@/` は使わない）。`app/`・`components/`・`store/` は Next が読むので `@/…` で拡張子なし。enum・namespace・コンストラクタの引数プロパティは使えない（`erasableSyntaxOnly`）
+- **テスト**: 純粋な関数と API（`lib/`・`app/api/`）はテスト必須（`npm test` = `node --test tests/*.test.ts`）。UI の変更は前後のスクリーンショットを撮って比べる。ブラウザを動かす E2E テストは追加予定
 - **整形**: Prettier を導入予定（導入までは周りのコードの書き方に合わせる）
-- **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは README の「デザインの書き方」。`npm run check:css` が検査し、`tests/flat-css.test.mjs` が検査そのものを確かめる
+- **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは README の「デザインの書き方」。`npm run check:css` が検査し、`tests/flat-css.test.ts` が検査そのものを確かめる
 
 ## トークンと部品の置き場
 
@@ -20,11 +22,11 @@
 | body・フォーカス表示・スキップリンク（層の外） | `app/styles/base.css` |
 | 部品のクラス（すべて `@layer components`、1 部品 1 ファイル） | `app/styles/components/*.css` |
 | 形の土台（円・ピル・下からの影） | `app/styles/components/shape.css`（`.circle-icon` `.pill` `.shade-up`） |
-| 表示書体（見出し・金額・ブランド名） | `.type-display`（`typography.css`）。見出しは `components/ui/Heading.js` が組み立てる |
+| 表示書体（見出し・金額・ブランド名） | `.type-display`（`typography.css`）。見出しは `components/ui/Heading.tsx` が組み立てる |
 | 控えめなリンク | `.link-quiet`（+ `.link-quiet-sm`）（`link.css`） |
-| React の共通部品 | `components/ui/`（新しい部品は `.tsx`） |
-| 数量の上下限 | `lib/cart.mjs` の `MIN_QUANTITY` / `MAX_QUANTITY` |
-| カテゴリへのリンク | `lib/links.ts`（`categoryHref` / `CATEGORY_LINKS`。カテゴリの正本は `lib/catalog.mjs`） |
+| React の共通部品 | `components/ui/`（`.tsx`） |
+| 数量の上下限 | `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY` |
+| カテゴリへのリンク | `lib/links.ts`（`categoryHref` / `CATEGORY_LINKS`。カテゴリの正本は `lib/catalog.ts`） |
 
 - ページの `className` には配置と大きさのユーティリティだけを書き、見た目は部品へ寄せる
 - 新しい部品クラスを足す前に、同じ宣言の組を持つ役割クラス（`.fine` `.lead` `.meta` など）が無いかを探す
@@ -43,7 +45,7 @@
 
 ## 文面
 
-- 配送・保証・返品・送料・テストモードの注記などの約束の文面は **`lib/policies.mjs`** にだけ書き、ページ・部品はそこから組み立てる（`POLICIES` `TEST_MODE_NOTE` `PLEDGE_TEXT` `ANNOUNCEMENT`）
+- 配送・保証・返品・送料・テストモードの注記などの約束の文面は **`lib/policies.ts`** にだけ書き、ページ・部品はそこから組み立てる（`POLICIES` `TEST_MODE_NOTE` `PLEDGE_TEXT` `ANNOUNCEMENT`）
 - 保証の範囲は全商品（`POLICIES.warrantyScope`）
 - デモであることの注記のパネルは `components/ui/DemoNote.tsx` を使う
 - プライバシーポリシーには、実際に保存・送信するものだけを書く。保存の中身を変えたら、localStorage を書き出して文面と突き合わせる

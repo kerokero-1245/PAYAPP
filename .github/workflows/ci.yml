@@ -34,6 +34,13 @@ jobs:
       - name: lint
         run: npm run lint
 
+      # next typegen が Next 16 のルートの型（PageProps・LayoutProps など。.next/types は git に入れていない）を作り、
+      # tsc が app・components・lib・store・scripts・tests の型を検査する（本番ビルドの型検査には tests と scripts が入らない）。
+      - name: 型の検査
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
       # 部品の CSS に結合子・入れ子・!important を、ページに Tailwind の ! 接尾辞・group-hover・space-y・任意値を
       # 持ち込んでいないか（scripts/check-flat-css.mjs）
       - name: 平坦な CSS の検査

@@ -17,6 +17,7 @@
 ## 技術スタック
 - **Next.js 16**（App Router / Turbopack / SSR・SSG）
 - **React 19**
+- **TypeScript**（`strict`。アプリ・テスト・検査スクリプトまで全部 `.ts` / `.tsx`。JS で残すのはツールの設定 `eslint.config.mjs` `postcss.config.mjs` と、検査の見本 `tests/fixtures/flat-css/` だけ）
 - **Tailwind CSS v4**（`@theme` でデザイントークンを定義）
 - **Zustand**（状態管理・`persist` で localStorage 永続化）
 - **Stripe**（Checkout Session による決済）
@@ -44,7 +45,7 @@
 
 ## セットアップ
 
-> **Node.js 22 を使ってください**（22.23.3 で lint・ビルド・テストを確認）。graphql 17 と、テストから `.ts` を型消去で直接読み込むために **22.18 以上** が必要です（`package.json` の `engines`）。
+> **Node.js 22 を使ってください**（22.23.3 で lint・型の検査・ビルド・テストを確認）。graphql 17 と、テスト・検査スクリプト（どちらも TypeScript）を型消去でそのまま実行するために **22.18 以上** が必要です（`package.json` の `engines`）。
 
 ```bash
 # 依存インストール
@@ -58,7 +59,11 @@ npm run build
 npm run start
 
 # テスト（決済まわりの純粋な関数・GraphQL API・お問い合わせの検証・平坦な CSS の検査。Stripe には通信しません）
-npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認）
+npm test               # node --test tests/*.test.ts（Node 22 / 24 で確認）
+
+# 型の検査（next typegen が Next のルートの型 PageProps・LayoutProps などを作ってから tsc を回す。CI でも実行）
+npx next typegen
+npx tsc --noEmit
 
 # GraphQL の型を SDL から作り直す（lib/graphql/sdl.ts を変えたら実行してコミット）
 npm run codegen
@@ -96,11 +101,11 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
 4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
 
-`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
+`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
 
 ## 決済の流れ
-1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.mjs`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
-2. サーバは価格と商品名を `lib/catalog.mjs`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
+1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.ts`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
+2. サーバは価格と商品名を `lib/catalog.ts`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
    - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、大きすぎる本文（GraphQL は 4KB、`/checkout` は 16KB を超えるもの）は Stripe に送る前に弾きます（GraphQL では `errors` の UserError / HTTP 413、`/checkout` では 400 / 413）。カートに表示する理由は UserError の文言（`CHECKOUT_ERRORS`）と 413 の文言に限り、GraphQL 層の型エラーや隠された例外のときは既定の文言（「決済処理に失敗しました…」）を出します。ブラウザで価格を書き換えても請求額は変わりません。
    - 戻り先 URL は `NEXT_PUBLIC_BASE_URL`、無ければリクエスト URL の origin から作ります（`Origin` ヘッダーは使いません）。
 3. Stripe の決済ページから `/success?session_id={CHECKOUT_SESSION_ID}` に戻ります。
@@ -110,7 +115,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
    - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・記録時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
    - 同じ `session_id` で注文を二重に記録しません（再読み込みしても 1 件のまま）。
 
-価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.mjs` `lib/cart.mjs` `lib/site.mjs` の純粋な関数に分けてあり、`tests/` で検証しています。お問い合わせの検証（`lib/contact.mjs`。文字数は見た目の 1 文字で数える）は `tests/contact.test.mjs`、平坦な CSS の検査（`scripts/check-flat-css.mjs`）が違反を見落とさないことは `tests/flat-css.test.mjs` で検証しています。
+価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.ts` `lib/cart.ts` `lib/site.ts` の純粋な関数に分けてあり、`tests/` で検証しています。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は引数を `unknown` で受けて中で絞ります（テストはわざと不正な値を渡します）。お問い合わせの検証（`lib/contact.ts`。文字数は見た目の 1 文字で数える）は `tests/contact.test.ts`、平坦な CSS の検査（`scripts/check-flat-css.ts`）が違反を見落とさないことは `tests/flat-css.test.ts` で検証しています。
 
 > **注文履歴はブラウザごとです。** このデモにはサーバ側の保存先（DB）が無く、注文履歴は決済を確認したブラウザの localStorage にだけ記録されます。別のブラウザで同じ決済の戻り URL を開くと、そのブラウザにも記録されます。本番運用では Stripe Webhook と DB で注文を確定させる構成にしてください。
 
@@ -166,27 +171,27 @@ curl -s http://localhost:3000/api/graphql \
 
 ### 設計の要点
 - **無状態**: サーバはカートも注文も保存しません（Vercel のサーバレスでは関数のメモリに状態を置けないため）。カートと注文履歴はこれまでどおりブラウザの localStorage にあり、API は送られた id と数量から毎回計算します。
-- **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.mjs` から引きます（`/checkout` と同じ関数を共有）。
+- **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.ts` から引きます（`/checkout` と同じ関数を共有）。
 - **決済の確認は REST のまま**: 成功ページは `GET /api/checkout/session` の HTTP ステータスで「支払い済み / 未払い / 確認できなかった」を分けて二重購入を防いでいるので、GraphQL には置き換えていません。GraphQL の `orderBySession` は読み取り用に足したものです。
 - **入口の保護**:
   - 本文は 4KB まで（超えたら 413）。POST は `Content-Type: application/json` だけ（それ以外は 415）。
   - Stripe を呼ぶフィールド（`createCheckoutSession`・`orderBySession`）は 1 リクエスト合計 1 つまで。エイリアス・フラグメント・`@include` 経由も数えるので、1 リクエストで Stripe に多重に要求させられません。Mutation も 1 つまで。
   - 選択するフィールドの総数は 1 リクエスト 200 まで（エイリアス・同名フィールドの重複・フラグメントの展開も数える）。解析・検証結果のキャッシュは 100 件まで。
   - Stripe の例外文は返さない（yoga の maskedErrors）。CORS ヘッダーは付けない（他オリジンを反射しない）。応答はすべて `Cache-Control: no-store`。GraphiQL は本番（`NODE_ENV=production`）では出さない。
-- テスト（`tests/graphql.test.mjs`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
+- テスト（`tests/graphql.test.ts`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
 
 ## ディレクトリ構成
 ```
 app/
   page.tsx              トップ（ランディング）
-  product/page.js       商品一覧（検索・絞り込み）
-  product/[id]/page.js  商品詳細
-  cart/page.js          カート
-  checkout/route.js     Stripe Checkout Session 作成 API（REST）
+  product/page.tsx      商品一覧（検索・絞り込み）
+  product/[id]/page.tsx 商品詳細
+  cart/page.tsx         カート
+  checkout/route.ts     Stripe Checkout Session 作成 API（REST）
   api/graphql/route.ts  GraphQL API（graphql-yoga）
-  api/checkout/session/route.js  決済確認 API（payment_status が paid か）
+  api/checkout/session/route.ts  決済確認 API（payment_status が paid か）
   success / cancel      決済結果
-  not-found.js          404 ページ
+  not-found.tsx         404 ページ
   orders / login / account
   about / shipping / contact / legal / privacy / faq   案内ページ（サーバコンポーネント。お問い合わせのフォームだけクライアント）
   globals.css           CSS の入口（Tailwind と app/styles/ を読み込むだけ）
@@ -195,32 +200,33 @@ app/
   styles/components/    部品の CSS（1 部品 1 ファイル、すべて @layer components）
   styles/motion.css     アニメーションと動きを減らす設定
 components/              Header / Footer / ProductCard / CartItem / HeroSlider / SideMenu / CategoryTile / PledgeGrid
-components/ui/          共通部品（Button / Section / PageHeader / SectionHeading / Card / EmptyState / StatusMessage / FormField / Price / QuantityStepper など）
+components/ui/          共通部品（Button / Section / PageHeader / SectionHeading / Card / EmptyState / StatusMessage / FormField / Price / QuantityStepper など。`as` を受ける部品の props の型は polymorphic.ts）
 store/                  productStore / cartStore / authStore / orderStore（Zustand）
-lib/catalog.mjs         商品カタログ（クライアントとサーバで共有）
-lib/checkout.mjs        価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
-lib/checkout-session.mjs Checkout Session 作成の本体（/checkout と GraphQL で共有）
+lib/catalog.ts          商品カタログ（クライアントとサーバで共有）
+lib/checkout.ts         価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
+lib/checkout-session.ts Checkout Session 作成の本体（/checkout と GraphQL で共有。Stripe は最小の型 StripeLike で受ける）
 lib/graphql/            GraphQL の SDL・resolver・handler・ブラウザ用クライアント・生成した型
-lib/cart.mjs            カートをカタログに合わせる・購入分を取り除く（純粋な関数）
-lib/site.mjs            サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
-lib/stripe.js           Stripe クライアント（サーバ専用）
-lib/format.js           金額・日付の整形ユーティリティ
-lib/contact.mjs         お問い合わせの検証（純粋な関数）
-lib/policies.mjs        配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
+lib/cart.ts             カートをカタログに合わせる・購入分を取り除く（純粋な関数）
+lib/site.ts             サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
+lib/stripe.ts           Stripe クライアント（サーバ専用）
+lib/format.ts           金額・日付の整形ユーティリティ
+lib/contact.ts          お問い合わせの検証（純粋な関数）
+lib/policies.ts         配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
 lib/links.ts            カテゴリへのリンク（ヘッダー・フッター・サイドメニュー・トップのタイルで共有）
-scripts/check-flat-css.mjs  平坦な CSS の検査（npm run check:css）
-tests/                  node --test のテスト（決済・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査）
+lib/types.ts            共有するドメインの型（Product・CartLine・Order・User など。型だけで、実行時の値は置かない）
+scripts/check-flat-css.ts  平坦な CSS の検査（npm run check:css）
+tests/                  node --test のテスト（決済・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査。TypeScript のまま Node 22.18 以上が型を剥がして実行する）
 DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
 ```
 
 ## デザインの書き方
 - **見た目は共通部品に寄せる**: ページの `className` には配置と大きさのユーティリティ（`flex` `grid` `gap-*` `mt-*` `max-w-*` など）だけを書き、色・文字・枠・角丸・影・動きは `components/ui/` の部品か `app/styles/components/` の部品クラス（`.btn` `.card` `.heading` `.lead` …）で表す。ページ間で h1 の大きさ・上下余白・見出し下の線・カードの余白がそろうのはこのため
-- **平坦な CSS**: 1 クラス 1 役割の足し算（`.btn` + `.btn-outline` + `.btn-sm`）。子孫・子・兄弟の結合子、セレクタの入れ子、`:deep()`、`@apply`、`!important`、ID セレクタは使わない。ページ側も Tailwind の `!` 接尾辞・`group-hover:`・`space-y-*`・`divide-*`・任意値 `[…]` は使わない。状態は要素自身の `data-*` / `aria-current` で表す（例: 商品カードの画像の拡大は画像の `data-active`）。部品 CSS の `:hover` は `@media (hover: hover)` の中に書く（タッチ端末でタップ後に hover の色が残らないように）。これらの書き方は `npm run check:css`（CI でも実行）が検査する。検査の対象と見つけられない書き方（クラス名を変数で組み立てる書き方、ページに書いた色・文字の見た目のユーティリティそのもの）は `scripts/check-flat-css.mjs` の冒頭に書いてあり、検査が違反を見落とさないことは `tests/flat-css.test.mjs`（`tests/fixtures/flat-css/` の見本）で確かめている
+- **平坦な CSS**: 1 クラス 1 役割の足し算（`.btn` + `.btn-outline` + `.btn-sm`）。子孫・子・兄弟の結合子、セレクタの入れ子、`:deep()`、`@apply`、`!important`、ID セレクタは使わない。ページ側も Tailwind の `!` 接尾辞・`group-hover:`・`space-y-*`・`divide-*`・任意値 `[…]` は使わない。状態は要素自身の `data-*` / `aria-current` で表す（例: 商品カードの画像の拡大は画像の `data-active`）。部品 CSS の `:hover` は `@media (hover: hover)` の中に書く（タッチ端末でタップ後に hover の色が残らないように）。これらの書き方は `npm run check:css`（CI でも実行）が検査する。検査の対象と見つけられない書き方（クラス名を変数で組み立てる書き方、ページに書いた色・文字の見た目のユーティリティそのもの）は `scripts/check-flat-css.ts` の冒頭に書いてあり、検査が違反を見落とさないことは `tests/flat-css.test.ts`（`tests/fixtures/flat-css/` の見本）で確かめている
 - **層**: 部品クラスはすべて `@layer components`（ページのユーティリティが部品より勝つ）。body・スキップリンク・アニメーション・動きを減らす設定は層の外に置き、`!important` を使わずに効かせている（`app/styles/motion.css` の冒頭のコメント）
 
 ## 補足
 - 認証は現状バックエンドを持たないデモ実装です（パスワード検証なし・localStorage 保持）。
-- 商品カタログはモックデータです（`lib/catalog.mjs`）。
+- 商品カタログはモックデータです（`lib/catalog.ts`）。
 - 注文履歴はブラウザの localStorage に保存するデモ実装です（Webhook による注文確定は今後の拡張候補）。
 - 完成度そのものより、設計・実装方針や UI/UX の考え方をご覧いただくことを目的としています。
 
