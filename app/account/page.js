@@ -7,6 +7,7 @@ import { useMounted } from "@/lib/useMounted";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -60,7 +61,9 @@ export default function AccountPage() {
           <div className="flex items-center gap-5">
             <div className="circle-icon avatar type-display">{initial}</div>
             <div className="min-w-0">
-              <p className="type-display heading heading-block truncate">{user.name}</p>
+              <Heading as="p" size="block" className="truncate">
+                {user.name}
+              </Heading>
               <p className="meta mt-1 truncate">{user.email}</p>
             </div>
           </div>

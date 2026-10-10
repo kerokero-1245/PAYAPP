@@ -3,9 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { MAX_QUANTITY } from "@/lib/cart.mjs";
 import MediaFrame from "@/components/ui/MediaFrame";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Price from "@/components/ui/Price";
 import QuantityStepper from "@/components/ui/QuantityStepper";
 
@@ -34,12 +34,9 @@ export default function CartItem({ item }) {
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex justify-between gap-3">
           <div className="min-w-0">
-            <Link
-              href={`/product/${item.id}`}
-              className="type-display heading heading-item heading-link block truncate"
-            >
+            <Heading as={Link} href={`/product/${item.id}`} size="item" className="heading-link block truncate">
               {item.name}
-            </Link>
+            </Heading>
             {item.category && (
               <Eyebrow size="sm" tone="faint" tracking="sm" className="mt-0.5">
                 {item.category}
@@ -61,7 +58,6 @@ export default function CartItem({ item }) {
           <QuantityStepper
             size="sm"
             value={item.quantity}
-            max={MAX_QUANTITY}
             onDecrement={dec}
             onIncrement={inc}
             label={`${item.name} の`}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Button from "@/components/ui/Button";
 
@@ -76,12 +77,12 @@ export default function HeroSlider() {
           <div className="animate-fade-up max-w-2xl">
             <Eyebrow>MAISON — NEW SEASON</Eyebrow>
             <Divider variant="rule" className="mt-4" />
-            <h1 className="type-display heading heading-hero mt-5">
+            <Heading as="h1" size="hero" className="mt-5">
               {/* 句の途中で改行しないよう、句ごとに折り返し単位をまとめる */}
               <span className="inline-block">時を超える、</span>
               <br className="hidden sm:block" />
               <span className="inline-block">静かな贅沢。</span>
-            </h1>
+            </Heading>
             <p className="hero-lead mt-6 max-w-md">
               選び抜かれた素材と職人の手仕事。長く寄り添うための、変わらない美しさをまとうコレクション。
             </p>

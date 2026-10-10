@@ -2,6 +2,7 @@ import Eyebrow from "./Eyebrow";
 import Divider from "./Divider";
 import Actions from "./Actions";
 import StatusIcon from "./StatusIcon";
+import Heading from "./Heading";
 import { cx } from "./cx";
 
 /**
@@ -31,9 +32,9 @@ export default function StatusMessage({
     <div role={role} className={cx(contained && "container-lux container-narrow section-lg", "text-center animate-fade-up", className)}>
       {icon && <StatusIcon kind={icon} />}
       <Eyebrow className={icon ? "mt-8" : undefined}>{eyebrow}</Eyebrow>
-      <Title ref={titleRef} tabIndex={titleRef ? -1 : undefined} className="type-display heading heading-page mt-4">
+      <Heading as={Title} ref={titleRef} tabIndex={titleRef ? -1 : undefined} size="page" className="mt-4">
         {title}
-      </Title>
+      </Heading>
       <Divider variant="rule" className="mt-6" />
       <p className="lead mt-6">{lead}</p>
       {children}

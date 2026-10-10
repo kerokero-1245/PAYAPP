@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
+import { categoryHref } from "@/lib/links";
 
 /**
  * トップのカテゴリのタイル（画像 + 下からの影 + カテゴリ名）。
@@ -15,7 +17,7 @@ export default function CategoryTile({ category }) {
   const [hover, setHover] = useState(false);
   return (
     <Link
-      href={`/product?category=${category.slug}`}
+      href={categoryHref(category.slug)}
       className="card card-hover relative aspect-4/5 overflow-hidden"
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
@@ -36,7 +38,9 @@ export default function CategoryTile({ category }) {
           {category.jp}
         </Eyebrow>
         {/* 狭い 2 列でも「フレグランス」を語の途中で折り返さない */}
-        <h3 className="type-display heading heading-tile mt-1">{category.label}</h3>
+        <Heading as="h3" size="tile" className="mt-1">
+          {category.label}
+        </Heading>
       </div>
     </Link>
   );

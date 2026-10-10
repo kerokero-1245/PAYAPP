@@ -9,7 +9,7 @@ import {
   CATEGORIES,
 } from "@/store/productStore";
 import { useCartStore } from "@/store/cartStore";
-import { MAX_QUANTITY } from "@/lib/cart.mjs";
+import { clampQuantity } from "@/lib/cart.mjs";
 import { PRODUCT_DETAIL_POINTS } from "@/lib/policies.mjs";
 import ProductCard from "@/components/ProductCard";
 import Section from "@/components/ui/Section";
@@ -17,6 +17,7 @@ import Card from "@/components/ui/Card";
 import MediaFrame from "@/components/ui/MediaFrame";
 import Badge from "@/components/ui/Badge";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Price from "@/components/ui/Price";
 import Button from "@/components/ui/Button";
@@ -50,8 +51,8 @@ export default function ProductDetail({ id }) {
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
-  const decrement = () => setQuantity((q) => Math.max(1, q - 1));
-  const increment = () => setQuantity((q) => Math.min(MAX_QUANTITY, q + 1));
+  const decrement = () => setQuantity((q) => clampQuantity(q - 1));
+  const increment = () => setQuantity((q) => clampQuantity(q + 1));
 
   const handleAdd = () => {
     // 選択した数量ぶんをカートに加算（既存分があれば上乗せ）
@@ -79,7 +80,7 @@ export default function ProductDetail({ id }) {
                 src={images[activeImage]}
                 alt={product.name}
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 48rem) 100vw, 50vw"
                 className="object-cover"
                 priority
               />
@@ -108,7 +109,7 @@ export default function ProductDetail({ id }) {
                     src={src}
                     alt={`${product.name} サムネイル ${i + 1}`}
                     fill
-                    sizes="(max-width: 768px) 33vw, 16vw"
+                    sizes="(max-width: 48rem) 33vw, 16vw"
                     className="object-cover"
                   />
                 </MediaFrame>
@@ -120,7 +121,9 @@ export default function ProductDetail({ id }) {
         {/* 右: 商品情報 */}
         <div className="flex flex-col">
           <Eyebrow>{categoryLabel}</Eyebrow>
-          <h1 className="type-display heading heading-page heading-tight mt-3">{product.name}</h1>
+          <Heading as="h1" size="page" leading="tight" className="mt-3">
+            {product.name}
+          </Heading>
           {product.tagline && <p className="subtle mt-3">{product.tagline}</p>}
 
           <Price as="p" amount={product.price} size="hero" tone="gold-soft" wide className="mt-6" />
@@ -133,7 +136,6 @@ export default function ProductDetail({ id }) {
           <div className="mt-8 flex items-center gap-4">
             <QuantityStepper
               value={quantity}
-              max={MAX_QUANTITY}
               onDecrement={decrement}
               onIncrement={increment}
             />

@@ -1,5 +1,6 @@
 import Eyebrow from "./Eyebrow";
 import Button from "./Button";
+import Heading from "./Heading";
 import { cx } from "./cx";
 
 /**
@@ -45,7 +46,9 @@ export default function EmptyState({
     >
       {icon && <div className="circle-icon empty-icon mb-8">{icon}</div>}
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <Title className={cx("type-display heading", `heading-${titleSize}`, titleClassName)}>{title}</Title>
+      <Heading as={Title} size={titleSize} className={titleClassName}>
+        {title}
+      </Heading>
       <p className={cx("lead", stack ? "max-w-md" : descriptionClassName)}>{description}</p>
       {action && (
         <Button href={action.href} variant={action.variant ?? "gold"} className={actionClassName}>

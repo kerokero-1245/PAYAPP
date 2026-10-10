@@ -10,6 +10,7 @@ import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Card from "@/components/ui/Card";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Price from "@/components/ui/Price";
 import Button from "@/components/ui/Button";
@@ -127,7 +128,7 @@ export default function CartPage() {
         {/* 右: 注文サマリー（合計は map 外・1回だけ） */}
         <aside className="lg:col-span-1">
           <Card variant="panel" padding="sm" className="sticky top-24">
-            <h2 className="type-display heading heading-card">注文サマリー</h2>
+            <Heading size="card">注文サマリー</Heading>
             <Divider className="my-5" />
 
             <dl className="summary-list flex flex-col gap-3">

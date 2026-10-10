@@ -7,6 +7,7 @@ import { useMounted } from "@/lib/useMounted";
 import Section from "@/components/ui/Section";
 import Card from "@/components/ui/Card";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
@@ -38,7 +39,9 @@ export default function LoginPage() {
           // ── 既にログイン済み ──
           <Card variant="panel" padding="md" className="text-center">
             <Eyebrow>ACCOUNT</Eyebrow>
-            <h1 className="type-display heading heading-page mt-3">ログイン中です</h1>
+            <Heading as="h1" size="page" className="mt-3">
+              ログイン中です
+            </Heading>
             <Divider variant="rule" className="mt-4" />
             <p className="lead mt-4">
               <span className="accent">{user.name}</span> 様としてサインインしています。
@@ -57,7 +60,9 @@ export default function LoginPage() {
           <Card variant="panel" padding="md">
             <div className="text-center">
               <Eyebrow>MAISON</Eyebrow>
-              <h1 className="type-display heading heading-page mt-3">サインイン</h1>
+              <Heading as="h1" size="page" className="mt-3">
+                サインイン
+              </Heading>
               <Divider variant="rule" className="mt-4" />
             </div>
 

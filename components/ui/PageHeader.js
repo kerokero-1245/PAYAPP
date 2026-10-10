@@ -1,5 +1,6 @@
 import Eyebrow from "./Eyebrow";
 import Divider from "./Divider";
+import Heading from "./Heading";
 import { cx } from "./cx";
 
 /**
@@ -27,7 +28,11 @@ export default function PageHeader({
   dividerClassName = "mt-5",
   className,
 }) {
-  const h1 = <h1 className={cx("type-display heading heading-page", !meta && titleClassName)}>{title}</h1>;
+  const h1 = (
+    <Heading as="h1" size="page" className={meta ? undefined : titleClassName}>
+      {title}
+    </Heading>
+  );
   const line = divider === "hairline" && <Divider className={dividerClassName} />;
   const header = (
     <header className={cx(animate && "animate-fade-up", className)}>

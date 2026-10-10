@@ -8,17 +8,21 @@ import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
 import Eyebrow from "@/components/ui/Eyebrow";
 import { ANNOUNCEMENT } from "@/lib/policies.mjs";
+import { CATEGORY_LINKS } from "@/lib/links";
+
+/**
+ * ナビに個別のリンクを出すカテゴリ（リンクの URL と名前は lib/links.ts の CATEGORY_LINKS から作る）。
+ * このカテゴリの一覧では、ショップではなくそのリンクを光らせる
+ */
+const NAV_CATEGORY_SLUGS = ["watches", "jewelry"];
 
 const NAV_LINKS = [
   { href: "/", label: "ホーム" },
   { href: "/product", label: "ショップ" },
-  { href: "/product?category=watches", label: "時計" },
-  { href: "/product?category=jewelry", label: "ジュエリー" },
+  ...CATEGORY_LINKS.filter((c) => NAV_CATEGORY_SLUGS.includes(c.slug)).map(({ href, label }) => ({ href, label })),
   { href: "/orders", label: "注文履歴" },
 ];
 
-/** ナビ内で個別のリンクを持つカテゴリ（このカテゴリの一覧ではショップではなくそのリンクを光らせる） */
-const NAV_CATEGORIES = NAV_LINKS.map((l) => l.href.split("category=")[1]).filter(Boolean);
 
 /**
  * href が現在の URL に当たるか。
@@ -33,7 +37,7 @@ function isActiveHref(href, pathname, category) {
     return pathname === base && category === want;
   }
   const inSection = pathname === base || pathname.startsWith(base + "/");
-  if (base === "/product" && pathname === "/product" && NAV_CATEGORIES.includes(category)) {
+  if (base === "/product" && pathname === "/product" && NAV_CATEGORY_SLUGS.includes(category)) {
     return false;
   }
   return inSection;

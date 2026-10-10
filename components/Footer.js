@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Eyebrow from "@/components/ui/Eyebrow";
 import Divider from "@/components/ui/Divider";
+import { CATEGORY_LINKS } from "@/lib/links";
 
 /** サイト共通フッター */
 export default function Footer() {
@@ -9,10 +10,7 @@ export default function Footer() {
       title: "ショップ",
       links: [
         { href: "/product", label: "すべての商品" },
-        { href: "/product?category=watches", label: "時計" },
-        { href: "/product?category=leather", label: "レザー" },
-        { href: "/product?category=fragrance", label: "フレグランス" },
-        { href: "/product?category=jewelry", label: "ジュエリー" },
+        ...CATEGORY_LINKS.map(({ href, label }) => ({ href, label })),
       ],
     },
     {

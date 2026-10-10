@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/store/productStore";
+import { categoryHref } from "@/lib/links";
 import Eyebrow from "@/components/ui/Eyebrow";
 import Divider from "@/components/ui/Divider";
 
@@ -36,7 +37,7 @@ export default function SideMenu() {
       <nav>
         <ul className="flex flex-col gap-1">
           {CATEGORIES.map((cat) => {
-            const href = cat.slug === "all" ? "/product" : `/product?category=${cat.slug}`;
+            const href = categoryHref(cat.slug);
             const active = onShop && cat.slug === currentCategory;
 
             return (

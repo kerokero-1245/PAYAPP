@@ -7,6 +7,7 @@ import PledgeGrid from "@/components/PledgeGrid";
 import Section from "@/components/ui/Section";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Button from "@/components/ui/Button";
 import Divider from "@/components/ui/Divider";
 import { useProductStore, CATEGORIES } from "@/store/productStore";
@@ -71,12 +72,12 @@ export default function Home() {
       <Section spacing="top">
         <div className="flex flex-col items-center text-center gap-6">
           <Eyebrow>Maison — New Season</Eyebrow>
-          <h2 className="type-display heading heading-display max-w-2xl">
+          <Heading size="display" className="max-w-2xl">
             <span className="inline-block">
               <span className="text-gradient-gold">時を超える</span>、
             </span>
             <span className="inline-block">静かな贅沢。</span>
-          </h2>
+          </Heading>
           <p className="lead max-w-xl">
             職人の手仕事と選び抜かれた素材が織りなす、あなただけの一品を。
           </p>

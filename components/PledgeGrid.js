@@ -1,8 +1,9 @@
 import Card from "@/components/ui/Card";
+import Heading from "@/components/ui/Heading";
 import { PLEDGE_TEXT } from "@/lib/policies.mjs";
 
 /** ブランドの約束（上品なラインアイコン）。トップとブランドストーリーで共有する */
-export const PLEDGES = [
+const PLEDGES = [
   {
     title: "匠の品質",
     desc: "熟練の職人が一点ずつ仕立てる逸品。",
@@ -54,7 +55,9 @@ export default function PledgeGrid() {
         {PLEDGES.map((item) => (
           <div key={item.title} className="flex flex-col items-center text-center gap-3">
             <span className="pledge-icon">{item.icon}</span>
-            <h3 className="type-display heading heading-item">{item.title}</h3>
+            <Heading as="h3" size="item">
+              {item.title}
+            </Heading>
             <p className="lead lead-sm pledge-text">{item.desc}</p>
           </div>
         ))}

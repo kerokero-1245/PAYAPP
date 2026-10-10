@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import MediaFrame from "@/components/ui/MediaFrame";
 import Badge from "@/components/ui/Badge";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Price from "@/components/ui/Price";
 import Button from "@/components/ui/Button";
 
@@ -62,7 +63,9 @@ export default function ProductCard({ product, eager = false }) {
           </Eyebrow>
         )}
         <Link href={`/product/${product.id}`}>
-          <h3 className="type-display heading heading-item heading-snug heading-link">{product.name}</h3>
+          <Heading as="h3" size="item" leading="snug" className="heading-link">
+            {product.name}
+          </Heading>
         </Link>
         {product.tagline && <p className="fine fine-muted line-clamp-1">{product.tagline}</p>}
 

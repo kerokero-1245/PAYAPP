@@ -8,6 +8,7 @@ import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Eyebrow from "@/components/ui/Eyebrow";
+import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import EmptyState from "@/components/ui/EmptyState";
 import Loading from "@/components/ui/Loading";
@@ -49,7 +50,9 @@ export default function OrdersPage() {
                     <Eyebrow size="sm" tone="faint" tracking="sm">
                       ORDER
                     </Eyebrow>
-                    <p className="type-display heading heading-card mt-1">{order.id}</p>
+                    <Heading as="p" size="card" className="mt-1">
+                      {order.id}
+                    </Heading>
                   </div>
                   <div className="text-right">
                     <p className="meta">{formatDate(order.date)}</p>

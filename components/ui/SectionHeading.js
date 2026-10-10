@@ -1,5 +1,6 @@
 import Eyebrow from "./Eyebrow";
 import Divider from "./Divider";
+import Heading from "./Heading";
 import { cx } from "./cx";
 
 /**
@@ -12,7 +13,7 @@ export default function SectionHeading({ eyebrow, title, lead, align = "center",
     return (
       <div className={cx("flex flex-col items-center text-center gap-3", className)}>
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h2 className={cx("type-display heading", `heading-${size ?? "page"}`)}>{title}</h2>
+        <Heading size={size ?? "page"}>{title}</Heading>
         <Divider variant="rule" />
         {lead && <p className="lead max-w-xl">{lead}</p>}
       </div>
@@ -21,7 +22,9 @@ export default function SectionHeading({ eyebrow, title, lead, align = "center",
   return (
     <div className={className}>
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h2 className={cx("type-display heading", `heading-${size ?? "section"}`, eyebrow && "mt-2")}>{title}</h2>
+      <Heading size={size ?? "section"} className={eyebrow ? "mt-2" : undefined}>
+        {title}
+      </Heading>
       <Divider variant="rule" className="mt-4" />
       {lead && <p className="lead mt-4">{lead}</p>}
     </div>
