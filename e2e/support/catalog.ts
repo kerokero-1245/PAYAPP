@@ -49,7 +49,7 @@ export function totalQuantity(items: ItemQuantity[]): number {
   return items.reduce((sum, { quantity }) => sum + quantity, 0);
 }
 
-/** 画面に出る金額の表記（例: 496000 → "¥496,000"） */
+/** 画面に出る金額の表記（例: 1500 → "¥1,500"） */
 export function yen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
