@@ -60,3 +60,65 @@ jobs:
       # Stripe のキーはリクエスト時にだけ読む（lib/stripe.js の getStripe）ので、ビルドに環境変数は要らない。
       - name: 本番ビルド
         run: npm run build
+
+  # 本番ビルドした next start に、ブラウザ（Playwright の Chromium）で画面を操作して通す E2E。
+  # 上の job とは needs で結ばず並列に回す（落ちたときに「lint・テスト」か「E2E」かが job 名で分かる）。
+  # Stripe のキーは使わない（secrets を参照しない）。Stripe に向かう通信はテストの中でモックし、
+  # サーバも STRIPE_SECRET_KEY を空にして Stripe から切り離している。実際の Stripe に通信する @stripe のテストは、
+  # キーと E2E_STRIPE=1 が無いと skip になる。
+  e2e:
+    name: E2E（Playwright）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存をインストール
+        run: npm ci
+
+      # ブラウザのビルドは Playwright の版に結び付く（package.json は完全一致で固定）ので、版をキャッシュのキーにする。
+      - name: Playwright の版を読む
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Playwright のブラウザをキャッシュ
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: ブラウザを入れる（キャッシュが無いとき）
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # キャッシュにはブラウザ本体だけが入る。OS のライブラリ（apt）は毎回入れる。
+      - name: ブラウザの依存だけ入れる（キャッシュがあるとき）
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: 本番ビルド
+        run: npm run build
+
+      # ビルドは上の工程で済んでいる。npm run test:e2e は build してから回すので、ここでは使わない（ビルドが 2 回になる）。
+      - name: E2E
+        run: npx playwright test
+
+      # 落ちたときの調査用（HTML レポート・失敗時のスクリーンショット・retry したテストの trace）。
+      # 通ったときも上げる（retry で通った flaky をレポートで見られるように）。
+      - name: レポートを保存
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

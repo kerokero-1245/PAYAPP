@@ -22,6 +22,7 @@
 - **Zustand**（状態管理・`persist` で localStorage 永続化）
 - **Stripe**（Checkout Session による決済）
 - **GraphQL**（graphql-yoga を Route Handler に載せた `/api/graphql`。型は GraphQL Code Generator で SDL から生成）
+- **Playwright**（E2E テスト。本番ビルドした `next start` に、ブラウザで画面を操作して通す。下の「E2E テスト」）
 - 画像は `next/image`、フォントは `next/font`（Playfair Display / Inter）
 
 ## 主な機能
@@ -70,6 +71,10 @@ npm run codegen
 
 # 平坦な CSS の検査（下の「デザインの書き方」）
 npm run check:css
+
+# E2E テスト（Playwright。初回だけブラウザを入れる。詳しくは下の「E2E テスト」）
+npx playwright install chromium
+npm run test:e2e       # next build してから playwright test
 ```
 
 ## 環境変数
@@ -101,7 +106,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
 4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
 
-`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
+`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。別の job `e2e` が、ブラウザ（Playwright の Chromium）で画面を操作する E2E も回します（Stripe には通信せず、secrets も使いません）。
 
 ## 決済の流れ
 1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.ts`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
@@ -115,7 +120,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
    - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・記録時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
    - 同じ `session_id` で注文を二重に記録しません（再読み込みしても 1 件のまま）。
 
-価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.ts` `lib/cart.ts` `lib/site.ts` の純粋な関数に分けてあり、`tests/` で検証しています。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は引数を `unknown` で受けて中で絞ります（テストはわざと不正な値を渡します）。お問い合わせの検証（`lib/contact.ts`。文字数は見た目の 1 文字で数える）は `tests/contact.test.ts`、平坦な CSS の検査（`scripts/check-flat-css.ts`）が違反を見落とさないことは `tests/flat-css.test.ts` で検証しています。
+価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.ts` `lib/cart.ts` `lib/site.ts` の純粋な関数に分けてあり、`tests/` で検証しています。決済確認の route の本体（`verifyCheckoutSession`）も `lib/checkout-session.ts` に出して Stripe を差し込める形にしてあり、支払い済みで注文を返す経路・返さない経路を `tests/checkout-verify.test.ts` が偽の Stripe で確かめています。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は引数を `unknown` で受けて中で絞ります（テストはわざと不正な値を渡します）。お問い合わせの検証（`lib/contact.ts`。文字数は見た目の 1 文字で数える）は `tests/contact.test.ts`、平坦な CSS の検査（`scripts/check-flat-css.ts`）が違反を見落とさないことは `tests/flat-css.test.ts` で検証しています。
 
 > **注文履歴はブラウザごとです。** このデモにはサーバ側の保存先（DB）が無く、注文履歴は決済を確認したブラウザの localStorage にだけ記録されます。別のブラウザで同じ決済の戻り URL を開くと、そのブラウザにも記録されます。本番運用では Stripe Webhook と DB で注文を確定させる構成にしてください。
 
@@ -180,6 +185,32 @@ curl -s http://localhost:3000/api/graphql \
   - Stripe の例外文は返さない（yoga の maskedErrors）。CORS ヘッダーは付けない（他オリジンを反射しない）。応答はすべて `Cache-Control: no-store`。GraphiQL は本番（`NODE_ENV=production`）では出さない。
 - テスト（`tests/graphql.test.ts`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
 
+## E2E テスト（Playwright）
+
+買い物の導線（一覧・詳細・カート・購入手続き・決済結果・会員・お問い合わせ・404）を、ブラウザで実際に操作して確かめます。本番ビルドした `next start`（ポート 3210）に対して回し、画面の幅は 390 と 1280 の 2 つ（`mobile-390` / `desktop-1280`）です。ロケータはクラス名ではなく役割（role）とアクセシブルネームで取ります。画面の見た目の差は E2E の仕事にせず、前後のスクリーンショットで見ます。
+
+```bash
+npx playwright install chromium          # 初回だけ。Playwright の Chromium をダウンロードする
+npm run test:e2e                         # next build してから playwright test
+npx playwright test                      # ビルド済みなら、これだけ（webServer が next start -p 3210 を立てる）
+npx playwright test e2e/cart.spec.ts --project=desktop-1280   # 1 本・1 つの幅だけ
+npx playwright show-report               # 直近の HTML レポート
+```
+
+- **先に `npm run build` が要ります**（`npx playwright test` だけを打つとき）。`test.only` の消し忘れは CI で落ちます
+- **ブラウザ**: ローカルは Playwright の Chromium が既定です。システムの Google Chrome で回すときは `PW_CHANNEL=chrome npx playwright test`
+- **Stripe には通信しません**。Stripe に向かう通信（カートの `createCheckoutSession` と、`/success` の決済確認）は、テストごとに既定で閉じてあり、各テストが `page.route` でモックします。モックし忘れた通信が出るとテストが失敗します。サーバの `STRIPE_SECRET_KEY` も空にして起動するので、`.env.local` にキーがあっても使われません
+- **実際の Stripe に通信する 1 本**（`@stripe`）だけは、`STRIPE_SECRET_KEY`（テストモードのキー）と `E2E_STRIPE=1` の**両方**があるときだけ動き、無ければ skip になります。サーバが Checkout Session を作り、`https://checkout.stripe.com/…` へ遷移するところまでで、Stripe の画面には何もしません。CI にはキーを置かないので skip です
+
+  ```bash
+  E2E_STRIPE=1 STRIPE_SECRET_KEY=sk_test_xxxx npx playwright test --grep @stripe
+  ```
+- 商品の画像（picsum）は 1×1 の PNG に差し替え、外には出ません
+- テストの出力に `Error: Internal: NoFallbackError` と出ることがあります。存在しない商品（`/product/999`）が 404 になるときに Next 16.0.8 が内部で出すログで、404 が返っていれば異常ではありません
+- 失敗したテストの調査用に、HTML レポート（`playwright-report/`）・スクリーンショット・retry 時の trace が `test-results/` に出ます（git には入れません）
+
+`e2e/` の構成は下の「ディレクトリ構成」のとおりです。localStorage の形（カート・注文履歴・ログイン状態）は `e2e/fixtures/storage.ts` の 1 か所だけが知っていて、期待値（件数・商品名・金額）はカタログから組みます。
+
 ## ディレクトリ構成
 ```
 app/
@@ -189,7 +220,7 @@ app/
   cart/page.tsx         カート
   checkout/route.ts     Stripe Checkout Session 作成 API（REST）
   api/graphql/route.ts  GraphQL API（graphql-yoga）
-  api/checkout/session/route.ts  決済確認 API（payment_status が paid か）
+  api/checkout/session/route.ts  決済確認 API（payment_status が paid か。本体は lib/checkout-session.ts の verifyCheckoutSession）
   success / cancel      決済結果
   not-found.tsx         404 ページ
   orders / login / account
@@ -204,7 +235,7 @@ components/ui/          共通部品（Button / Section / PageHeader / SectionHe
 store/                  productStore / cartStore / authStore / orderStore（Zustand）
 lib/catalog.ts          商品カタログ（クライアントとサーバで共有）
 lib/checkout.ts         価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
-lib/checkout-session.ts Checkout Session 作成の本体（/checkout と GraphQL で共有。Stripe は最小の型 StripeLike で受ける）
+lib/checkout-session.ts Checkout Session 作成と決済確認の本体（Route Handler と GraphQL で共有。Stripe は最小の型 StripeLike で受ける）
 lib/graphql/            GraphQL の SDL・resolver・handler・ブラウザ用クライアント・生成した型
 lib/cart.ts             カートをカタログに合わせる・購入分を取り除く（純粋な関数）
 lib/site.ts             サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
@@ -215,7 +246,9 @@ lib/policies.ts         配送・保証・返品・テストモードの注記�
 lib/links.ts            カテゴリへのリンク（ヘッダー・フッター・サイドメニュー・トップのタイルで共有）
 lib/types.ts            共有するドメインの型（Product・CartLine・Order・User など。型だけで、実行時の値は置かない）
 scripts/check-flat-css.ts  平坦な CSS の検査（npm run check:css）
-tests/                  node --test のテスト（決済・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査。TypeScript のまま Node 22.18 以上が型を剥がして実行する）
+tests/                  node --test のテスト（決済・決済確認・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査。TypeScript のまま Node 22.18 以上が型を剥がして実行する）
+e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ、constants.ts = URL とビューポート）
+playwright.config.ts    E2E の設定（next start -p 3210・幅 390 / 1280・retries は CI だけ 1・reporter は list + html）
 DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
 ```
 
