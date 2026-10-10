@@ -13,13 +13,13 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
-/** カートの 1 行（サーバがカタログから引いた値） */
+/** カートの 1 行・注文の 1 行（product はカタログから引いた商品） */
 export type CartItem = {
   __typename?: 'CartItem';
   product: Product;
   /** 1〜99 */
   quantity: Scalars['Int']['output'];
-  /** price × quantity */
+  /** 単価 × quantity。カートではカタログの今の価格、注文では購入した時点の単価（product.price とは限らない） */
   subtotal: Scalars['Int']['output'];
 };
 
@@ -76,10 +76,12 @@ export type MutationCreateCheckoutSessionArgs = {
   items: Array<CartItemInput>;
 };
 
-/** Stripe で支払い済みと確認できた注文（保存はしない。毎回 Stripe に照会して作る） */
+/** 支払い済みと確認できて、DB に確定した注文。単価と合計は購入した時点の写し */
 export type Order = {
   __typename?: 'Order';
   items: Array<CartItem>;
+  /** 画面に出す注文番号（ORD- で始まる） */
+  orderNo: Scalars['ID']['output'];
   sessionId: Scalars['ID']['output'];
   total: Scalars['Int']['output'];
 };
@@ -115,7 +117,7 @@ export type Query = {
   /** localStorage のカートを送り、カタログの価格で見積もる（副作用なし） */
   cartQuote: CartQuoteResult;
   categories: Array<Category>;
-  /** Stripe に照会して注文を返す（保存しない）。照会失敗は GraphQL エラー（unverified 扱い） */
+  /** 支払い済みの注文を返す。DB に確定済みならそれを、無ければ Stripe に 1 回照会して確定する（Webhook・成功ページと同じ fulfillCheckout）。未払い・存在しない・形の不正は UNPAID。照会や確定に失敗したら GraphQL エラー（unverified 扱い） */
   orderBySession: OrderLookup;
   product?: Maybe<Product>;
   /** category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.tsx と同じ規則） */
@@ -297,6 +299,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
 
 export type OrderResolvers<ContextType = any, ParentType extends ResolversParentTypes['Order'] = ResolversParentTypes['Order']> = {
   items?: Resolver<Array<ResolversTypes['CartItem']>, ParentType, ContextType>;
+  orderNo?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   sessionId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };

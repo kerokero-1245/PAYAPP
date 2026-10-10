@@ -31,6 +31,11 @@ import {
 } from "../lib/graphql/handler.ts";
 import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
 import { createCheckoutSession as clientCreateCheckoutSession } from "../lib/graphql/client.ts";
+import type { Db } from "../lib/db/connect.ts";
+import { orderItems, orders } from "../lib/db/schema.ts";
+import { seedProducts } from "../lib/db/seed.ts";
+import { withTestDb } from "../lib/db/test-helpers.ts";
+import { eq } from "drizzle-orm";
 
 const URL_ = "http://localhost/api/graphql";
 const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
@@ -96,13 +101,22 @@ function fakeStripe() {
   };
 }
 
+/**
+ * handler と偽の Stripe を作る。db を渡したテストだけが DB を使える
+ * （渡さないテストで getDb が呼ばれたら例外にして、DB に触れてはいけないテストが触れたことに気付けるようにする）
+ */
 function setup({
   getStripe,
   baseUrl,
-}: { getStripe?: () => StripeLike; baseUrl?: string } = {}) {
+  db,
+}: { getStripe?: () => StripeLike; baseUrl?: string; db?: Db } = {}) {
   const stripe = fakeStripe();
   const handler = createGraphqlHandler({
     getStripe: getStripe ?? (() => stripe),
+    getDb: async () => {
+      if (!db) throw new Error("このテストは DB を使わないはず");
+      return db;
+    },
     baseUrl,
   });
   return { stripe, handler };
@@ -411,39 +425,120 @@ test("Content-Type の判定: application/json（引数・大文字可）だけ�
 const LOOKUP = `query Lookup($id: ID!) {
   orderBySession(sessionId: $id) {
     state
-    order { sessionId total items { quantity subtotal product { id price } } }
+    order { orderNo sessionId total items { quantity subtotal product { id price } } }
   }
 }`;
 
-test("GraphQL: orderBySession は支払い済みなら PAID と注文、未払い・存在しない・形の不正は UNPAID", async () => {
-  const { handler } = setup();
-  const paid = await post(handler, LOOKUP, { id: "cs_test_paid" });
-  assert.equal(paid.body.data.orderBySession.state, "PAID");
-  assert.deepEqual(paid.body.data.orderBySession.order, {
-    sessionId: "cs_test_paid",
-    total: 248000 * 2 + 26800,
-    items: [
-      { quantity: 2, subtotal: 496000, product: { id: "1", price: 248000 } },
-      { quantity: 1, subtotal: 26800, product: { id: "5", price: 26800 } },
-    ],
-  });
-  for (const id of ["cs_test_unpaid", "cs_test_missing", "not-a-session"]) {
-    const r = await post(handler, LOOKUP, { id });
-    assert.deepEqual(
-      r.body.data.orderBySession,
-      { state: "UNPAID", order: null },
-      id,
-    );
-  }
-});
+/** 注文番号の形（lib/fulfillment.ts の generateOrderNo） */
+const ORDER_NO = /^ORD-[0-9A-Z]{10}$/;
 
-test("GraphQL: orderBySession で Stripe がその他の例外なら GraphQL エラーにし、例外文を隠す", async () => {
-  const { handler } = setup();
-  const r = await post(handler, LOOKUP, { id: "cs_test_boom" });
-  assert.equal(r.body.data?.orderBySession ?? null, null);
-  assert.ok(Array.isArray(r.body.errors) && r.body.errors.length > 0);
-  assert.ok(!r.text.includes("SECRET"), r.text);
-  assert.ok(!r.text.includes("stack"), r.text);
+test("GraphQL: orderBySession は支払い済みなら DB に確定した注文（注文番号つき）と PAID、未払い・存在しない・形の不正は UNPAID で何も確定しない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const { handler } = setup({ db });
+    const paid = await post(handler, LOOKUP, { id: "cs_test_paid" });
+    assert.equal(paid.body.data.orderBySession.state, "PAID");
+    const { orderNo } = paid.body.data.orderBySession.order;
+    assert.match(orderNo, ORDER_NO);
+    assert.deepEqual(paid.body.data.orderBySession.order, {
+      orderNo,
+      sessionId: "cs_test_paid",
+      total: 248000 * 2 + 26800,
+      items: [
+        { quantity: 2, subtotal: 496000, product: { id: "1", price: 248000 } },
+        { quantity: 1, subtotal: 26800, product: { id: "5", price: 26800 } },
+      ],
+    });
+    // 返した注文は DB にある
+    const [row, ...others] = await db.select().from(orders);
+    assert.deepEqual(others, []);
+    assert.equal(row.orderNo, orderNo);
+    assert.equal(row.stripeSessionId, "cs_test_paid");
+
+    for (const id of ["cs_test_unpaid", "cs_test_missing", "not-a-session"]) {
+      const r = await post(handler, LOOKUP, { id });
+      assert.deepEqual(
+        r.body.data.orderBySession,
+        { state: "UNPAID", order: null },
+        id,
+      );
+    }
+    assert.equal((await db.select().from(orders)).length, 1, "注文は増えない");
+  }));
+
+test("GraphQL: orderBySession は同じ決済を何度照会しても同じ注文を返し、確定済みなら Stripe に問い合わせない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const { handler, stripe } = setup({ db });
+    const first = await post(handler, LOOKUP, { id: "cs_test_paid" });
+    const second = await post(handler, LOOKUP, { id: "cs_test_paid" });
+
+    assert.equal(first.body.data.orderBySession.state, "PAID");
+    assert.deepEqual(second.body.data, first.body.data);
+    assert.equal((await db.select().from(orders)).length, 1);
+    assert.deepEqual(stripe.retrieved, ["cs_test_paid"]);
+  }));
+
+test("GraphQL: orderBySession の小計は購入した時点の単価（DB の写し）× 数量で、product.price はカタログの今の価格", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const { handler } = setup({ db });
+    await post(handler, LOOKUP, { id: "cs_test_paid" });
+    // カタログの価格が変わった想定ではなく、注文の側の写しを変えて、どちらを読んでいるかを見分ける
+    await db
+      .update(orderItems)
+      .set({ unitPrice: 1000 })
+      .where(eq(orderItems.productId, "1"));
+
+    const r = await post(handler, LOOKUP, { id: "cs_test_paid" });
+    const item = r.body.data.orderBySession.order.items[0];
+    assert.equal(item.product.price, 248000, "カタログの今の価格");
+    assert.equal(item.subtotal, 1000 * 2, "注文の写しの単価 × 数量");
+  }));
+
+test("GraphQL: orderBySession で Stripe がその他の例外なら GraphQL エラーにし、例外文を隠す", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const { handler, stripe } = setup({ db });
+    const r = await post(handler, LOOKUP, { id: "cs_test_boom" });
+    assert.deepEqual(stripe.retrieved, ["cs_test_boom"], "Stripe の失敗である");
+    assert.equal(r.body.data?.orderBySession ?? null, null);
+    assert.ok(Array.isArray(r.body.errors) && r.body.errors.length > 0);
+    assert.ok(!r.text.includes("SECRET"), r.text);
+    assert.ok(!r.text.includes("stack"), r.text);
+    assert.equal((await db.select().from(orders)).length, 0);
+  }));
+
+test("GraphQL: orderBySession で DB に繋げなければ GraphQL エラーにし、例外文を隠す。形の不正な id は DB にも Stripe にも触れず UNPAID", async () => {
+  const stripe = fakeStripe();
+  const handler = createGraphqlHandler({
+    getStripe: () => stripe,
+    getDb: async () => {
+      throw new Error("connect ECONNREFUSED db.internal.example:5432");
+    },
+  });
+  const savedError = console.error;
+  console.error = () => {};
+  try {
+    const r = await post(handler, LOOKUP, { id: "cs_test_paid" });
+    assert.equal(r.body.data?.orderBySession ?? null, null);
+    assert.ok(Array.isArray(r.body.errors) && r.body.errors.length > 0);
+    assert.ok(!r.text.includes("ECONNREFUSED"), r.text);
+    assert.ok(!r.text.includes("db.internal"), r.text);
+    assert.deepEqual(
+      stripe.retrieved,
+      [],
+      "DB に繋げないなら Stripe も呼ばない",
+    );
+
+    const bad = await post(handler, LOOKUP, { id: "not-a-session" });
+    assert.deepEqual(bad.body.data.orderBySession, {
+      state: "UNPAID",
+      order: null,
+    });
+  } finally {
+    console.error = savedError;
+  }
 });
 
 /* ---------- ⑤-8 Mutation の多重実行 ---------- */
@@ -481,34 +576,38 @@ test("GraphQL: 1 リクエストに Mutation を 2 つ以上並べると拒否�
 
 /* ---------- Stripe を呼ぶフィールドとクエリのコスト ---------- */
 
-test("GraphQL: orderBySession を 2 つ並べると拒否し、Stripe の retrieve を呼ばない（エイリアス・フラグメント・@include）", async () => {
-  const { handler, stripe } = setup();
-  const queries = [
-    `{ a: orderBySession(sessionId: "cs_test_paid") { state } b: orderBySession(sessionId: "cs_test_paid") { state } }`,
-    `{ ...F b: orderBySession(sessionId: "cs_test_paid") { state } }
+test("GraphQL: orderBySession を 2 つ並べると拒否し、Stripe の retrieve を呼ばない（エイリアス・フラグメント・@include）", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const { handler, stripe } = setup({ db });
+    const queries = [
+      `{ a: orderBySession(sessionId: "cs_test_paid") { state } b: orderBySession(sessionId: "cs_test_paid") { state } }`,
+      `{ ...F b: orderBySession(sessionId: "cs_test_paid") { state } }
      fragment F on Query { a: orderBySession(sessionId: "cs_test_paid") { state } }`,
-    `{ ...F ...F } fragment F on Query { orderBySession(sessionId: "cs_test_paid") { state } }`,
-    `{ a: orderBySession(sessionId: "cs_test_paid") @include(if: false) { state }
+      `{ ...F ...F } fragment F on Query { orderBySession(sessionId: "cs_test_paid") { state } }`,
+      `{ a: orderBySession(sessionId: "cs_test_paid") @include(if: false) { state }
        b: orderBySession(sessionId: "cs_test_paid") { state } }`,
-  ];
-  for (const query of queries) {
-    const r = await post(handler, query);
-    assert.equal(r.body.data, undefined, query);
-    assert.ok(
-      r.body.errors.some((e: GqlError) => e.message === TOO_MANY_STRIPE_FIELDS),
-      r.text,
-    );
-  }
-  assert.equal(stripe.retrieved.length, 0);
+    ];
+    for (const query of queries) {
+      const r = await post(handler, query);
+      assert.equal(r.body.data, undefined, query);
+      assert.ok(
+        r.body.errors.some(
+          (e: GqlError) => e.message === TOO_MANY_STRIPE_FIELDS,
+        ),
+        r.text,
+      );
+    }
+    assert.equal(stripe.retrieved.length, 0);
 
-  // 1 つだけなら通る
-  const one = await post(
-    handler,
-    `{ orderBySession(sessionId: "cs_test_paid") { state } }`,
-  );
-  assert.equal(one.body.data.orderBySession.state, "PAID");
-  assert.equal(stripe.retrieved.length, 1);
-});
+    // 1 つだけなら通る
+    const one = await post(
+      handler,
+      `{ orderBySession(sessionId: "cs_test_paid") { state } }`,
+    );
+    assert.equal(one.body.data.orderBySession.state, "PAID");
+    assert.equal(stripe.retrieved.length, 1);
+  }));
 
 test("GraphQL: 選択するフィールドは 200 まで（同名の重複・フラグメントの展開も数える）", async () => {
   const { handler } = setup();

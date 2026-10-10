@@ -8,13 +8,8 @@ import Eyebrow from "@/components/ui/Eyebrow";
 import Button from "@/components/ui/Button";
 import Loading from "@/components/ui/Loading";
 import { useCartStore } from "@/store/cartStore";
-import { useOrderStore } from "@/store/orderStore";
-import {
-  VERIFY_TIMEOUT_MS,
-  decideVerifyOutcome,
-  findOrderBySession,
-} from "@/lib/checkout";
-import type { PaidOrder, VerifyInput } from "@/lib/checkout";
+import { VERIFY_TIMEOUT_MS, decideVerifyOutcome } from "@/lib/checkout";
+import type { ConfirmedOrder, VerifyInput } from "@/lib/checkout";
 
 /**
  * 確認ルートに問い合わせる。応答が無ければ VERIFY_TIMEOUT_MS で打ち切る。
@@ -51,33 +46,21 @@ async function fetchVerifyResult(
 }
 
 /**
- * 支払い済みの注文を記録する。品目と金額は確認ルートが session から作ったもの。
- * 同じ session_id の注文が記録済みなら新しく記録せず、その注文番号を返す。
+ * 支払い済みの注文の購入分をカートから取り除き、確認ルートが返した注文番号を返す。
+ * 注文は確認ルートがサーバの DB に確定している（ブラウザには記録しない）。
  * カートからは購入した品目と数量だけを取り除く（決済後に足した品は残す）。
+ * 同じ session_id では 1 回だけ取り除く（再読み込みや開き直しで、買った分が余計に消えない）。
  */
-function recordPaidOrder(sessionId: string, order: PaidOrder): string {
-  const existing = findOrderBySession(
-    useOrderStore.getState().orders,
-    sessionId,
-  );
-  if (existing) return existing.id;
-
-  const id = `ORD-${Date.now().toString(36).toUpperCase()}`;
-  useOrderStore.getState().addOrder({
-    id,
-    items: order.items,
-    total: order.total,
-    sessionId,
-  });
-  useCartStore.getState().removePurchased(order.items);
-  return id;
+function settlePaidOrder(sessionId: string, order: ConfirmedOrder): string {
+  useCartStore.getState().settlePurchase(sessionId, order.items);
+  return order.orderNo;
 }
 
 /** 確認の結果（確認中は含まない） */
 type Result = {
   key: string;
   state: "paid" | "unpaid" | "unverified";
-  orderId: string | null;
+  orderNo: string | null;
 };
 
 /** 読み上げ用の文言（role="status" の要素に入れる） */
@@ -92,10 +75,11 @@ const STATUS_MESSAGES = {
  * 決済成功ページ
  * ---------------------------------------------------
  * Stripe から戻ってきた ?session_id= を /api/checkout/session で確認し、
- *  - 支払い済み: session の内容で注文を記録し、購入した分をカートから取り除く
- *  - 未払いと確認できた（session_id なしを含む）: 何も記録しない
- *  - 確認できなかった（通信失敗・サーバエラー・時間切れ・記録時の例外）:
- *    何も記録せず「もう一度確認する」を出す（二重購入を避けるため買い直しは促さない）
+ *  - 支払い済み: 確認ルートが DB に確定した注文の番号を出し、購入した分をカートから取り除く
+ *    （注文の記録先はサーバの DB。ブラウザの localStorage には記録しない）
+ *  - 未払いと確認できた（session_id なしを含む）: 何もしない
+ *  - 確認できなかった（通信失敗・サーバエラー・時間切れ・カートの更新時の例外）:
+ *    何もせず「もう一度確認する」を出す（二重購入を避けるため買い直しは促さない）
  */
 function SuccessInner() {
   const sessionId = useSearchParams().get("session_id");
@@ -112,14 +96,14 @@ function SuccessInner() {
       if (controller.signal.aborted) return;
       const outcome = decideVerifyOutcome(raw);
       if (outcome.state !== "paid") {
-        setResult({ key, state: outcome.state, orderId: null });
+        setResult({ key, state: outcome.state, orderNo: null });
         return;
       }
       try {
-        const orderId = recordPaidOrder(sessionId, outcome.order);
-        setResult({ key, state: "paid", orderId });
+        const orderNo = settlePaidOrder(sessionId, outcome.order);
+        setResult({ key, state: "paid", orderNo });
       } catch {
-        setResult({ key, state: "unverified", orderId: null });
+        setResult({ key, state: "unverified", orderNo: null });
       }
     })();
 
@@ -138,7 +122,7 @@ function SuccessInner() {
   else if (state === "unverified")
     content = <PaymentUnverified onRetry={() => setAttempt((a) => a + 1)} />;
   // state が paid になるのは result がある（result.key が今の key と一致した）ときだけ
-  else content = <OrderConfirmed orderId={result!.orderId} />;
+  else content = <OrderConfirmed orderNo={result!.orderNo} />;
 
   return (
     <>
@@ -210,7 +194,7 @@ function PaymentUnverified({ onRetry }: { onRetry: () => void }) {
 }
 
 /** 決済確認済み */
-function OrderConfirmed({ orderId }: { orderId: string | null }) {
+function OrderConfirmed({ orderNo }: { orderNo: string | null }) {
   return (
     <StatusMessage
       icon="check"
@@ -232,10 +216,10 @@ function OrderConfirmed({ orderId }: { orderId: string | null }) {
         </>
       }
     >
-      {orderId && (
+      {orderNo && (
         <div className="status-ref mt-8">
           <Eyebrow as="span">Order No.</Eyebrow>
-          <span className="status-ref-value">{orderId}</span>
+          <span className="status-ref-value">{orderNo}</span>
         </div>
       )}
     </StatusMessage>

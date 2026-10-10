@@ -38,6 +38,20 @@ export const SESSION_IDS = {
   malformed: "bad",
 } as const;
 
+/**
+ * 決済の確認のモックが返す注文番号（本物はサーバが DB に確定した番号。ORD- と英大文字・数字）。
+ * 画面に出る番号がこの値であることで、「注文番号はブラウザが作らず、確認ルートの応答のもの」を確かめる
+ */
+export const ORDER_NO = "ORD-E2ETESTPAID";
+
+/**
+ * E2E のサーバ（next start）が使う PGlite の保存先。開発の .pglite/ と取り合わないよう専用にする。
+ * 本番ビルドは DATABASE_URL が無いと DB を開かない（lib/db/connect.ts）ので、PGLITE_DATA_DIR で明示して渡す。
+ * 画面の操作ではサーバの DB まで届かない（決済の確認はモックする）が、サーバが DB を使う導線を足したときのために、
+ * サーバを立てる前にマイグレーションと seed を当てておく（playwright.config.ts）。
+ */
+export const E2E_PGLITE_DIR = ".pglite-e2e";
+
 /** Stripe のモックが返す決済ページの URL（遷移先もモックで返すので、外には出ない） */
 export const CHECKOUT_REDIRECT_URL =
   "https://checkout.stripe.com/c/pay/cs_test_e2e";

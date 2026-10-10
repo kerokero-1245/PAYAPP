@@ -13,8 +13,9 @@ drizzle/
 # 平坦な CSS の検査の見本（バイト列を保つ）
 tests/fixtures/
 
-# ローカルの DB（PGlite）
+# ローカルの DB（PGlite。開発用と E2E 用）
 .pglite
+.pglite-e2e
 
 # E2E の出力
 playwright-report

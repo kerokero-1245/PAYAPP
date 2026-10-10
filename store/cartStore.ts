@@ -3,18 +3,24 @@ import { persist } from "zustand/middleware";
 import {
   clampQuantity,
   reconcileCart,
-  removePurchasedFromCart,
+  reconcileSettledSessions,
+  settlePurchase,
 } from "@/lib/cart";
 import type { CartLine, Product } from "@/lib/types";
 
 type CartState = {
   items: CartLine[];
+  /** 購入分を取り除き済みの決済（Checkout Session の id。新しい順に末尾へ足し、古いものから忘れる） */
+  settledSessions: string[];
   /** 既にカートにある商品は加算する。必要なのは商品の id だけ */
   addItem: (product: Pick<Product, "id">, qty?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
-  /** 決済が済んだ品目と数量だけを取り除く（形が未検査の値を受ける） */
-  removePurchased: (purchasedItems: unknown) => void;
+  /**
+   * 決済が済んだ品目と数量だけを取り除く（形が未検査の値を受ける）。同じ決済では 1 回だけ
+   * （成功ページを開き直しても、買った分が余計に消えない）
+   */
+  settlePurchase: (sessionId: string, purchasedItems: unknown) => void;
   clearCart: () => void;
   totalPrice: () => number;
   totalItems: () => number;
@@ -25,7 +31,7 @@ type CartState = {
  *
  * - 商品の追加・削除・数量更新（数量は 1 行あたり 1〜99）
  * - 合計金額 / 合計点数の算出
- * - localStorage への永続化
+ * - localStorage への永続化（カートの行と、購入分を取り除き済みの決済の id）
  * - 価格・商品名などはカタログから id で引き直す（localStorage に残った値は信用しない）。
  *   カタログに無い id の行は戻すときに外す
  */
@@ -33,6 +39,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      settledSessions: [],
 
       // 既にカートにある場合は「上書き」ではなく「加算」する（合算後に上限 99 を当てる）
       addItem: (product, qty = 1) =>
@@ -55,11 +62,9 @@ export const useCartStore = create<CartState>()(
           ),
         })),
 
-      /** 決済が済んだ品目と数量だけを取り除く（決済後に足した品は残す） */
-      removePurchased: (purchasedItems) =>
-        set((state) => ({
-          items: removePurchasedFromCart(state.items, purchasedItems),
-        })),
+      /** 決済が済んだ品目と数量だけを取り除く（決済後に足した品は残す）。同じ決済では 1 回だけ */
+      settlePurchase: (sessionId, purchasedItems) =>
+        set((state) => settlePurchase(state, sessionId, purchasedItems)),
 
       clearCart: () => set({ items: [] }),
 
@@ -71,14 +76,20 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "cart-storage",
-      partialize: (state) => ({ items: state.items }),
-      // localStorage から戻すときに、カタログに合わせて作り直す
-      merge: (persisted, current) => ({
-        ...current,
-        items: reconcileCart(
-          (persisted as { items?: unknown } | null | undefined)?.items,
-        ),
+      partialize: (state) => ({
+        items: state.items,
+        settledSessions: state.settledSessions,
       }),
+      // localStorage から戻すときに、カタログに合わせて作り直す
+      merge: (persisted, current) => {
+        const stored = persisted as
+          { items?: unknown; settledSessions?: unknown } | null | undefined;
+        return {
+          ...current,
+          items: reconcileCart(stored?.items),
+          settledSessions: reconcileSettledSessions(stored?.settledSessions),
+        };
+      },
     },
   ),
 );

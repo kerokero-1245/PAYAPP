@@ -6,7 +6,7 @@
  */
 import { CATEGORIES, PRODUCTS, getProductById } from "../../lib/catalog.ts";
 import { encodeOrderMetadata, orderFromSession } from "../../lib/checkout.ts";
-import type { PaidOrder } from "../../lib/checkout.ts";
+import type { ConfirmedOrder, PaidOrder } from "../../lib/checkout.ts";
 import type { Category, ItemQuantity, Product } from "../../lib/types.ts";
 
 export { PRODUCTS };
@@ -69,4 +69,16 @@ export function paidOrder(sessionId: string, items: ItemQuantity[]): PaidOrder {
   });
   if (!result.ok) throw new Error(result.error);
   return result.order;
+}
+
+/**
+ * 確認ルートが返す、DB に確定した注文。paidOrder（品目・単価・数量・合計）に、サーバが付ける注文番号を足した形。
+ * 本物の確認ルートは品目を商品 id の順に並べて返すが、画面は並びを使わないので、ここは買った順のまま
+ */
+export function confirmedOrder(
+  sessionId: string,
+  items: ItemQuantity[],
+  orderNo: string,
+): ConfirmedOrder {
+  return { ...paidOrder(sessionId, items), orderNo };
 }

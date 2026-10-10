@@ -18,6 +18,7 @@
 - **ロケータ**: `getByRole` / `getByLabel` / 文言で取り、クラス名と DOM の構造には頼らない（部品クラスを改名しても落ちないのが正しい）。取れない部品には、見た目を変えずに `aria-label` を足す（例: ヘッダーのカート点数バッジ）
 - **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart / order / auth）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる
 - **Stripe には通信しない**: Stripe に向かう通信（`createCheckoutSession`・決済確認）は既定で閉じてあり、テストが `page.route` でモックする。モックし忘れるとテストが落ちる。実通信は `@stripe` タグの 1 本だけで、`STRIPE_SECRET_KEY` と `E2E_STRIPE=1` の両方があるときだけ動く。CI には Stripe のキーを置かない
+- **DB は専用の PGlite**: サーバ（`next start`）を立てる前に、`.pglite-e2e/` へ `db:migrate` と `db:seed` を順に当てる（`playwright.config.ts` の webServer。`PGLITE_DATA_DIR` で指定し、`DATABASE_URL` は空にして開発の Neon に繋がらないようにする）。決済の確認はモックするので画面の操作はサーバの DB まで届かない。注文の確定そのもの（冪等・競合）は単体テスト（PGlite）の仕事で、E2E ではブラウザ側の結果（注文番号の表示・購入分だけカートから外れる・二重に外さない）を見る
 - **本番ビルドで回す**: `next start` に対して回す（404 の本文が HTML に入るかなど、dev とは挙動が違う）。hydration が終わる前にフォームを操作しない（`e2e/support/page.ts` の `open`）。待つときは `waitForTimeout` ではなく、`expect` の自動再試行と `expect.poll` を使う
 - **新しい導線を足したとき**: E2E を 1 本足し、アプリ側の 1 行を一時的に壊して red になることを確かめる（壊しても落ちないテストは守りにならない）
 - 見た目の差は E2E の仕事にしない（`toHaveScreenshot` は mac と CI の linux で字形が揺れる）。前後のスクリーンショットで見る
@@ -66,6 +67,16 @@
 - **変更は「足す → 使う → 消す」の 3 段**: 1 つの PR で列を消して、同時にその列を使うのをやめる変更はしない（Vercel のデプロイとマイグレーションの順番は保証されない）
 - **接続先の切り替えは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所**: `DATABASE_URL` があれば Neon、無ければ PGlite。ほかの場所で `process.env.DATABASE_URL` を読まない
 - **DB は関数の引数で受け取る**（`Db` 型）: アプリは `lib/db/client.ts` の `getDb()`（`server-only`）だけから受け取り、テストは `lib/db/test-helpers.ts` の `withTestDb` の接続を差し込む。テストは `client.ts` を import しない（Stripe の `getStripe` と同じ流儀）
+- **本番は `DATABASE_URL` 必須**: `resolveDbTarget` は、`NODE_ENV=production` で `DATABASE_URL` も `PGLITE_DATA_DIR` も無ければ例外にする（PGlite に黙って切り替えない）。本番ビルドをローカルで動かすとき（`next start`・E2E）は `PGLITE_DATA_DIR` で PGlite を明示する。dev・test は従来どおり既定の `.pglite/`
 - **DB の制約に写す値は、持ち主の定数から読む**: 数量の上下限は `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY` を schema が読む（定数を変えると generate の差分が出て CI が落ちる）。同じ数を schema に直書きしない
 - **在庫（`products.stock`）は DB が正本**: seed（`lib/db/seed.ts`）は価格だけを合わせ、在庫は上書きしない。カタログから消えた商品も消さない（注文の明細が参照している）
 - **DB のテストは PGlite**: `withTestDb` がテストごとに全マイグレーションを当てた状態の DB を立てる。外部のサービスや docker に依存しない。PGlite と本物の Postgres の差は CI の `db-migrate-postgres`（`services: postgres`）で拾う
+
+## 注文の確定
+
+- **注文（`orders` / `order_items`）を書くのは `lib/fulfillment.ts` の `fulfillCheckout` だけ**: Webhook（`lib/stripe-webhook.ts`）・決済確認 API（`lib/checkout-session.ts` の `verifyCheckoutSession`）・GraphQL の `orderBySession` は、どれもこれを呼ぶ。別の経路から注文を INSERT しない（冪等の守りが 1 か所に揃わなくなる）
+- **冪等は 3 つで守る**: ① 先に `stripe_session_id` で DB を探す（あれば Stripe を呼ばない）② `orders.stripe_session_id` の一意制約 + `ON CONFLICT … DO NOTHING`（同時に来た 2 つ目を空振りにする）③ 注文・明細・処理済みイベント（`stripe_events`）を 1 つのトランザクションで書く（途中で失敗したら全部取り消し、イベントだけ「処理済み」になって注文が失われることがない）。トランザクションの中では `db` ではなく `tx` だけを使う（PGlite では自分の終わりを待って止まる）
+- **注文の中身は Stripe から取り直す**: Webhook の本文は信じない（session の id だけ取り出す）。品目と数量は session の metadata、単価と名前はカタログから引いて、購入した時点の値を `order_items` に写す。`orderFromSession` を再利用し、注文の組み立てを重複して書かない
+- **Webhook**: 署名は `Stripe.webhooks.constructEvent` に、加工していない本文と `Stripe-Signature`、`STRIPE_WEBHOOK_SECRET` を渡して検証する（`constructEvent` は `this` を使うので、メソッドのまま呼ぶ）。通らなければ 400（秘密が未設定なら 503）で、DB にも Stripe にも触れない。2xx を返すのは「受け取って片付いた」ときだけで、失敗は非 2xx にして Stripe に再送させる。未払いは 2xx で片付けて何も記録しない（あとから入金される方法は `async_payment_succeeded` で来る）
+- **ブラウザに注文を記録しない**: 注文の正本は DB。ブラウザ（localStorage）に残すのは、購入分をカートから取り除き済みの決済の id（`cart-storage` の `settledSessions`。成功ページを開き直しても二重に取り除かないため）だけ。`orderStore` は `/orders` が読むだけで、もう書かない（段 4 で消す）
+- **同時実行のテストは競合を作って確かめる**: 偽の Stripe（`tests/support/stripe.ts` の `waitFor`）が全員の到着を待ってから応答を返し、そろって「DB にまだ注文が無い」と見たまま書き込みに進ませる。止めないと、先の呼び出しが書き終えてから後の呼び出しが DB を見て、競合に当たらないまま通ってしまう。PGlite は 1 接続でトランザクションを順に処理するので、本物の Postgres での並行性の差はこのテストでは拾えない（CI の `db-migrate-postgres` はマイグレーションを当てるだけ。注文の確定を本物の Postgres で回すのは今後の課題）

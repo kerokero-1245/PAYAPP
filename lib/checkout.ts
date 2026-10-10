@@ -4,7 +4,7 @@
  * - normalizeOrderItems / buildLineItems: 届いた { id, quantity } を検査・合算し、
  *   価格と名前はカタログから引いて Stripe の line_items を組み立てる
  * - encodeOrderMetadata / decodeOrderMetadata: 購入した id と数量を session の metadata に持たせる
- * - orderFromSession: 支払い済みの session から注文（品目・単価・数量・合計）を作る
+ * - orderFromSession: 支払い済みの session から注文（品目・単価・数量・合計）を作る（DB に確定する前の形。確定は lib/fulfillment.ts）
  * - decideVerifyOutcome: 成功ページの確認結果を「支払い済み / 未払い / 確認できなかった」に分ける
  * - isValidSessionId / isSessionPaid / isStripeNotFound / findOrderBySession
  *
@@ -59,12 +59,15 @@ export type LineItemsResult =
   | { ok: true; items: ItemQuantity[]; lineItems: StripeLineItem[] }
   | { ok: false; error: string };
 
-/** 支払い済みの session から作る注文（注文履歴の 1 件から、注文番号と日時を除いたもの） */
+/** 支払い済みの session から作る注文（DB に確定する前の、品目・単価・数量・合計） */
 export type PaidOrder = {
   sessionId: string;
   items: OrderItem[];
   total: number;
 };
+
+/** DB に確定した注文（決済確認ルートが返す形）。PaidOrder に、画面に出す注文番号を足したもの */
+export type ConfirmedOrder = PaidOrder & { orderNo: string };
 
 /** orderFromSession の結果 */
 export type OrderFromSessionResult =
@@ -86,7 +89,7 @@ export type VerifyInput =
 
 /** decideVerifyOutcome の結果 */
 export type VerifyOutcome =
-  | { state: "paid"; order: PaidOrder }
+  | { state: "paid"; order: ConfirmedOrder }
   | { state: "unpaid" }
   | { state: "unverified" };
 
@@ -238,14 +241,15 @@ export function orderFromSession(
 
 /**
  * 確認ルートが返した注文の形が正しいか。
- * 検査するのは品目の id・name・price・quantity と合計。image・category・sessionId は検査しない
- * （サーバの orderFromSession が作る形を信用する）ので、型ガードは PaidOrder と宣言するが実行時の保証ではない。
+ * 検査するのは注文番号（空でない文字列）と、品目の id・name・price・quantity と合計。image・category・sessionId は検査しない
+ * （サーバが DB の注文から作る形を信用する）ので、型ガードは ConfirmedOrder と宣言するが実行時の保証ではない。
  */
-export function isValidOrder(order: unknown): order is PaidOrder {
+export function isValidOrder(order: unknown): order is ConfirmedOrder {
   const probe = order as
-    { items?: unknown; total?: unknown } | null | undefined;
-  if (!probe || !Array.isArray(probe.items) || probe.items.length === 0)
+    { orderNo?: unknown; items?: unknown; total?: unknown } | null | undefined;
+  if (!probe || typeof probe.orderNo !== "string" || probe.orderNo === "")
     return false;
+  if (!Array.isArray(probe.items) || probe.items.length === 0) return false;
   let sum = 0;
   for (const i of probe.items as Partial<Record<keyof OrderItem, unknown>>[]) {
     if (typeof i?.id !== "string" || typeof i.name !== "string") return false;
@@ -270,7 +274,7 @@ export function isValidOrder(order: unknown): order is PaidOrder {
 
 /**
  * 成功ページの確認結果を 3 つの状態に分ける。
- *  - "paid": 支払い済みと確認できた（order を記録してよい）
+ *  - "paid": 支払い済みと確認できた（order は DB に確定した注文。購入分をカートから外してよい）
  *  - "unpaid": 未払い・決済の参照が無いと確認できた（買い直してよい）
  *  - "unverified": 確認できなかった（通信失敗・サーバエラー・時間切れ・形の崩れた応答）
  */
@@ -330,6 +334,9 @@ export function findOrderBySession(
  * 注文履歴の先頭に注文を足した新しい配列を返す。
  * sessionId 付きの注文は、同じ sessionId が記録済みなら足さない（元の配列をそのまま返す）。
  * orders は新しい順の注文履歴。
+ *
+ * ブラウザ（localStorage）の注文履歴用。注文は DB に確定する（lib/fulfillment.ts）ようになったので、
+ * 呼び出し元は無い（store/orderStore.ts の addOrder だけ）。段 4 で /orders をサーバから読む形にしたとき、ストアごと消す。
  */
 export function appendOrder(
   orders: Order[],

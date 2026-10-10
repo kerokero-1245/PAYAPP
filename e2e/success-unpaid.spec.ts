@@ -1,7 +1,9 @@
 /**
- * 決済成功ページ（支払いを確認できない場合）: 何も記録せず、カートも変えない。
+ * 決済成功ページ（支払いを確認できない場合）: 注文の確定も、カートの更新も、履歴への書き込みもしない。
  *  - session_id が無い・形が不正（実サーバの 400）・未払い {paid:false} → 「決済を確認できませんでした」（買い直してよい）
  *  - 確認できなかった（502 など）→ 「決済の確認が取れていません」と「もう一度確認する」（二重購入を避けるため買い直しは促さない）
+ * サーバが DB に注文を作らないこと（未払い・存在しない session）は単体テスト（tests/fulfillment.test.ts ほか）が確かめる。
+ * ここで確かめるのは画面の側: ブラウザに残っている以前の注文履歴（/orders がまだ読むもの）を壊さず、カートも変えない。
  */
 import { test, expect } from "./fixtures/index.ts";
 import { PATHS, SESSION_IDS } from "./constants.ts";
@@ -20,7 +22,7 @@ test("success: 支払いを確認できないときは何も記録せず、通�
   page,
   context,
 }) => {
-  // 記録済みの注文が 1 件ある状態から始め、最後まで増えも減りもしないことを確かめる
+  // 以前の履歴（localStorage）が 1 件ある状態から始め、最後まで増えも減りもしないことを確かめる
   const previous = orderFor([{ id: "3", quantity: 1 }], {
     sessionId: "cs_test_e2e_previous",
   });
@@ -71,7 +73,7 @@ test("success: 支払いを確認できないときは何も記録せず、通�
     expect(verify.calls.at(-1)?.sessionId).toBe(SESSION_IDS.unverified);
   });
 
-  await test.step("どの場合も、注文は記録済みの 1 件のまま、カートも変わらない", async () => {
+  await test.step("どの場合も、以前の履歴は 1 件のまま、カートも変わらない", async () => {
     expect(await readOrders(page)).toEqual([previous]);
     expect(quantitiesOf(await readCart(page))).toEqual(CART_ITEMS);
   });

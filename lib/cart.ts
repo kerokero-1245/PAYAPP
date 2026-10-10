@@ -6,7 +6,7 @@
  * - 数量は 1 行あたり MIN_QUANTITY〜MAX_QUANTITY。同じ id の行は数量を合算してから上限を当てる
  *
  * store/cartStore.ts（localStorage から戻すとき・追加するとき）と、
- * 決済後に購入した分だけをカートから取り除く処理で使う。
+ * 決済後に購入した分だけをカートから取り除く処理（同じ決済では 1 回だけ）で使う。
  */
 import { getProductById } from "./catalog.ts";
 import type { CartLine, Product, ProductLookup, RawItem } from "./types.ts";
@@ -81,4 +81,44 @@ export function removePurchasedFromCart(
       quantity: item.quantity - (bought.get(item.id) ?? 0),
     }))
     .filter((item) => item.quantity > 0);
+}
+
+/** 購入分を取り除き済みの決済（Checkout Session の id）を覚えておく件数の上限。超えたら古いものから忘れる */
+export const MAX_SETTLED_SESSIONS = 50;
+
+/** カートの行と、購入分を取り除き済みの決済 */
+export type SettlableCart = {
+  items: CartLine[];
+  settledSessions: string[];
+};
+
+/**
+ * localStorage から戻した「取り除き済みの決済」を、文字列だけに絞って新しい MAX_SETTLED_SESSIONS 件に切り詰める。
+ * 配列でなければ空。
+ */
+export function reconcileSettledSessions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((id): id is string => typeof id === "string" && id !== "")
+    .slice(-MAX_SETTLED_SESSIONS);
+}
+
+/**
+ * 決済で買った分をカートから取り除き、その決済を「取り除き済み」として覚える。
+ * 同じ決済（sessionId）では 2 回目以降は何もしない（元のカートをそのまま返す）。成功ページを再読み込みしたり
+ * 開き直したりするたびに、買った分が余計に取り除かれないようにするため。
+ * 注文の記録は DB（サーバ）にあり、ブラウザは持たない。ブラウザに残すのは、この「取り除き済み」だけ。
+ */
+export function settlePurchase(
+  cart: SettlableCart,
+  sessionId: string,
+  purchasedItems: unknown,
+): SettlableCart {
+  if (cart.settledSessions.includes(sessionId)) return cart;
+  return {
+    items: removePurchasedFromCart(cart.items, purchasedItems),
+    settledSessions: [...cart.settledSessions, sessionId].slice(
+      -MAX_SETTLED_SESSIONS,
+    ),
+  };
 }

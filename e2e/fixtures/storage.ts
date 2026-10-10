@@ -6,6 +6,8 @@
  *      store/cartStore.ts。partialize で items だけを書き、戻すときに reconcileCart が価格・商品名・画像・カテゴリを
  *      カタログから id で引き直す。なので seed は id と数量だけでよい（読み戻すときはアプリが引き直した行が返る）
  *  - order-storage = { state: { orders: [{ id, date, items, total, sessionId? }] }, version: 0 }   store/orderStore.ts
+ *      アプリはもう書かない（注文はサーバの DB に確定する）。/orders が段 4 でサーバから読む形になるまで読むので、
+ *      以前の履歴を seed して「消さない」ことを確かめるのと、「新しい注文を書かない」ことを確かめるのに使う
  *  - auth-storage  = { state: { user: { email, name } }, version: 0 }                              store/authStore.ts
  * seed の入れ方と読み戻し方はここだけに置き、テストは入れ物の形を知らなくてよい。
  * Playwright に依存するのは型だけ（import type）なので、撮影スクリプトなど Node から直接 import してもよい。

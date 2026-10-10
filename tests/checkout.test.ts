@@ -188,6 +188,9 @@ test("エラー文に入力の値を入れない・200 字以下", () => {
 
 /* ---------- session から注文を作る（/api/checkout/session） ---------- */
 
+/** DB に確定した注文の番号（確認ルートが注文に付けて返す。形の検査は空でない文字列かどうかだけ） */
+const CONFIRMED_ORDER_NO = "ORD-TEST000001";
+
 const paidSession = (
   items: ItemQuantity[],
   extra: Record<string, unknown> = {},
@@ -252,7 +255,7 @@ test("注文は session の id と数量をカタログに当てて作る（カ�
   );
   assert.equal(r.order.total, 248000 * 2 + 26800);
   assert.equal(r.order.items[0].image, watch.images[0]);
-  assert.equal(isValidOrder(r.order), true);
+  assert.equal(isValidOrder({ ...r.order, orderNo: CONFIRMED_ORDER_NO }), true);
 });
 
 test("書き換えたカート（価格 1・数量 99）を一緒に渡されても、session とカタログの値で作る", () => {
@@ -302,11 +305,17 @@ test("未払い・metadata が無い・カタログに無い id の session か�
   assert.equal(orderFromSession(null).ok, false);
 });
 
-test("確認ルートの注文の形を確かめる（合計の食い違い・空の品目は不正）", () => {
-  const { order } = orderFromSession(
+test("確認ルートの注文の形を確かめる（注文番号が無い・合計の食い違い・空の品目は不正）", () => {
+  const { order: drafted } = orderFromSession(
     paidSession([{ id: "1", quantity: 1 }]),
   ) as PaidResult;
+  const order = { ...drafted, orderNo: CONFIRMED_ORDER_NO };
   assert.equal(isValidOrder(order), true);
+  // 注文番号は DB に確定したときに付く。無い（確定する前の形）・空・文字列でないものは、確認ルートの注文ではない
+  assert.equal(isValidOrder(drafted), false);
+  for (const orderNo of ["", 1, null, undefined]) {
+    assert.equal(isValidOrder({ ...order, orderNo }), false, String(orderNo));
+  }
   assert.equal(isValidOrder({ ...order, total: order.total - 1 }), false);
   assert.equal(isValidOrder({ ...order, items: [] }), false);
   assert.equal(
@@ -323,9 +332,10 @@ test("確認ルートの注文の形を確かめる（合計の食い違い・�
 /* ---------- 確認結果の判定（成功ページ） ---------- */
 
 test("支払い済み・未払い・確認できなかった を取り違えない", () => {
-  const { order } = orderFromSession(
+  const { order: drafted } = orderFromSession(
     paidSession([{ id: "1", quantity: 1 }]),
   ) as PaidResult;
+  const order = { ...drafted, orderNo: CONFIRMED_ORDER_NO };
   const paid = decideVerifyOutcome({
     kind: "response",
     status: 200,
@@ -363,6 +373,8 @@ test("支払い済み・未払い・確認できなかった を取り違えな�
     { kind: "response", status: 503, body: null },
     { kind: "response", status: 200, body: null },
     { kind: "response", status: 200, body: { paid: true } },
+    // 注文番号の無い注文（DB に確定していない）は、支払い済みとして扱わない
+    { kind: "response", status: 200, body: { paid: true, order: drafted } },
     {
       kind: "response",
       status: 200,

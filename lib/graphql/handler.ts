@@ -1,8 +1,8 @@
 /**
  * GraphQL の handler（graphql-yoga）
  * ---------------------------------------------------
- * createGraphqlHandler({ getStripe }) は fetch(Request) → Response の関数を返す。
- * app/api/graphql/route.ts が本物の getStripe を渡し、tests/graphql.test.ts は偽の Stripe を渡す。
+ * createGraphqlHandler({ getStripe, getDb }) は fetch(Request) → Response の関数を返す。
+ * app/api/graphql/route.ts が本物の getStripe / getDb を渡し、tests/graphql.test.ts は偽の Stripe とテスト用の DB を渡す。
  *
  * - 本文は 4KB 上限（超えたら 413）。yoga に渡す前に当てる（/checkout の 16KB とは別の値）
  * - POST は Content-Type が application/json のものだけ受け付ける（フォーム送信を通さない）
@@ -212,6 +212,8 @@ function boundedCache<T>(max: number) {
 type HandlerOptions = {
   /** Stripe クライアントを返す関数（リクエストのたびに呼ぶ） */
   getStripe: GraphqlContext["getStripe"];
+  /** DB を返す関数（orderBySession が呼んだときだけ呼ぶ） */
+  getDb: GraphqlContext["getDb"];
   /** 決済後の戻り先の基準（NEXT_PUBLIC_BASE_URL）。無ければリクエスト URL の origin */
   baseUrl?: string;
 };
@@ -231,7 +233,11 @@ function noStore(res: Response): Response {
   });
 }
 
-export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
+export function createGraphqlHandler({
+  getStripe,
+  getDb,
+  baseUrl,
+}: HandlerOptions) {
   const yoga = createYoga<object, GraphqlContext>({
     schema,
     graphqlEndpoint: GRAPHQL_ENDPOINT,
@@ -243,7 +249,7 @@ export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
       errorCache: boundedCache(PARSE_CACHE_MAX),
     },
     plugins: [limitsPlugin],
-    context: ({ request }) => ({ request, getStripe, baseUrl }),
+    context: ({ request }) => ({ request, getStripe, getDb, baseUrl }),
   });
 
   /** Content-Type と本文の上限を先に当ててから yoga に渡す */

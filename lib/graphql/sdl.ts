@@ -1,7 +1,9 @@
 /**
  * GraphQL のスキーマ（SDL）。codegen（codegen.ts）もこの文字列を読む。
- * 無状態（A 案）: 商品・カテゴリの読み取り、カートの見積もり、決済セッションの作成、
- * Stripe で確認した注文の照会だけを持つ。カートと注文履歴はブラウザ（localStorage）のまま。
+ * 商品・カテゴリの読み取り、カートの見積もり、決済セッションの作成、確定した注文の照会を持つ。
+ * カートはブラウザ（localStorage）のまま（サーバにカートの状態は持たない）。注文は支払いを確認したときに DB に確定し
+ * （lib/fulfillment.ts。Webhook・成功ページ・orderBySession が同じ関数を呼ぶ）、orderBySession はその DB の注文を返す。
+ * 注文履歴の一覧（myOrders など）は、認証の段のあとで足す。
  */
 export const typeDefs = /* GraphQL */ `
   """
@@ -32,13 +34,13 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
-  カートの 1 行（サーバがカタログから引いた値）
+  カートの 1 行・注文の 1 行（product はカタログから引いた商品）
   """
   type CartItem {
     product: Product!
     "1〜99"
     quantity: Int!
-    "price × quantity"
+    "単価 × quantity。カートではカタログの今の価格、注文では購入した時点の単価（product.price とは限らない）"
     subtotal: Int!
   }
 
@@ -52,9 +54,11 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
-  Stripe で支払い済みと確認できた注文（保存はしない。毎回 Stripe に照会して作る）
+  支払い済みと確認できて、DB に確定した注文。単価と合計は購入した時点の写し
   """
   type Order {
+    "画面に出す注文番号（ORD- で始まる）"
+    orderNo: ID!
     sessionId: ID!
     items: [CartItem!]!
     total: Int!
@@ -109,7 +113,7 @@ export const typeDefs = /* GraphQL */ `
     product(id: ID!): Product
     "localStorage のカートを送り、カタログの価格で見積もる（副作用なし）"
     cartQuote(items: [CartItemInput!]!): CartQuoteResult!
-    "Stripe に照会して注文を返す（保存しない）。照会失敗は GraphQL エラー（unverified 扱い）"
+    "支払い済みの注文を返す。DB に確定済みならそれを、無ければ Stripe に 1 回照会して確定する（Webhook・成功ページと同じ fulfillCheckout）。未払い・存在しない・形の不正は UNPAID。照会や確定に失敗したら GraphQL エラー（unverified 扱い）"
     orderBySession(sessionId: ID!): OrderLookup!
   }
 

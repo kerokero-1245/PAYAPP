@@ -45,6 +45,8 @@ yarn-error.log*
 
 # local database (PGlite。DATABASE_URL が無いときの保存先。親ディレクトリを作らない PGlite のために 1 階層)
 /.pglite/
+# E2E のサーバが使う PGlite（PGLITE_DATA_DIR。開発の .pglite/ と取り合わない）
+/.pglite-e2e/
 
 # typescript
 *.tsbuildinfo

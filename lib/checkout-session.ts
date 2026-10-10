@@ -3,20 +3,21 @@
  * ---------------------------------------------------
  * - readBodyWithLimit: リクエスト本文を上限つきで読む（超えたら null）
  * - createCheckoutSessionCore: 検査・価格決定・戻り先の決定・sessions.create をまとめて行う（/checkout と GraphQL の Mutation）
- * - verifyCheckoutSession: session_id から Checkout Session を引き、支払い済みなら注文を返す（/api/checkout/session）
+ * - verifyCheckoutSession: session_id の決済を fulfillCheckout で DB に確定し、DB の注文を返す（/api/checkout/session）
  *
- * Stripe クライアントは引数の getStripe() から受け取る（lib/stripe.ts は server-only なので
- * ここでは import しない。node --test から偽の Stripe を差し込めるようにするため）。
+ * Stripe クライアントと DB は引数の getStripe() / getDb() から受け取る（lib/stripe.ts と lib/db/client.ts は
+ * server-only なので、ここでは import しない。node --test から偽の Stripe とテスト用の DB を差し込めるようにするため）。
  */
 import type Stripe from "stripe";
 import {
   buildLineItems,
   encodeOrderMetadata,
-  isSessionPaid,
-  isStripeNotFound,
   isValidSessionId,
-  orderFromSession,
 } from "./checkout.ts";
+import type { ConfirmedOrder } from "./checkout.ts";
+import type { Db } from "./db/connect.ts";
+import { fulfillCheckout } from "./fulfillment.ts";
+import type { FulfillResult, StoredOrder } from "./fulfillment.ts";
 import { resolveReturnOrigin } from "./site.ts";
 
 /**
@@ -123,59 +124,79 @@ export type VerifyCheckoutSessionInput = {
   /** 確認ルートが受けたリクエストの URL（?session_id= を読む） */
   requestUrl: string;
   getStripe: () => StripeLike;
+  getDb: () => Promise<Db>;
 };
 
-/** 確認結果は Stripe の状態そのものなので、どの応答もキャッシュさせない */
+/** 確認結果は Stripe と DB の状態そのものなので、どの応答もキャッシュさせない */
 const NO_STORE = { "Cache-Control": "no-store" };
 
+/** 確認ルートが返す注文（DB の注文のうち、成功ページが使う項目） */
+export function toConfirmedOrder({
+  orderNo,
+  sessionId,
+  items,
+  total,
+}: StoredOrder): ConfirmedOrder {
+  return { orderNo, sessionId, items, total };
+}
+
 /**
- * 決済確認の本体: ?session_id=cs_... の Checkout Session を Stripe から取得し、payment_status が "paid" の
- * ときだけ { paid: true, order } を返す。order は session の metadata（購入した id と数量）をカタログに当てて
- * 作った注文の内容（品目・単価・数量・合計）。
+ * 決済確認の本体: ?session_id=cs_... の決済を fulfillCheckout（Webhook と同じ関数）で DB に確定し、DB の注文を返す。
+ * 既に確定していれば（Webhook が先に来ていれば）Stripe に問い合わせず、その注文を返す。
+ * 確定するのは、Stripe の Checkout Session の payment_status が "paid" のときだけ。
+ * 注文の中身は session の metadata（購入した id と数量）をカタログに当てて作った品目・単価・数量・合計。
  *
- *  - 200 { paid: false }   未払い、またはその session が存在しない
- *  - 400                   session_id の形が不正（Stripe は呼ばない）
- *  - 500 / 502             確認できなかった（成功ページは「確認が取れていません」を出す）
+ *  - 200 { paid: true, order }  支払い済みで、注文が DB にある（order に画面に出す注文番号 orderNo を含む）
+ *  - 200 { paid: false }        未払い、またはその session が存在しない
+ *  - 400                        session_id の形が不正（Stripe も DB も呼ばない）
+ *  - 500 / 502                  確認できなかった（成功ページは「確認が取れていません」を出す）。
+ *                               500 は DB に確定できなかったか、注文の内容を読めなかった。502 は Stripe から取れなかった
  */
 export async function verifyCheckoutSession({
   requestUrl,
   getStripe,
+  getDb,
 }: VerifyCheckoutSessionInput): Promise<Response> {
   const sessionId = new URL(requestUrl).searchParams.get("session_id");
-  if (!isValidSessionId(sessionId)) {
-    return Response.json(
+  const invalid = () =>
+    Response.json(
       { paid: false, error: "session_id が不正です" },
       { status: 400, headers: NO_STORE },
     );
-  }
+  if (!isValidSessionId(sessionId)) return invalid();
 
-  let session: unknown;
+  let result: FulfillResult;
   try {
-    session = await getStripe().checkout.sessions.retrieve(sessionId);
+    result = await fulfillCheckout({ db: await getDb(), getStripe, sessionId });
   } catch (err) {
-    if (isStripeNotFound(err)) {
-      return Response.json({ paid: false }, { headers: NO_STORE });
-    }
-    console.error("Checkout session verify error:", err);
+    console.error("Checkout session fulfill error:", err);
     return Response.json(
-      { paid: false, error: "決済情報を確認できませんでした" },
-      { status: 502, headers: NO_STORE },
-    );
-  }
-
-  if (!isSessionPaid(session)) {
-    return Response.json({ paid: false }, { headers: NO_STORE });
-  }
-  const result = orderFromSession(session);
-  if (!result.ok) {
-    console.error("Checkout session order error:", result.error);
-    return Response.json(
-      { paid: false, error: "注文の内容を確認できませんでした" },
+      { paid: false, error: "注文を記録できませんでした" },
       { status: 500, headers: NO_STORE },
     );
   }
-  return Response.json(
-    { paid: true, order: result.order },
-    { headers: NO_STORE },
-  );
+
+  switch (result.status) {
+    case "fulfilled":
+      return Response.json(
+        { paid: true, order: toConfirmedOrder(result.order) },
+        { headers: NO_STORE },
+      );
+    case "unpaid":
+      return Response.json({ paid: false }, { headers: NO_STORE });
+    case "invalid-session-id":
+      return invalid();
+    case "stripe-error":
+      console.error("Checkout session verify error:", result.cause);
+      return Response.json(
+        { paid: false, error: "決済情報を確認できませんでした" },
+        { status: 502, headers: NO_STORE },
+      );
+    case "unreadable-order":
+      console.error("Checkout session order error:", result.error);
+      return Response.json(
+        { paid: false, error: "注文の内容を確認できませんでした" },
+        { status: 500, headers: NO_STORE },
+      );
+  }
 }

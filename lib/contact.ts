@@ -44,7 +44,7 @@ export const EMPTY_CONTACT: ContactValues = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** 注文番号（決済成功ページが作る ORD-<英大文字と数字>） */
+/** 注文番号（注文の確定 lib/fulfillment.ts の generateOrderNo が作る ORD-<英大文字と数字>。tests/fulfillment.test.ts が、この検査に通ることを確かめている） */
 const ORDER_ID_RE = /^ORD-[0-9A-Z]+$/;
 
 /**

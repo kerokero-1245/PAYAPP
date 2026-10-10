@@ -11,8 +11,8 @@
  * モックし忘れた通信は止めて、テストを失敗させる。
  */
 import type { BrowserContext, Page, Request, Route } from "@playwright/test";
-import { CHECKOUT_REDIRECT_URL } from "../constants.ts";
-import { paidOrder } from "../support/catalog.ts";
+import { CHECKOUT_REDIRECT_URL, ORDER_NO } from "../constants.ts";
+import { confirmedOrder } from "../support/catalog.ts";
 import type { ItemQuantity } from "../../lib/types.ts";
 
 const GRAPHQL_ROUTE = "**/api/graphql";
@@ -146,8 +146,11 @@ export async function mockStripeHost(page: Page): Promise<void> {
 
 /** 決済の確認への応答 */
 export type VerifyReply =
-  /** 支払い済み。購入した品目と数量から、実サーバと同じ形の注文を返す */
-  | { kind: "paid"; items: ItemQuantity[] }
+  /**
+   * 支払い済み。購入した品目と数量から、実サーバと同じ形の注文（DB に確定した注文。注文番号つき）を返す。
+   * 注文番号は orderNo（既定は ORDER_NO）
+   */
+  | { kind: "paid"; items: ItemQuantity[]; orderNo?: string }
   /** 未払い、または session が存在しない（200 { paid: false }） */
   | { kind: "unpaid" }
   /** 確認できなかった（502 など） */
@@ -191,7 +194,14 @@ export async function mockVerify(
         calls.push({ sessionId, realStatus: null });
         return route.fulfill({
           status: 200,
-          json: { paid: true, order: paidOrder(sessionId ?? "", reply.items) },
+          json: {
+            paid: true,
+            order: confirmedOrder(
+              sessionId ?? "",
+              reply.items,
+              reply.orderNo ?? ORDER_NO,
+            ),
+          },
         });
       case "unpaid":
         calls.push({ sessionId, realStatus: null });

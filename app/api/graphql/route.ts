@@ -1,8 +1,10 @@
+import { getDb } from "@/lib/db/client";
 import { getStripe } from "@/lib/stripe";
 import { createGraphqlHandler } from "@/lib/graphql/handler";
 
 const handler = createGraphqlHandler({
   getStripe,
+  getDb,
   baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
 });
 

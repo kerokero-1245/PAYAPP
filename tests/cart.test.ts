@@ -8,9 +8,12 @@ import assert from "node:assert/strict";
 import { getProductById } from "../lib/catalog.ts";
 import {
   MAX_QUANTITY,
+  MAX_SETTLED_SESSIONS,
   clampQuantity,
   reconcileCart,
+  reconcileSettledSessions,
   removePurchasedFromCart,
+  settlePurchase,
 } from "../lib/cart.ts";
 
 test("価格・商品名は保存した値ではなくカタログから引く", () => {
@@ -87,4 +90,68 @@ test("決済した品目と数量だけを取り除き、決済後に足した�
     [3, 1, 1],
   );
   assert.deepEqual(removePurchasedFromCart([], [{ id: "1", quantity: 1 }]), []);
+});
+
+test("同じ決済の購入分は 1 回しか取り除かない（成功ページを開き直しても、買った分が余計に消えない）", () => {
+  const cart = {
+    items: reconcileCart([
+      { id: "1", quantity: 3 },
+      { id: "5", quantity: 2 },
+    ]),
+    settledSessions: [],
+  };
+  const bought = [{ id: "1", quantity: 1 }];
+
+  const once = settlePurchase(cart, "cs_test_a", bought);
+  assert.deepEqual(
+    once.items.map((i) => [i.id, i.quantity]),
+    [
+      ["1", 2],
+      ["5", 2],
+    ],
+  );
+  assert.deepEqual(once.settledSessions, ["cs_test_a"]);
+
+  // 2 回目（再読み込み・開き直し）は何もしない: 同じ決済なので、カートは元のオブジェクトのまま
+  assert.equal(settlePurchase(once, "cs_test_a", bought), once);
+
+  // 別の決済の購入分は、別に取り除く
+  const other = settlePurchase(once, "cs_test_b", bought);
+  assert.deepEqual(
+    other.items.map((i) => [i.id, i.quantity]),
+    [
+      ["1", 1],
+      ["5", 2],
+    ],
+  );
+  assert.deepEqual(other.settledSessions, ["cs_test_a", "cs_test_b"]);
+});
+
+test("取り除き済みの決済は新しい MAX_SETTLED_SESSIONS 件だけ覚え、localStorage から戻すときは文字列だけ拾う", () => {
+  let cart = { items: reconcileCart([]), settledSessions: [] as string[] };
+  for (let n = 0; n < MAX_SETTLED_SESSIONS + 5; n++) {
+    cart = settlePurchase(cart, `cs_test_${n}`, []);
+  }
+  assert.equal(cart.settledSessions.length, MAX_SETTLED_SESSIONS);
+  assert.equal(cart.settledSessions[0], "cs_test_5", "古いものから忘れる");
+  assert.equal(
+    cart.settledSessions.at(-1),
+    `cs_test_${MAX_SETTLED_SESSIONS + 4}`,
+  );
+
+  assert.deepEqual(
+    reconcileSettledSessions(["cs_test_a", 1, null, "", { id: "x" }, "cs_b"]),
+    ["cs_test_a", "cs_b"],
+  );
+  for (const notArray of [undefined, null, "cs_test_a", 1, {}]) {
+    assert.deepEqual(reconcileSettledSessions(notArray), []);
+  }
+  const tooMany = Array.from(
+    { length: MAX_SETTLED_SESSIONS + 3 },
+    (_, n) => `cs_${n}`,
+  );
+  assert.deepEqual(
+    reconcileSettledSessions(tooMany),
+    tooMany.slice(-MAX_SETTLED_SESSIONS),
+  );
 });

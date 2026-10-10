@@ -1,10 +1,13 @@
 /**
- * 決済成功ページ（支払い済み）: 確認ルートが支払い済みと返したときだけ、その内容で注文を 1 件記録し、
- * 買った分だけをカートから外す。再読み込みしても二重に記録しない。
+ * 決済成功ページ（支払い済み）: 確認ルートが「支払い済み」と、サーバが DB に確定した注文（注文番号つき）を返したときだけ、
+ * その注文番号を出し、買った分だけをカートから外す。再読み込みしても二重に外さない。
+ * 注文の記録先はサーバの DB で、ブラウザの localStorage には何も記録しない。
  * 確認ルートの応答はモックする（実際に支払った session の照会は実決済が要るため E2E では行わない）。
+ * DB への確定そのもの（冪等・Webhook と成功ページの競合・未払いは作らない）は、単体テスト
+ * （tests/fulfillment.test.ts・webhook.test.ts・checkout-verify.test.ts）が PGlite で確かめる。
  */
 import { test, expect } from "./fixtures/index.ts";
-import { PATHS, SESSION_IDS } from "./constants.ts";
+import { ORDER_NO, PATHS, SESSION_IDS } from "./constants.ts";
 import {
   quantitiesOf,
   readCart,
@@ -12,11 +15,11 @@ import {
   seedStorage,
 } from "./fixtures/storage.ts";
 import { mockVerify } from "./fixtures/stripe-mock.ts";
-import { CART_ITEMS, product, totalPrice, yen } from "./support/catalog.ts";
+import { CART_ITEMS } from "./support/catalog.ts";
 import { mainRegion, open, reload } from "./support/page.ts";
 import type { ItemQuantity } from "../lib/types.ts";
 
-test("success: 支払い済みなら注文を 1 件だけ記録し、買った分だけカートから外す", async ({
+test("success: 支払い済みなら確認ルートが返した注文番号を出し、買った分だけカートから外す。再読み込みしても二重に外さず、ブラウザには注文を記録しない", async ({
   page,
   context,
 }) => {
@@ -32,45 +35,44 @@ test("success: 支払い済みなら注文を 1 件だけ記録し、買った�
     level: 1,
     name: "ご購入ありがとうございます",
   });
+  const orderNo = main.getByText(/^ORD-[0-9A-Z]+$/);
 
   await seedStorage(context, { cart: CART_ITEMS });
-  const verify = await mockVerify(page, { kind: "paid", items: bought });
+  const verify = await mockVerify(page, {
+    kind: "paid",
+    items: bought,
+    orderNo: ORDER_NO,
+  });
   await open(page, `${PATHS.success}?session_id=${SESSION_IDS.paid}`);
 
-  await test.step("注文番号が出て、注文は 1 件だけ記録される（支払った内容・カタログの価格）", async () => {
+  await test.step("確認ルートが返した注文番号が出る（ブラウザは番号を作らない）", async () => {
     await expect(confirmed).toBeVisible();
-    await expect.poll(async () => (await readOrders(page)).length).toBe(1);
-    const [order] = await readOrders(page);
-    expect(order).toMatchObject({
-      sessionId: SESSION_IDS.paid,
-      total: totalPrice(bought),
-    });
-    expect(quantitiesOf(order.items)).toEqual(bought);
-    await expect(main.getByText(/^ORD-[0-9A-Z]+$/)).toHaveText(order.id);
+    await expect(orderNo).toHaveText(ORDER_NO);
+    expect(verify.calls).toEqual([
+      { sessionId: SESSION_IDS.paid, realStatus: null },
+    ]);
   });
 
   await test.step("カートからは買った分だけが外れる", async () => {
     expect(quantitiesOf(await readCart(page))).toEqual(remaining);
   });
 
-  await test.step("再読み込みしても、注文は 1 件のまま・カートも変わらない（二重に記録しない）", async () => {
-    await reload(page);
-    await expect(confirmed).toBeVisible();
-    expect(verify.calls).toHaveLength(2);
-    expect(await readOrders(page)).toHaveLength(1);
-    expect(quantitiesOf(await readCart(page))).toEqual(remaining);
+  await test.step("注文はブラウザに記録しない（注文履歴の localStorage は空のまま）", async () => {
+    expect(await readOrders(page)).toEqual([]);
   });
 
-  await test.step("注文履歴に、その注文が 1 件ある", async () => {
-    const [order] = await readOrders(page);
+  await test.step("再読み込みしても、同じ注文番号が出て、カートも変わらない（買った分を二重に外さない）", async () => {
+    await reload(page);
+    await expect(confirmed).toBeVisible();
+    await expect(orderNo).toHaveText(ORDER_NO);
+    expect(verify.calls).toHaveLength(2);
+    expect(quantitiesOf(await readCart(page))).toEqual(remaining);
+    expect(await readOrders(page)).toEqual([]);
+  });
+
+  await test.step("「注文履歴を見る」で注文履歴のページへ進める", async () => {
+    // 注文履歴（/orders）はまだブラウザの履歴を読む。サーバの注文を読む形にするのは注文履歴の段なので、中身は確かめない
     await main.getByRole("link", { name: "注文履歴を見る" }).click();
     await expect(page).toHaveURL(PATHS.orders);
-    const articles = main.getByRole("article");
-    await expect(articles).toHaveCount(1);
-    await expect(articles).toContainText(order.id);
-    await expect(articles).toContainText(
-      `${product(first.id).name} × ${bought[0].quantity}`,
-    );
-    await expect(articles).toContainText(yen(order.total));
   });
 });

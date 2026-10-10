@@ -1,22 +1,24 @@
 /**
- * GraphQL の resolver（無状態）
+ * GraphQL の resolver
  * ---------------------------------------------------
  * 既存の純粋な関数（lib/catalog.ts・lib/checkout.ts）と、/checkout と共有する
- * createCheckoutSessionCore（lib/checkout-session.ts）を呼ぶだけで、サーバに状態を持たない。
- * Stripe は context.getStripe() 経由でだけ触る（server-only の Stripe クライアントのモジュールは import しない）。
+ * createCheckoutSessionCore（lib/checkout-session.ts）、注文を確定する fulfillCheckout（lib/fulfillment.ts）を呼ぶだけで、
+ * resolver 自身は状態を持たない（カートはブラウザ。注文は DB）。
+ * Stripe と DB は context.getStripe() / context.getDb() 経由でだけ触る（server-only のモジュールは import しない）。
+ * DB を引くのは orderBySession だけで、ほかのフィールドは DB に繋がない。
  */
 import { createSchema } from "graphql-yoga";
 import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.ts";
 import {
   CHECKOUT_ERRORS,
-  isSessionPaid,
-  isStripeNotFound,
   isValidSessionId,
   normalizeOrderItems,
-  orderFromSession,
 } from "../checkout.ts";
 import { createCheckoutSessionCore } from "../checkout-session.ts";
 import type { StripeLike } from "../checkout-session.ts";
+import type { Db } from "../db/connect.ts";
+import { fulfillCheckout } from "../fulfillment.ts";
+import type { StoredOrder } from "../fulfillment.ts";
 import { typeDefs } from "./sdl.ts";
 import type { ItemQuantity } from "../types.ts";
 import type {
@@ -31,6 +33,8 @@ import type {
 export type GraphqlContext = {
   request: Request;
   getStripe: () => StripeLike;
+  /** DB を返す関数（orderBySession が呼んだときだけ呼ばれる） */
+  getDb: () => Promise<Db>;
   baseUrl?: string;
 };
 
@@ -62,6 +66,23 @@ function toCartItems(items: ItemQuantity[]): CartItem[] {
     const product = findProduct(id);
     return { product, quantity, subtotal: product.price * quantity };
   });
+}
+
+/**
+ * DB の注文から GraphQL の Order を作る。小計は購入した時点の単価（DB の写し）× 数量で、product.price（カタログの今の価格）とは限らない。
+ * product はカタログから引く（カタログから消えた商品を含む注文は、ここで例外になり GraphQL エラーになる）。
+ */
+function toGraphqlOrder(order: StoredOrder) {
+  return {
+    orderNo: order.orderNo,
+    sessionId: order.sessionId,
+    total: order.total,
+    items: order.items.map(({ id, price, quantity }): CartItem => ({
+      product: findProduct(id),
+      quantity,
+      subtotal: price * quantity,
+    })),
+  };
 }
 
 /** app/product/page.tsx と同じ絞り込み（カテゴリ → 小文字の部分一致） */
@@ -103,25 +124,24 @@ export const resolvers: Resolvers<GraphqlContext> = {
     orderBySession: async (_parent, { sessionId }, context) => {
       // 形の不正な id は実在しうる決済の参照ではない（既存の 400 → unpaid と同じ扱い）
       if (!isValidSessionId(sessionId)) return { state: "UNPAID", order: null };
-      let session;
-      try {
-        session = await context
-          .getStripe()
-          .checkout.sessions.retrieve(sessionId);
-      } catch (err) {
-        if (isStripeNotFound(err)) return { state: "UNPAID", order: null };
-        // それ以外は「確認できなかった」。例外の中身は maskedErrors で利用者に返さない
-        throw err;
+      // DB に確定済みならそれを返し、無ければ Stripe に 1 回だけ照会して確定する（成功ページ・Webhook と同じ fulfillCheckout）
+      const result = await fulfillCheckout({
+        db: await context.getDb(),
+        getStripe: context.getStripe,
+        sessionId,
+      });
+      switch (result.status) {
+        case "fulfilled":
+          return { state: "PAID", order: toGraphqlOrder(result.order) };
+        case "unpaid":
+        case "invalid-session-id":
+          return { state: "UNPAID", order: null };
+        case "stripe-error":
+          // 「確認できなかった」。例外の中身は maskedErrors で利用者に返さない
+          throw result.cause;
+        case "unreadable-order":
+          throw new Error(result.error);
       }
-      if (!isSessionPaid(session)) return { state: "UNPAID", order: null };
-      const result = orderFromSession(session);
-      if (!result.ok) throw new Error(result.error);
-      const { order } = result;
-      const items = toCartItems(order.items);
-      return {
-        state: "PAID",
-        order: { sessionId: order.sessionId, items, total: order.total },
-      };
     },
   },
   Mutation: {
