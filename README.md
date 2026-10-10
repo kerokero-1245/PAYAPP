@@ -10,7 +10,7 @@
 <img src="docs/screenshots/product.png" width="720" alt="MAISON の商品詳細ページ">
 
 ## 概要
-- 黒基調 × シャンパンゴールドの世界観（デザインシステムを `globals.css` に集約）
+- 黒基調 × シャンパンゴールドの世界観（トークンと部品の CSS を `app/styles/` に、React の共通部品を `components/ui/` に集約）
 - 商品一覧 / 詳細 / カート / 決済 / 注文履歴 / 会員（モック認証）まで一通りの EC フロー
 - Stripe Checkout（テストモード）による実決済フロー
 
@@ -34,6 +34,7 @@
 - **決済結果** — 成功 `/success`（Stripe で支払い済みを確認できたときだけ、支払った内容で注文を履歴へ記録し、購入した分をカートから取り除く）/ キャンセル `/cancel`
 - **注文履歴** `/orders` — 過去の注文を新しい順に表示
 - **会員** `/login` `/account` — ログイン / ログアウト（※ ポートフォリオ用のモック認証）
+- **案内ページ** — ブランドストーリー `/about`・配送について `/shipping`・お問い合わせ `/contact`（入力の検証だけを行い、送信も保存もしないデモ）・特定商取引法に基づく表記 `/legal`・プライバシーポリシー `/privacy`・よくある質問 `/faq`
 - 共通ヘッダー（カート点数バッジ・検索・アカウント）/ フッター / レスポンシブ対応
 
 ### 今後の拡張候補
@@ -61,6 +62,9 @@ npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認�
 
 # GraphQL の型を SDL から作り直す（lib/graphql/sdl.ts を変えたら実行してコミット）
 npm run codegen
+
+# 平坦な CSS の検査（下の「デザインの書き方」）
+npm run check:css
 ```
 
 ## 環境変数
@@ -92,7 +96,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
 4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
 
-`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
+`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。
 
 ## 決済の流れ
 1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.mjs`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
@@ -184,7 +188,14 @@ app/
   success / cancel      決済結果
   not-found.js          404 ページ
   orders / login / account
-components/              Header / Footer / ProductCard / CartItem / HeroSlider / SideMenu
+  about / shipping / contact / legal / privacy / faq   案内ページ（サーバコンポーネント。お問い合わせのフォームだけクライアント）
+  globals.css           CSS の入口（Tailwind と app/styles/ を読み込むだけ）
+  styles/tokens.css     デザイントークン（@theme と :root の変数）
+  styles/base.css       body・フォーカス・スキップリンクなどのベース
+  styles/components/    部品の CSS（1 部品 1 ファイル、すべて @layer components）
+  styles/motion.css     アニメーションと動きを減らす設定
+components/              Header / Footer / ProductCard / CartItem / HeroSlider / SideMenu / CategoryTile / PledgeGrid
+components/ui/          共通部品（Button / Section / PageHeader / SectionHeading / Card / EmptyState / StatusMessage / FormField / Price / QuantityStepper など）
 store/                  productStore / cartStore / authStore / orderStore（Zustand）
 lib/catalog.mjs         商品カタログ（クライアントとサーバで共有）
 lib/checkout.mjs        価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
@@ -194,8 +205,16 @@ lib/cart.mjs            カートをカタログに合わせる・購入分を�
 lib/site.mjs            サイト設定・戻り先 URL / metadataBase の決め方（純粋な関数）
 lib/stripe.js           Stripe クライアント（サーバ専用）
 lib/format.js           金額・日付の整形ユーティリティ
+lib/contact.mjs         お問い合わせの検証（純粋な関数）
+lib/policies.mjs        配送・保証・返品の文面（商品詳細・案内ページで共有）
+scripts/check-flat-css.mjs  平坦な CSS の検査（npm run check:css）
 tests/                  node --test のテスト
 ```
+
+## デザインの書き方
+- **見た目は共通部品に寄せる**: ページの `className` には配置と大きさのユーティリティ（`flex` `grid` `gap-*` `mt-*` `max-w-*` など）だけを書き、色・文字・枠・角丸・影・動きは `components/ui/` の部品か `app/styles/components/` の部品クラス（`.btn` `.card` `.heading` `.lead` …）で表す。ページ間で h1 の大きさ・上下余白・見出し下の線・カードの余白がそろうのはこのため
+- **平坦な CSS**: 1 クラス 1 役割の足し算（`.btn` + `.btn-outline` + `.btn-sm`）。子孫・子・兄弟の結合子、セレクタの入れ子、`:deep()`、`@apply`、`!important`、ID セレクタは使わない。ページ側も Tailwind の `!` 接尾辞・`group-hover:`・`space-y-*`・`divide-*`・任意値 `[…]` は使わない。状態は要素自身の `data-*` / `aria-current` で表す（例: 商品カードの画像の拡大は画像の `data-active`）。`npm run check:css` と CI が検査する
+- **層**: 部品クラスはすべて `@layer components`（ページのユーティリティが部品より勝つ）。body・スキップリンク・アニメーション・動きを減らす設定は層の外に置き、`!important` を使わずに効かせている（`app/styles/motion.css` の冒頭のコメント）
 
 ## 補足
 - 認証は現状バックエンドを持たないデモ実装です（パスワード検証なし・localStorage 保持）。

@@ -20,7 +20,6 @@
   --color-gold-deep: #9c7f45;
 
   /* ---- Feedback ---- */
-  --color-success: #6fbf8b;
   --color-danger: #d98a7a;
 
   /* ---- Fonts (layout.tsx の next/font が変数を供給) ---- */
@@ -44,7 +43,6 @@
   --gold-a28: rgba(198, 166, 100, 0.28);
   --gold-a35: rgba(198, 166, 100, 0.35);
   --gold-a45: rgba(198, 166, 100, 0.45);
-  --gold-a55: rgba(198, 166, 100, 0.55);
   --gold-a60: rgba(198, 166, 100, 0.6);
 
   /* 金の面の上の文字色 */

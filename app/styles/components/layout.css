@@ -18,9 +18,6 @@
   .container-narrow {
     max-width: 36rem;
   }
-  .container-form {
-    max-width: 28rem;
-  }
 }
 
 /* ページの上下余白（⑤-0: sm / md / lg + トップ専用） */
