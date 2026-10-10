@@ -1,6 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { appendOrder } from "@/lib/checkout";
+import type { NewOrder } from "@/lib/checkout";
+import type { Order } from "@/lib/types";
+
+type OrderState = {
+  /**
+   * 注文履歴（新しい順）。localStorage から戻すときは検査していない（形を信用している）ので、
+   * この型は実行時の保証ではない。
+   */
+  orders: Order[];
+  addOrder: (order: NewOrder) => void;
+  clearOrders: () => void;
+};
 
 /**
  * 注文履歴を管理する Zustand ストア
@@ -10,10 +22,10 @@ import { appendOrder } from "@/lib/checkout";
  * デモ実装なので、注文履歴はブラウザごとに別になる。
  * sessionId 付きの注文は同じ sessionId で二重に記録しない。
  */
-export const useOrderStore = create(
+export const useOrderStore = create<OrderState>()(
   persist(
     (set) => ({
-      orders: [], // { id, date, items, total, sessionId? }[]
+      orders: [],
 
       /** 注文を追加。id / date は呼び出し側で付与、無ければ生成。記録済みの sessionId なら何もしない */
       addOrder: (order) =>

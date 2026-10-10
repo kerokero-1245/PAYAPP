@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 /**
- * ブラウザに保存するもの（store/*.js の persist の name と同じ）。
+ * ブラウザに保存するもの（store/*.ts の persist の name と同じ）。
  * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行、注文は app/success の記録）
  */
 const STORAGE = [

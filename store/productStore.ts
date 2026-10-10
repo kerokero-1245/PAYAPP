@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { CATEGORIES, PRODUCTS, getProductById } from "@/lib/catalog";
+import type { Category, Product } from "@/lib/types";
 
 /**
  * 商品カタログを管理する Zustand ストア
@@ -12,7 +13,12 @@ import { CATEGORIES, PRODUCTS, getProductById } from "@/lib/catalog";
 /** カテゴリ定義（サイドメニュー・絞り込みで共有）と、id からの商品取得（カタログと同じ関数） */
 export { CATEGORIES, getProductById };
 
-export const useProductStore = create(() => ({
+type ProductState = {
+  products: Product[];
+  categories: Category[];
+};
+
+export const useProductStore = create<ProductState>(() => ({
   products: PRODUCTS,
   categories: CATEGORIES,
 }));

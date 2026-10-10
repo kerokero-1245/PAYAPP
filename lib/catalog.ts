@@ -1,7 +1,7 @@
 /**
  * 商品カタログ（素のモジュール）
  * ---------------------------------------------------
- * クライアントのストア（store/productStore.js）と、サーバのルート
+ * クライアントのストア（store/productStore.ts）と、サーバのルート
  * （/checkout・商品詳細の generateMetadata など）の両方から読む唯一の正本。
  * React や zustand に依存しないので、`node --test` からもそのまま import できる。
  */

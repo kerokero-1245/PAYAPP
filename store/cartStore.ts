@@ -5,6 +5,20 @@ import {
   reconcileCart,
   removePurchasedFromCart,
 } from "@/lib/cart";
+import type { CartLine, Product } from "@/lib/types";
+
+type CartState = {
+  items: CartLine[];
+  /** 既にカートにある商品は加算する。必要なのは商品の id だけ */
+  addItem: (product: Pick<Product, "id">, qty?: number) => void;
+  removeItem: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  /** 決済が済んだ品目と数量だけを取り除く（形が未検査の値を受ける） */
+  removePurchased: (purchasedItems: unknown) => void;
+  clearCart: () => void;
+  totalPrice: () => number;
+  totalItems: () => number;
+};
 
 /**
  * カート状態管理用の Zustand ストア
@@ -15,7 +29,7 @@ import {
  * - 価格・商品名などはカタログから id で引き直す（localStorage に残った値は信用しない）。
  *   カタログに無い id の行は戻すときに外す
  */
-export const useCartStore = create(
+export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
@@ -61,7 +75,7 @@ export const useCartStore = create(
       // localStorage から戻すときに、カタログに合わせて作り直す
       merge: (persisted, current) => ({
         ...current,
-        items: reconcileCart(persisted?.items),
+        items: reconcileCart((persisted as { items?: unknown } | null | undefined)?.items),
       }),
     }
   )

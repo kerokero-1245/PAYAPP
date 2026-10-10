@@ -1,5 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { User } from "@/lib/types";
+
+type AuthState = {
+  /**
+   * ログイン中の利用者（未ログインは null）。localStorage から戻すときは検査していない（形を信用している）ので、
+   * この型は実行時の保証ではない。
+   */
+  user: User | null;
+  /** 名前（任意）が空ならメールのローカル部を表示名にする */
+  login: (input: { email: string; name?: string }) => void;
+  logout: () => void;
+};
 
 /**
  * 認証状態管理用の Zustand ストア（モック実装）
@@ -8,10 +20,10 @@ import { persist } from "zustand/middleware";
  *   デモ用のモック認証。ログイン状態を localStorage に永続化する。
  *   実運用では NextAuth 等に差し替える想定。
  */
-export const useAuthStore = create(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: null, // { name, email } | null
+      user: null,
 
       login: ({ email, name }) =>
         set({

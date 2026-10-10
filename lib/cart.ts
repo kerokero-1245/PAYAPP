@@ -5,7 +5,7 @@
  * - カタログに無い id の行は外す
  * - 数量は 1 行あたり MIN_QUANTITY〜MAX_QUANTITY。同じ id の行は数量を合算してから上限を当てる
  *
- * store/cartStore.js（localStorage から戻すとき・追加するとき）と、
+ * store/cartStore.ts（localStorage から戻すとき・追加するとき）と、
  * 決済後に購入した分だけをカートから取り除く処理で使う。
  */
 import { getProductById } from "./catalog.ts";
