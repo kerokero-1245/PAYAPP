@@ -1,0 +1,26 @@
+# 生成物・ビルド出力・依存・ロックファイルは整形しない
+node_modules
+.next
+out
+package-lock.json
+
+# GraphQL Code Generator の生成物（整形すると CI の鮮度確認 codegen → git diff が落ちる）
+lib/graphql/__generated__
+
+# drizzle-kit の生成物（マイグレーションの SQL と meta。整形すると db:generate の鮮度確認が落ちる）
+drizzle/
+
+# 平坦な CSS の検査の見本（バイト列を保つ）
+tests/fixtures/
+
+# ローカルの DB（PGlite）
+.pglite
+
+# E2E の出力
+playwright-report
+test-results
+blob-report
+e2e-results
+
+# README のスクリーンショット
+docs/screenshots
