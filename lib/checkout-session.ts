@@ -1,14 +1,22 @@
 /**
- * Stripe Checkout Session の作成（/checkout と GraphQL の Mutation で共有する本体）
+ * Stripe Checkout Session の作成と決済の確認（Route Handler と GraphQL で共有する本体）
  * ---------------------------------------------------
  * - readBodyWithLimit: リクエスト本文を上限つきで読む（超えたら null）
- * - createCheckoutSessionCore: 検査・価格決定・戻り先の決定・sessions.create をまとめて行う
+ * - createCheckoutSessionCore: 検査・価格決定・戻り先の決定・sessions.create をまとめて行う（/checkout と GraphQL の Mutation）
+ * - verifyCheckoutSession: session_id から Checkout Session を引き、支払い済みなら注文を返す（/api/checkout/session）
  *
  * Stripe クライアントは引数の getStripe() から受け取る（lib/stripe.ts は server-only なので
  * ここでは import しない。node --test から偽の Stripe を差し込めるようにするため）。
  */
 import type Stripe from "stripe";
-import { buildLineItems, encodeOrderMetadata } from "./checkout.ts";
+import {
+  buildLineItems,
+  encodeOrderMetadata,
+  isSessionPaid,
+  isStripeNotFound,
+  isValidSessionId,
+  orderFromSession,
+} from "./checkout.ts";
 import { resolveReturnOrigin } from "./site.ts";
 
 /**
@@ -102,4 +110,57 @@ export async function createCheckoutSessionCore({
   } catch (cause) {
     return { ok: false, kind: "stripe", cause };
   }
+}
+
+/** verifyCheckoutSession の引数 */
+export type VerifyCheckoutSessionInput = {
+  /** 確認ルートが受けたリクエストの URL（?session_id= を読む） */
+  requestUrl: string;
+  getStripe: () => StripeLike;
+};
+
+/** 確認結果は Stripe の状態そのものなので、どの応答もキャッシュさせない */
+const NO_STORE = { "Cache-Control": "no-store" };
+
+/**
+ * 決済確認の本体: ?session_id=cs_... の Checkout Session を Stripe から取得し、payment_status が "paid" の
+ * ときだけ { paid: true, order } を返す。order は session の metadata（購入した id と数量）をカタログに当てて
+ * 作った注文の内容（品目・単価・数量・合計）。
+ *
+ *  - 200 { paid: false }   未払い、またはその session が存在しない
+ *  - 400                   session_id の形が不正（Stripe は呼ばない）
+ *  - 500 / 502             確認できなかった（成功ページは「確認が取れていません」を出す）
+ */
+export async function verifyCheckoutSession({ requestUrl, getStripe }: VerifyCheckoutSessionInput): Promise<Response> {
+  const sessionId = new URL(requestUrl).searchParams.get("session_id");
+  if (!isValidSessionId(sessionId)) {
+    return Response.json({ paid: false, error: "session_id が不正です" }, { status: 400, headers: NO_STORE });
+  }
+
+  let session: unknown;
+  try {
+    session = await getStripe().checkout.sessions.retrieve(sessionId);
+  } catch (err) {
+    if (isStripeNotFound(err)) {
+      return Response.json({ paid: false }, { headers: NO_STORE });
+    }
+    console.error("Checkout session verify error:", err);
+    return Response.json(
+      { paid: false, error: "決済情報を確認できませんでした" },
+      { status: 502, headers: NO_STORE }
+    );
+  }
+
+  if (!isSessionPaid(session)) {
+    return Response.json({ paid: false }, { headers: NO_STORE });
+  }
+  const result = orderFromSession(session);
+  if (!result.ok) {
+    console.error("Checkout session order error:", result.error);
+    return Response.json(
+      { paid: false, error: "注文の内容を確認できませんでした" },
+      { status: 500, headers: NO_STORE }
+    );
+  }
+  return Response.json({ paid: true, order: result.order }, { headers: NO_STORE });
 }

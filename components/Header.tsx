@@ -217,7 +217,14 @@ export default function Header() {
             >
               <CartIcon />
               {mounted && totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 badge-count">{totalItems}</span>
+                // リンクが aria-label="カート" を持つので、子の数字は名前に入らない。点数の読み上げ名はバッジ自身に付ける
+                <span
+                  role="img"
+                  aria-label={`カート内 ${totalItems} 点`}
+                  className="absolute -top-2 -right-2 badge-count"
+                >
+                  {totalItems}
+                </span>
               )}
             </Link>
           </div>
