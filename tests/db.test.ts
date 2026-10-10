@@ -482,6 +482,75 @@ test("接続先: DATABASE_URL があれば Neon。migrate は DATABASE_URL_UNPOO
   });
 });
 
+test("接続先: 本番（NODE_ENV=production）で接続先が決まらなければ例外にする。PGlite のファイルに黙って切り替えない", () => {
+  const pooler = "postgres://app@pooler.example/db";
+  const direct = "postgres://app@direct.example/db";
+  const production = { NODE_ENV: "production" };
+
+  // 接続先が無い（未設定・空・空白だけ）。runtime は DATABASE_URL_UNPOOLED だけでは足りない
+  const undecided: Record<string, string | undefined>[] = [
+    production,
+    { ...production, DATABASE_URL: undefined },
+    { ...production, DATABASE_URL: "" },
+    { ...production, DATABASE_URL: "  \n" },
+    { ...production, PGLITE_DATA_DIR: "" },
+    { ...production, PGLITE_DATA_DIR: "  " },
+  ];
+  for (const env of undecided) {
+    for (const purpose of ["runtime", "migrate"] as const) {
+      assert.throws(
+        () => resolveDbTarget(env, purpose),
+        (error: unknown) =>
+          error instanceof Error &&
+          error.message.includes("DATABASE_URL") &&
+          error.message.includes("PGLITE_DATA_DIR"),
+        `${purpose} ${JSON.stringify(env)}`,
+      );
+    }
+  }
+  assert.throws(
+    () => resolveDbTarget({ ...production, DATABASE_URL_UNPOOLED: direct }),
+    /DATABASE_URL/,
+    "runtime は DATABASE_URL_UNPOOLED を見ない",
+  );
+
+  // 接続先があれば本番でも通る
+  assert.deepEqual(resolveDbTarget({ ...production, DATABASE_URL: pooler }), {
+    kind: "neon",
+    url: pooler,
+  });
+  assert.deepEqual(
+    resolveDbTarget(
+      { ...production, DATABASE_URL_UNPOOLED: direct },
+      "migrate",
+    ),
+    { kind: "neon", url: direct },
+  );
+
+  // 本番以外（dev・test・NODE_ENV 未設定）は従来どおり、既定の PGlite
+  for (const NODE_ENV of ["development", "test", "", undefined]) {
+    assert.deepEqual(resolveDbTarget({ NODE_ENV }), {
+      kind: "pglite",
+      dataDir: PGLITE_DATA_DIR,
+    });
+  }
+});
+
+test("接続先: PGLITE_DATA_DIR があれば、本番ビルドでもそのディレクトリの PGlite。DATABASE_URL があれば Neon が先", () => {
+  const e2e = { kind: "pglite", dataDir: ".pglite-e2e" };
+  const url = "postgres://app@pooler.example/db";
+  for (const NODE_ENV of ["production", "development", "test", undefined]) {
+    const env = { NODE_ENV, PGLITE_DATA_DIR: " .pglite-e2e " };
+    assert.deepEqual(resolveDbTarget(env), e2e, String(NODE_ENV));
+    assert.deepEqual(resolveDbTarget(env, "migrate"), e2e, String(NODE_ENV));
+    assert.deepEqual(
+      resolveDbTarget({ ...env, DATABASE_URL: url }),
+      { kind: "neon", url },
+      "接続文字列があれば PGLITE_DATA_DIR は使わない",
+    );
+  }
+});
+
 test("接続先: postgres:// 以外の値は例外にし、パスワードをメッセージにも表示文にも出さない", () => {
   for (const url of [
     "mysql://app:s3cret@host/db",

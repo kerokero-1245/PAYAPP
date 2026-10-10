@@ -2,8 +2,11 @@
  * DB への接続（Neon か PGlite かを決めるのは、このファイルの resolveDbTarget の 1 か所だけ）
  * ---------------------------------------------------
  * - DATABASE_URL がある → Neon（本番・プレビュー・Neon の開発ブランチ）。@neondatabase/serverless の Pool（WebSocket）なのでトランザクションが使える
- * - DATABASE_URL が無い → PGlite（Postgres を WASM で同じプロセスの中に立てる）。ローカルのファイル（.pglite/）に保存する。
+ * - DATABASE_URL が無い → PGlite（Postgres を WASM で同じプロセスの中に立てる）。ローカルのファイル（既定は .pglite/）に保存する。
  *   Neon のアカウントもネットも要らない。ファイルを開けるのは 1 プロセスだけなので、dev サーバを止めてから db:migrate / db:seed を打つ
+ *   保存先は PGLITE_DATA_DIR で変えられる（E2E は専用のディレクトリを使う）
+ * - 本番（NODE_ENV=production）で DATABASE_URL が無いときは例外にする。本番で PGlite に黙って切り替わると、書き込めない（Vercel）か、
+ *   消える DB に注文を書くことになるため。本番ビルドをローカルで動かすとき（next start・E2E）は、PGLITE_DATA_DIR で PGlite を明示する
  *
  * Neon のドライバは WebSocket のプロキシ経由で Neon に繋ぐ。素の Postgres（docker の postgres など）には繋げない。
  * アプリが受け取るのは接続（Db）で、これを関数の引数で渡す（今の getStripe と同じ流儀。テストは lib/db/test-helpers.ts の PGlite を差し込む）。
@@ -28,7 +31,10 @@ export type PgliteConnection = DbConnection<PgliteDatabase<typeof schema>> & {
   client: PGlite;
 };
 
-/** PGlite の保存先（リポジトリ直下。.gitignore 済み）。PGlite は親のディレクトリを作らないので、入れ子にしない */
+/**
+ * PGlite の既定の保存先（リポジトリ直下。.gitignore 済み）。PGlite は親のディレクトリを作らないので、入れ子にしない。
+ * 環境変数 PGLITE_DATA_DIR があればそちらが先（E2E は .pglite-e2e を使い、開発の DB と取り合わない）
+ */
 export const PGLITE_DATA_DIR = ".pglite";
 
 /** 接続先 */
@@ -52,7 +58,11 @@ function nonEmpty(value: string | undefined): string | undefined {
 
 /**
  * 環境変数から接続先を決める（Neon か PGlite かの切り替えはここだけ）。
- * 接続文字列にはパスワードが入るので、形が違うときのエラー文には値を入れない。
+ *  1. DATABASE_URL（migrate では先に DATABASE_URL_UNPOOLED）があれば Neon
+ *  2. PGLITE_DATA_DIR があれば、そのディレクトリの PGlite（PGlite を使うという明示。本番ビルドでも使える）
+ *  3. NODE_ENV=production なら例外（接続先を決めずに本番で動かさない）
+ *  4. それ以外（dev・test・scripts）は、既定のディレクトリ（.pglite/）の PGlite
+ * 接続文字列にはパスワードが入るので、エラー文には値を入れない。
  */
 export function resolveDbTarget(
   env: Readonly<Record<string, string | undefined>>,
@@ -61,13 +71,23 @@ export function resolveDbTarget(
   const url =
     (purpose === "migrate" ? nonEmpty(env.DATABASE_URL_UNPOOLED) : undefined) ??
     nonEmpty(env.DATABASE_URL);
-  if (url === undefined) return { kind: "pglite", dataDir: PGLITE_DATA_DIR };
-  if (!POSTGRES_URL.test(url)) {
+  if (url !== undefined) {
+    if (!POSTGRES_URL.test(url)) {
+      throw new Error(
+        "DATABASE_URL は postgres:// か postgresql:// で始まる接続文字列にしてください",
+      );
+    }
+    return { kind: "neon", url };
+  }
+  const dataDir = nonEmpty(env.PGLITE_DATA_DIR);
+  if (dataDir !== undefined) return { kind: "pglite", dataDir };
+  if (env.NODE_ENV === "production") {
     throw new Error(
-      "DATABASE_URL は postgres:// か postgresql:// で始まる接続文字列にしてください",
+      "本番（NODE_ENV=production）では DATABASE_URL が必要です。PGlite のファイルには黙って切り替えません。" +
+        "ローカルで本番ビルドを動かすときは、PGLITE_DATA_DIR で PGlite の保存先を明示してください",
     );
   }
-  return { kind: "neon", url };
+  return { kind: "pglite", dataDir: PGLITE_DATA_DIR };
 }
 
 /** 接続先を画面・ログに出すための文（接続文字列そのものは出さない） */
