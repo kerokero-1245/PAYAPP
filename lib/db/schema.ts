@@ -6,7 +6,8 @@
  *
  * 商品の正本は lib/catalog.ts のまま。products 表は scripts/seed-products.ts がカタログから upsert する
  * （order_items の外部キーと在庫のため。商品ページの SSG は DB を読まない）。
- * 段 1 では画面も API も DB をまだ読まない。
+ * 注文は fulfillCheckout（lib/fulfillment.ts）だけが書く。Webhook・決済確認 API・GraphQL の orderBySession が、それを通して orders / order_items / stripe_events を読み書きする。
+ * 商品ページ・一覧・カートは DB を読まない。
  */
 import { sql } from "drizzle-orm";
 import {

@@ -1,7 +1,7 @@
 // DB 基盤（スキーマ・マイグレーション・seed・接続先の決め方）のテスト。実行: npm test
 //
-// なぜあるか: 注文と在庫をサーバに置くための土台（段 1）で、まだ画面は DB を読まない。
-// 後の段（Webhook での注文確定・認証・注文履歴・在庫）は、ここで固定する制約を前提にする。
+// なぜあるか: 注文と在庫をサーバに置くための土台。注文の確定（fulfillCheckout。tests/fulfillment.test.ts ほか）はここで固定する制約を前提に動き、
+// 後の段（認証・注文履歴・在庫）も同じ制約を前提にする。
 //  - 二重確定: orders.stripe_session_id と stripe_events.id の一意制約で止める
 //  - 数量: order_items.quantity は lib/cart.ts の MIN_QUANTITY〜MAX_QUANTITY と同じ範囲
 //  - 在庫: seed を打ち直しても stock を上書きしない
