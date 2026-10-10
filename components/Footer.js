@@ -62,7 +62,7 @@ export default function Footer() {
               <ul className="flex flex-col gap-2.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="footer-link">
+                    <Link href={l.href} className="link-quiet link-quiet-sm">
                       {l.label}
                     </Link>
                   </li>

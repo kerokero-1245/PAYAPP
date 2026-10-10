@@ -1,17 +1,9 @@
 /* 商品一覧のサイドのカテゴリ */
 @layer components {
+  /* .link-quiet .link-quiet-sm に足す（左の線と字間） */
   .side-link {
     border-left: 2px solid transparent;
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
     letter-spacing: 0.025em;
-    color: var(--color-muted);
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  @media (hover: hover) {
-    .side-link:hover {
-      color: var(--color-cream);
-    }
   }
   /* 選択中（aria-current="page" がリンク自身に付く。値に結び付けず、属性があれば選択中とする） */
   .side-link[aria-current] {

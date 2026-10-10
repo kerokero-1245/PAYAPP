@@ -22,17 +22,10 @@
     color: var(--color-cream);
   }
 
-  /* デスクトップのナビ（現在地はリンク自身の aria-current） */
+  /* デスクトップのナビ（.link-quiet に足す。現在地はリンク自身の aria-current） */
   .nav-link {
     font-size: 0.82rem;
     letter-spacing: 0.12em;
-    color: var(--color-muted);
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  @media (hover: hover) {
-    .nav-link:hover {
-      color: var(--color-cream);
-    }
   }
   .nav-link[aria-current] {
     color: var(--color-gold);
@@ -58,18 +51,9 @@
   .menu-btn {
     color: var(--color-cream);
   }
-  .icon-link {
-    color: var(--color-muted);
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  @media (hover: hover) {
-    .icon-link:hover {
-      color: var(--color-cream);
-    }
-  }
   .cart-link {
     color: var(--color-cream);
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color var(--duration-quick) var(--ease-standard);
   }
   @media (hover: hover) {
     .cart-link:hover {

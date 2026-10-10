@@ -9,22 +9,11 @@
   }
   .footer-social-item {
     cursor: pointer;
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color var(--duration-quick) var(--ease-standard);
   }
   @media (hover: hover) {
     .footer-social-item:hover {
       color: var(--color-gold);
-    }
-  }
-  .footer-link {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
-    color: var(--color-muted);
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  @media (hover: hover) {
-    .footer-link:hover {
-      color: var(--color-cream);
     }
   }
   /* 下段（著作権・規約のリンク・タグライン） */
@@ -34,7 +23,7 @@
     color: var(--color-faint);
   }
   .footer-legal-link {
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color var(--duration-quick) var(--ease-standard);
   }
   @media (hover: hover) {
     .footer-legal-link:hover {

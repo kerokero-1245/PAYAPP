@@ -158,7 +158,7 @@ export default function CartPage() {
               </p>
             )}
 
-            <Link href="/product" className="quiet-link block text-center mt-4">
+            <Link href="/product" className="link-quiet link-quiet-sm block text-center mt-4">
               買い物を続ける
             </Link>
 

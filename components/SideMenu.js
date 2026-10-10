@@ -44,7 +44,7 @@ export default function SideMenu() {
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className="side-link flex items-baseline gap-2 pl-4 py-2"
+                  className="link-quiet link-quiet-sm side-link flex items-baseline gap-2 pl-4 py-2"
                 >
                   <span>{cat.label}</span>
                   <span className="side-link-sub">{cat.jp}</span>

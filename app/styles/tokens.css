@@ -82,8 +82,12 @@
   --lh-3xl: calc(2.25 / 1.875);
   --lh-4xl: calc(2.5 / 2.25);
 
-  /* 動き */
+  /* 動き（--ease-standard は Tailwind の transition の既定、--ease-decelerate は ease-out と同じ曲線） */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  /* リンクやボタンの色が変わる速さ */
+  --duration-quick: 0.15s;
 }
 
 /*

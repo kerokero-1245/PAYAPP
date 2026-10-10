@@ -156,7 +156,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-5 lg:gap-8">
             <Nav
               pathname={pathname}
-              linkClass="link-underline nav-link"
+              linkClass="link-underline link-quiet nav-link"
             />
           </nav>
 
@@ -179,7 +179,7 @@ export default function Header() {
             {/* アカウント */}
             <Link
               href={mounted && user ? "/account" : "/login"}
-              className="icon-link flex items-center gap-2"
+              className="link-quiet flex items-center gap-2"
               aria-label="アカウント"
             >
               <UserIcon />

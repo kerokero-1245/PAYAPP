@@ -2,7 +2,7 @@
 @layer components {
   /* カード全体に乗ったときに画像を少し拡大する。状態は画像自身の data-active（React が付ける） */
   .zoom {
-    transition: scale 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: scale 0.7s var(--ease-standard);
   }
   .zoom[data-active="true"] {
     scale: 1.05;
@@ -10,7 +10,7 @@
 
   /* 商品名などのリンクの見出し */
   .heading-link {
-    transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color var(--duration-quick) var(--ease-standard);
   }
   @media (hover: hover) {
     .heading-link:hover {

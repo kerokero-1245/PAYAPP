@@ -1,5 +1,23 @@
 /* リンク */
 @layer components {
+  /*
+   * 控えめなリンク（補助の色 → hover で本文の色）。ヘッダーのナビ・アイコン、サイドメニュー、フッターの列、
+   * 「買い物を続ける」で共有する。大きさ・字間・枠は修飾クラス（.link-quiet-sm や部品のクラス）で足す
+   */
+  .link-quiet {
+    color: var(--color-muted);
+    transition: color var(--duration-quick) var(--ease-standard);
+  }
+  @media (hover: hover) {
+    .link-quiet:hover {
+      color: var(--color-cream);
+    }
+  }
+  .link-quiet-sm {
+    font-size: 0.875rem;
+    line-height: var(--lh-sm);
+  }
+
   /* リンクの下線アニメ */
   .link-underline {
     position: relative;
