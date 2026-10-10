@@ -64,7 +64,7 @@ function toCartItems(items: ItemQuantity[]): CartItem[] {
   });
 }
 
-/** app/product/page.js と同じ絞り込み（カテゴリ → 小文字の部分一致） */
+/** app/product/page.tsx と同じ絞り込み（カテゴリ → 小文字の部分一致） */
 function filterProducts(category?: string | null, q?: string | null): Product[] {
   const slug = CATEGORIES.find((c) => c.slug === (category ?? "all"))?.slug ?? "all";
   const query = (q ?? "").trim().toLowerCase();

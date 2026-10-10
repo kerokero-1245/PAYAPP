@@ -23,7 +23,7 @@ export default function CartPage() {
 
   const mounted = useMounted();
   const [loading, setLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // GraphQL の createCheckoutSession → url → Stripe へ遷移。失敗したらサーバが返した理由を出す
   const handleCheckout = async () => {

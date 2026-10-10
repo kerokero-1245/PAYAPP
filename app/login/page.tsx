@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
@@ -25,7 +26,7 @@ export default function LoginPage() {
   // マウント後に「ログイン済み」表示を出して hydration ズレを防ぐ
   const mounted = useMounted();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email.trim()) return;
     login({ email: email.trim(), name });

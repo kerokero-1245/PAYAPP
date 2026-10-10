@@ -24,13 +24,15 @@ import Button from "@/components/ui/Button";
 import QuantityStepper from "@/components/ui/QuantityStepper";
 import SectionHeading from "@/components/ui/SectionHeading";
 
+type ProductDetailProps = {
+  id: string;
+};
+
 /**
  * 商品詳細（クライアント側の本体）
- * 存在しない id は page.js（サーバ）が notFound() で 404 にするので、ここには来ない。
- *
- * @param {{ id: string }} props
+ * 存在しない id は page.tsx（サーバ）が notFound() で 404 にするので、ここには来ない。
  */
-export default function ProductDetail({ id }) {
+export default function ProductDetail({ id }: ProductDetailProps) {
   const product = getProductById(id);
 
   const products = useProductStore((s) => s.products);

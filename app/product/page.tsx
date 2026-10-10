@@ -39,7 +39,7 @@ function ShopInner() {
   });
 
   // カテゴリ遷移用の href（検索語 q は維持、all は素の /product）
-  const buildHref = (slug) => {
+  const buildHref = (slug: string) => {
     const params = new URLSearchParams();
     if (slug !== "all") params.set("category", slug);
     if (q) params.set("q", q);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import DemoNote from "@/components/ui/DemoNote";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
@@ -15,6 +16,11 @@ import {
   validateContact,
   validateContactField,
 } from "@/lib/contact";
+import type { ContactField } from "@/lib/contact";
+import type { ContactValues } from "@/lib/types";
+
+/** 欄ごとのエラー文（無い欄は undefined） */
+type ContactErrors = Partial<Record<ContactField, string | undefined>>;
 
 const DEMO_NOTE =
   "このサイトはポートフォリオ用のデモです。入力内容はどこにも送信・保存されません（このブラウザにも残りません）。";
@@ -29,36 +35,40 @@ const DEMO_NOTE =
  * 結果の領域は role="status" で読み上げる。
  */
 export default function ContactForm() {
-  const [values, setValues] = useState(EMPTY_CONTACT);
-  const [errors, setErrors] = useState({});
+  const [values, setValues] = useState<ContactValues>(EMPTY_CONTACT);
+  const [errors, setErrors] = useState<ContactErrors>({});
   const [submitted, setSubmitted] = useState(false);
-  const [sent, setSent] = useState(null);
+  const [sent, setSent] = useState<ContactValues | null>(null);
   /** フォーカスを移す欄（送信のたびに新しいオブジェクトにして、同じ欄でも effect を走らせる） */
-  const [focusField, setFocusField] = useState(null);
-  const formRef = useRef(null);
-  const sentTitleRef = useRef(null);
+  const [focusField, setFocusField] = useState<{ name: ContactField } | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const sentTitleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (focusField) formRef.current?.elements.namedItem(focusField.name)?.focus();
+    // 欄の名前は FormField の id（= name）。どれも input / textarea / select なので focus できる
+    if (focusField) (formRef.current?.elements.namedItem(focusField.name) as HTMLElement | null)?.focus();
   }, [focusField]);
 
   useEffect(() => {
     if (sent) sentTitleRef.current?.focus();
   }, [sent]);
 
-  const change = (field) => (e) => setValues((v) => ({ ...v, [field]: e.target.value }));
-  const blur = (field) => () => {
+  const change =
+    (field: ContactField) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setValues((v) => ({ ...v, [field]: e.target.value }));
+  const blur = (field: ContactField) => () => {
     if (!submitted) return;
     setErrors((prev) => ({ ...prev, [field]: validateContactField(field, values) }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitted(true);
     const result = validateContact(values);
     setErrors(result.errors);
     if (!result.ok) {
-      setFocusField({ name: CONTACT_FIELDS.find((f) => result.errors[f]) });
+      // !result.ok なので、エラーのある欄が少なくとも 1 つある
+      setFocusField({ name: CONTACT_FIELDS.find((f) => result.errors[f])! });
       return;
     }
     setSent(values);

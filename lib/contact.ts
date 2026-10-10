@@ -1,7 +1,7 @@
 /**
  * お問い合わせフォームの検証（純粋関数）。
  * ---------------------------------------------------
- * フォーム（app/contact/ContactForm.js）とテスト（tests/contact.test.mjs）の両方から使う。
+ * フォーム（app/contact/ContactForm.tsx）とテスト（tests/contact.test.mjs）の両方から使う。
  * このサイトはデモなので、検証が通っても送信・保存はしない（フォーム側で「送信済み」表示に切り替えるだけ）。
  */
 import type { ContactValues } from "./types.ts";

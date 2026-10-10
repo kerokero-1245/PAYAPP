@@ -67,10 +67,11 @@ export default function OrdersPage() {
                   <div className="flex flex-wrap gap-2 mb-4">
                     {order.items
                       .filter((item) => item.image)
+                      // 上の filter で image のある品目だけに絞っている
                       .map((item) => (
                         <MediaFrame key={`${order.id}-thumb-${item.id}`} thumb="sm">
                           <Image
-                            src={item.image}
+                            src={item.image!}
                             alt={item.name}
                             fill
                             sizes="56px"

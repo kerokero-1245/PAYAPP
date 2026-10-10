@@ -14,12 +14,12 @@ import {
   decideVerifyOutcome,
   findOrderBySession,
 } from "@/lib/checkout";
+import type { PaidOrder, VerifyInput } from "@/lib/checkout";
 
 /**
  * 確認ルートに問い合わせる。応答が無ければ VERIFY_TIMEOUT_MS で打ち切る。
- * @returns {Promise<Parameters<typeof decideVerifyOutcome>[0]>}
  */
-async function fetchVerifyResult(sessionId, signal) {
+async function fetchVerifyResult(sessionId: string, signal: AbortSignal): Promise<VerifyInput> {
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), VERIFY_TIMEOUT_MS);
   const onAbort = () => timeout.abort();
@@ -29,7 +29,7 @@ async function fetchVerifyResult(sessionId, signal) {
       `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`,
       { cache: "no-store", signal: timeout.signal }
     );
-    let body = null;
+    let body: unknown = null;
     try {
       body = await res.json();
     } catch {
@@ -49,7 +49,7 @@ async function fetchVerifyResult(sessionId, signal) {
  * 同じ session_id の注文が記録済みなら新しく記録せず、その注文番号を返す。
  * カートからは購入した品目と数量だけを取り除く（決済後に足した品は残す）。
  */
-function recordPaidOrder(sessionId, order) {
+function recordPaidOrder(sessionId: string, order: PaidOrder): string {
   const existing = findOrderBySession(useOrderStore.getState().orders, sessionId);
   if (existing) return existing.id;
 
@@ -63,6 +63,9 @@ function recordPaidOrder(sessionId, order) {
   useCartStore.getState().removePurchased(order.items);
   return id;
 }
+
+/** 確認の結果（確認中は含まない） */
+type Result = { key: string; state: "paid" | "unpaid" | "unverified"; orderId: string | null };
 
 /** 読み上げ用の文言（role="status" の要素に入れる） */
 const STATUS_MESSAGES = {
@@ -84,8 +87,7 @@ const STATUS_MESSAGES = {
 function SuccessInner() {
   const sessionId = useSearchParams().get("session_id");
   const [attempt, setAttempt] = useState(0);
-  // { key, state: "paid" | "unpaid" | "unverified", orderId }
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<Result | null>(null);
   const key = `${sessionId}#${attempt}`;
 
   useEffect(() => {
@@ -122,7 +124,8 @@ function SuccessInner() {
   else if (state === "unpaid") content = <PaymentUnpaid />;
   else if (state === "unverified")
     content = <PaymentUnverified onRetry={() => setAttempt((a) => a + 1)} />;
-  else content = <OrderConfirmed orderId={result.orderId} />;
+  // state が paid になるのは result がある（result.key が今の key と一致した）ときだけ
+  else content = <OrderConfirmed orderId={result!.orderId} />;
 
   return (
     <>
@@ -165,7 +168,7 @@ function PaymentUnpaid() {
 }
 
 /** 確認できなかった（通信失敗など）。買い直しは促さず、再確認を出す */
-function PaymentUnverified({ onRetry }) {
+function PaymentUnverified({ onRetry }: { onRetry: () => void }) {
   return (
     <StatusMessage
       icon="notice"
@@ -185,7 +188,7 @@ function PaymentUnverified({ onRetry }) {
 }
 
 /** 決済確認済み */
-function OrderConfirmed({ orderId }) {
+function OrderConfirmed({ orderId }: { orderId: string | null }) {
   return (
     <StatusMessage
       icon="check"
