@@ -19,8 +19,10 @@
     color: var(--color-faint);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .remove-btn:hover {
-    color: var(--color-danger);
+  @media (hover: hover) {
+    .remove-btn:hover {
+      color: var(--color-danger);
+    }
   }
 
   /* 注文サマリー */
@@ -58,7 +60,9 @@
     color: var(--color-muted);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .quiet-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .quiet-link:hover {
+      color: var(--color-cream);
+    }
   }
 }

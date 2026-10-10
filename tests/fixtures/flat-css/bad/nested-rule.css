@@ -1,0 +1,8 @@
+/* expect: 入れ子 */
+@layer components {
+  .a {
+    .b {
+      color: red;
+    }
+  }
+}

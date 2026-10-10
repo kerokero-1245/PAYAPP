@@ -48,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={`${playfair.variable} ${inter.variable}`}>
-      <body className="min-h-screen flex flex-col antialiased">
+      <body className="flex flex-col">
         {/* キーボード操作でヘッダーを飛ばして本文へ移るためのリンク（フォーカス時だけ表示） */}
         <a href="#main-content" className="skip-link btn btn-gold">
           本文へスキップ
@@ -56,7 +56,7 @@ export default function RootLayout({
         <Header />
         {/* tabIndex=-1: スキップリンクで飛んだときにフォーカスを main に移す。
             scroll-mt: 固定ヘッダーの下に main の先頭が隠れないようにする */}
-        <main id="main-content" tabIndex={-1} className="flex-1 scroll-mt-28 outline-none">
+        <main id="main-content" tabIndex={-1} className="flex-1 scroll-mt-28">
           {children}
         </main>
         <Footer />

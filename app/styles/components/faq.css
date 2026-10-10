@@ -13,8 +13,10 @@
     line-height: 1.5;
     transition: color 0.2s ease;
   }
-  .faq-q:hover {
-    color: var(--color-gold-soft);
+  @media (hover: hover) {
+    .faq-q:hover {
+      color: var(--color-gold-soft);
+    }
   }
   .faq-q::marker {
     color: var(--color-gold);

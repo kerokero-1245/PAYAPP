@@ -7,10 +7,12 @@
     border-radius: var(--radius-lux);
     transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
   }
-  .card-hover:hover {
-    border-color: var(--gold-a35);
-    box-shadow: var(--shadow-lift);
-    transform: translateY(-3px);
+  @media (hover: hover) {
+    .card-hover:hover {
+      border-color: var(--gold-a35);
+      box-shadow: var(--shadow-lift);
+      transform: translateY(-3px);
+    }
   }
 
   .panel {

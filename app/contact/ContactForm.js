@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card from "@/components/ui/Card";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import {
   CONTACT_LIMITS,
   CONTACT_TOPICS,
   EMPTY_CONTACT,
+  countChars,
   validateContact,
   validateContactField,
 } from "@/lib/contact.mjs";
@@ -22,15 +23,28 @@ const DEMO_NOTE =
  * お問い合わせフォーム（デモ）
  * ---------------------------------------------------
  * 検証は lib/contact.mjs の純粋関数。送信ボタンで全項目を検証し、以後は欄を離れるたびにその欄を検証する。
- * エラーがあれば先頭のエラー欄へフォーカスを移す。検証が通っても fetch も保存もせず、
- * 「受け付けました（デモ）」の表示に切り替えるだけ。
+ * エラーがあれば先頭のエラー欄へフォーカスを移す（エラー文と aria-describedby が描かれた後に移す）。
+ * 検証が通っても fetch も保存もせず、「受け付けました（デモ）」の表示に切り替えるだけ。
+ * 切り替えたら、その見出しへフォーカスを移し（ボタンが消えてフォーカスが body に落ちないように）、
+ * 結果の領域は role="status" で読み上げる。
  */
 export default function ContactForm() {
   const [values, setValues] = useState(EMPTY_CONTACT);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [sent, setSent] = useState(null);
+  /** フォーカスを移す欄（送信のたびに新しいオブジェクトにして、同じ欄でも effect を走らせる） */
+  const [focusField, setFocusField] = useState(null);
   const formRef = useRef(null);
+  const sentTitleRef = useRef(null);
+
+  useEffect(() => {
+    if (focusField) formRef.current?.elements.namedItem(focusField.name)?.focus();
+  }, [focusField]);
+
+  useEffect(() => {
+    if (sent) sentTitleRef.current?.focus();
+  }, [sent]);
 
   const change = (field) => (e) => setValues((v) => ({ ...v, [field]: e.target.value }));
   const blur = (field) => () => {
@@ -44,8 +58,7 @@ export default function ContactForm() {
     const result = validateContact(values);
     setErrors(result.errors);
     if (!result.ok) {
-      const first = CONTACT_FIELDS.find((f) => result.errors[f]);
-      formRef.current?.elements.namedItem(first)?.focus();
+      setFocusField({ name: CONTACT_FIELDS.find((f) => result.errors[f]) });
       return;
     }
     setSent(values);
@@ -63,6 +76,8 @@ export default function ContactForm() {
     return (
       <StatusMessage
         contained={false}
+        role="status"
+        titleRef={sentTitleRef}
         titleAs="h2"
         icon="check"
         eyebrow="Thank you"
@@ -152,7 +167,7 @@ export default function ContactForm() {
           label="お問い合わせ内容"
           required
           rows={6}
-          hint={`${CONTACT_LIMITS.messageMin}〜${CONTACT_LIMITS.messageMax} 文字（いま ${[...values.message.trim()].length} 文字）`}
+          hint={`${CONTACT_LIMITS.messageMin}〜${CONTACT_LIMITS.messageMax} 文字（いま ${countChars(values.message.trim())} 文字）`}
           value={values.message}
           onChange={change("message")}
           onBlur={blur("message")}

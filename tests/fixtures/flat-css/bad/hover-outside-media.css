@@ -1,0 +1,6 @@
+/* expect: @media (hover: hover) の外の :hover */
+@layer components {
+  .btn:hover {
+    color: gold;
+  }
+}

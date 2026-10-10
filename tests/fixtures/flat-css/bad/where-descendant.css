@@ -1,0 +1,8 @@
+/* expect: 結合子 */
+@layer components {
+  @media (hover: hover) {
+    .e:where(.card:hover *) {
+      scale: 1.05;
+    }
+  }
+}

@@ -1,0 +1,9 @@
+/* expect: 規則の中の @規則 */
+@layer components {
+  .a {
+    color: red;
+    @media (min-width: 40rem) {
+      color: blue;
+    }
+  }
+}

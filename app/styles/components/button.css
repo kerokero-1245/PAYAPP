@@ -28,10 +28,12 @@
     color: var(--color-on-gold);
     box-shadow: var(--shadow-gold);
   }
-  .btn-gold:hover:not(:disabled) {
-    background: linear-gradient(180deg, var(--color-gold-bright), var(--color-gold-soft));
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-gold-hover);
+  @media (hover: hover) {
+    .btn-gold:hover:not(:disabled) {
+      background: linear-gradient(180deg, var(--color-gold-bright), var(--color-gold-soft));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-gold-hover);
+    }
   }
 
   /* ゴールドの枠線（副次アクション） */
@@ -40,10 +42,12 @@
     color: var(--color-gold-soft);
     border: 1px solid var(--gold-a45);
   }
-  .btn-outline:hover:not(:disabled) {
-    border-color: var(--color-gold);
-    color: var(--color-gold-bright);
-    background: var(--gold-a08);
+  @media (hover: hover) {
+    .btn-outline:hover:not(:disabled) {
+      border-color: var(--color-gold);
+      color: var(--color-gold-bright);
+      background: var(--gold-a08);
+    }
   }
 
   .btn-sm {

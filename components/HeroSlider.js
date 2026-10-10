@@ -100,7 +100,7 @@ export default function HeroSlider() {
             type="button"
             onClick={() => setIndex(i)}
             aria-label={`スライド ${i + 1} を表示`}
-            aria-current={i === index}
+            aria-current={i === index || undefined}
             className="hero-dot"
           />
         ))}

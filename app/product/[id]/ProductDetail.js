@@ -85,7 +85,7 @@ export default function ProductDetail({ id }) {
               />
             )}
             {product.badge && (
-              <Badge size="lg" className="absolute top-4 left-4">
+              <Badge className="absolute top-4 left-4">
                 {product.badge}
               </Badge>
             )}

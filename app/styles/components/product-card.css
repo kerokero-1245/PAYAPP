@@ -12,8 +12,10 @@
   .heading-link {
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .heading-link:hover {
-    color: var(--color-gold);
+  @media (hover: hover) {
+    .heading-link:hover {
+      color: var(--color-gold);
+    }
   }
 
   /* 商品の一言説明 */

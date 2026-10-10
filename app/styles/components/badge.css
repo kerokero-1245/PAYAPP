@@ -31,9 +31,11 @@
     transition: all 0.2s ease;
     cursor: pointer;
   }
-  .chip:hover {
-    color: var(--color-cream);
-    border-color: var(--color-line-strong);
+  @media (hover: hover) {
+    .chip:hover {
+      color: var(--color-cream);
+      border-color: var(--color-line-strong);
+    }
   }
   .chip-active {
     color: var(--color-on-gold);
@@ -43,7 +45,8 @@
   }
 }
 
-/* 商品画像の上の札（NEW・LIMITED）。chip-active の色で、小さい文字と余白を最初から持つ */
+/* 商品画像の上の札（NEW・LIMITED）。chip-active の色で、小さい文字と余白を最初から持つ。
+   大きさは一覧・詳細とも ⑤-0 の 0.6rem（--fs-micro）。詳細だけ 0.62rem だった .badge-lg は消した */
 @layer components {
   .badge {
     display: inline-flex;
@@ -58,9 +61,5 @@
     border: 1px solid var(--color-gold);
     color: var(--color-on-gold);
     background: var(--color-gold);
-  }
-  /* 商品詳細の大きい画像の上 */
-  .badge-lg {
-    font-size: 0.62rem;
   }
 }

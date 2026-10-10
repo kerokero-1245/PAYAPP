@@ -12,7 +12,8 @@ import Divider from "@/components/ui/Divider";
  * @description
  * productStore の CATEGORIES を動的にマップし、現在の URL クエリ
  * （?category=slug）に応じて選択中カテゴリをゴールドでハイライトする。
- * "all" は /product（クエリなし）へリンクする。選択中の見た目はリンク自身の aria-current で付ける。
+ * "all" は /product（クエリなし）へリンクする。選択中のリンクは開いているページそのものなので aria-current="page"。
+ * 見た目は .side-link[aria-current]（値に結び付けない）で付ける。
  *
  * @remarks
  * usePathname / useSearchParams を使用するため、呼び出し側（shop ページ）の
@@ -42,7 +43,7 @@ export default function SideMenu() {
               <li key={cat.slug}>
                 <Link
                   href={href}
-                  aria-current={active ? "true" : undefined}
+                  aria-current={active ? "page" : undefined}
                   className="side-link flex items-baseline gap-2 pl-4 py-2"
                 >
                   <span>{cat.label}</span>

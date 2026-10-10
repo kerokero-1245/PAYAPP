@@ -25,6 +25,7 @@ body {
   color: var(--color-cream);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   /* うっすらとしたゴールドのビネットで奥行きを出す */
   background-image:
@@ -40,7 +41,7 @@ body {
 }
 
 /* Focus ring — ゴールド */
-:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
   border-radius: 2px;

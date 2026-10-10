@@ -1,0 +1,6 @@
+/* expect: 結合子 */
+@layer components {
+  .card .title {
+    color: red;
+  }
+}

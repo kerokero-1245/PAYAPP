@@ -31,8 +31,10 @@
     color: var(--color-muted);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .nav-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .nav-link:hover {
+      color: var(--color-cream);
+    }
   }
   .nav-link[aria-current] {
     color: var(--color-gold);
@@ -62,15 +64,19 @@
     color: var(--color-muted);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .icon-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .icon-link:hover {
+      color: var(--color-cream);
+    }
   }
   .cart-link {
     color: var(--color-cream);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .cart-link:hover {
-    color: var(--color-gold);
+  @media (hover: hover) {
+    .cart-link:hover {
+      color: var(--color-gold);
+    }
   }
   .account-name {
     font-size: 0.8rem;

@@ -1,0 +1,31 @@
+/* 合格の見本: 規約どおりの書き方（平坦な規則・@media の中の :hover・:where の項の並び） */
+:where(a, button, summary):focus-visible {
+  outline: 2px solid gold;
+}
+@layer components {
+  .btn {
+    color: white;
+  }
+  .btn-gold {
+    background: gold;
+  }
+  @media (hover: hover) {
+    .btn-gold:hover:not(:disabled) {
+      background: yellow;
+    }
+  }
+  .item:nth-child(2n + 1) {
+    color: gray;
+  }
+  .tab[aria-current="page"] {
+    color: gold;
+  }
+  @media (min-width: 48rem) {
+    .btn {
+      padding: 1rem;
+    }
+  }
+}
+::-webkit-scrollbar-thumb:hover {
+  background: gray;
+}

@@ -1,0 +1,6 @@
+/* expect: !important */
+@layer components {
+  .a {
+    color: red !important;
+  }
+}

@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  countChars,
   CONTACT_FIELDS,
   CONTACT_LIMITS,
   EMPTY_CONTACT,
@@ -69,6 +70,17 @@ test("文字数: お問い合わせ内容は 10〜1000 文字（前後の空白�
 
 test("文字数は見た目の 1 文字で数える（絵文字 10 個は 10 文字）", () => {
   assert.equal(validateContactField("message", { message: "😀".repeat(10) }), undefined);
+});
+
+test("結合した絵文字（👨‍👩‍👧）も 1 文字に数える", () => {
+  const family = "👨‍👩‍👧";
+  assert.equal(countChars(family), 1);
+  assert.equal(countChars(family.repeat(2)), 2);
+  // コードポイントでは 10 個になる 2 文字は、下限 10 文字に届かない
+  assert.equal([...family.repeat(2)].length, 10);
+  assert.match(validateContactField("message", { message: family.repeat(2) }) ?? "", /10 文字以上/);
+  assert.equal(validateContactField("message", { message: family.repeat(10) }), undefined);
+  assert.equal(countChars("か\u3099"), 1); // 結合文字（か + 濁点の結合文字）
 });
 
 test("種別は選択肢の値だけを受け付ける", () => {

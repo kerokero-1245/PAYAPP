@@ -1,0 +1,6 @@
+/* expect: @apply */
+@layer components {
+  .a {
+    @apply text-red-500;
+  }
+}

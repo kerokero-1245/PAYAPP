@@ -16,7 +16,9 @@
     transform-origin: left;
     transition: transform 0.3s ease;
   }
-  .link-underline:hover::after {
-    transform: scaleX(1);
+  @media (hover: hover) {
+    .link-underline:hover::after {
+      transform: scaleX(1);
+    }
   }
 }

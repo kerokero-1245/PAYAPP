@@ -6,8 +6,10 @@
     line-height: var(--lh-xs);
     color: var(--color-muted);
   }
-  .breadcrumb-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .breadcrumb-link:hover {
+      color: var(--color-cream);
+    }
   }
   .breadcrumb-quiet {
     color: var(--color-faint);
@@ -22,8 +24,10 @@
   .thumb-option[data-active="false"] {
     opacity: 0.6;
   }
-  .thumb-option[data-active="false"]:hover {
-    opacity: 1;
+  @media (hover: hover) {
+    .thumb-option[data-active="false"]:hover {
+      opacity: 1;
+    }
   }
   .thumb-option[data-active="true"] {
     border-color: var(--color-gold);
@@ -48,8 +52,10 @@
     line-height: var(--lh-sm);
     color: var(--color-gold-soft);
   }
-  .notice-link:hover {
-    color: var(--color-gold-bright);
+  @media (hover: hover) {
+    .notice-link:hover {
+      color: var(--color-gold-bright);
+    }
   }
 
   /* DETAILS の箇条書き */

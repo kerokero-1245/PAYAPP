@@ -40,7 +40,7 @@
     }
   }
 
-  /* スライドの切り替え（表示中はボタン自身の aria-current） */
+  /* スライドの切り替え（表示中のボタンにだけ aria-current が付く） */
   .hero-dot {
     height: 0.125rem;
     width: 1.5rem;
@@ -48,10 +48,12 @@
     background: var(--color-line-strong);
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .hero-dot:hover {
-    background: var(--color-gold-soft);
+  @media (hover: hover) {
+    .hero-dot:hover {
+      background: var(--color-gold-soft);
+    }
   }
-  .hero-dot[aria-current="true"] {
+  .hero-dot[aria-current] {
     width: 2.5rem;
     background: var(--color-gold);
   }

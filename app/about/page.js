@@ -44,9 +44,13 @@ export default function AboutPage() {
         ))}
       </div>
 
-      <div className="mt-16">
+      {/* 約束の帯の h3 が最後の章（職人とともに）の小見出しにならないよう、帯の前に h2 を置く（見た目は変えない） */}
+      <section className="mt-16" aria-labelledby="pledges-heading">
+        <h2 id="pledges-heading" className="sr-only">
+          私たちの約束
+        </h2>
         <PledgeGrid />
-      </div>
+      </section>
 
       <Actions align="start" className="mt-12">
         <Button href="/product">コレクションを見る</Button>

@@ -8,6 +8,7 @@ import Section from "@/components/ui/Section";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Eyebrow from "@/components/ui/Eyebrow";
 import Button from "@/components/ui/Button";
+import Divider from "@/components/ui/Divider";
 import { useProductStore, CATEGORIES } from "@/store/productStore";
 
 export default function Home() {
@@ -47,7 +48,7 @@ export default function Home() {
       </Section>
 
       <div className="container-lux">
-        <div className="hairline" />
+        <Divider />
       </div>
 
       {/* 3. カテゴリ ショーケース */}

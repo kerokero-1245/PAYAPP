@@ -11,8 +11,10 @@
     cursor: pointer;
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .footer-social-item:hover {
-    color: var(--color-gold);
+  @media (hover: hover) {
+    .footer-social-item:hover {
+      color: var(--color-gold);
+    }
   }
   .footer-link {
     font-size: 0.875rem;
@@ -20,8 +22,10 @@
     color: var(--color-muted);
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .footer-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .footer-link:hover {
+      color: var(--color-cream);
+    }
   }
   /* 下段（著作権・規約のリンク・タグライン） */
   .footer-legal {
@@ -32,8 +36,10 @@
   .footer-legal-link {
     transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .footer-legal-link:hover {
-    color: var(--color-cream);
+  @media (hover: hover) {
+    .footer-legal-link:hover {
+      color: var(--color-cream);
+    }
   }
   .footer-tagline {
     letter-spacing: 0.1em;

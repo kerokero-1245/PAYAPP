@@ -10,8 +10,9 @@ import { cx } from "./cx";
  *
  * @param {{ icon?: "check" | "notice" | "cancel", eyebrow: React.ReactNode, title: React.ReactNode,
  *   lead: React.ReactNode, actions?: React.ReactNode, children?: React.ReactNode, titleAs?: string,
- *   contained?: boolean, className?: string }} props
+ *   contained?: boolean, role?: string, titleRef?: React.Ref<HTMLElement>, className?: string }} props
  *   contained=false: ページの中に置くとき（コンテナと上下余白を付けない。お問い合わせの送信済み）
+ *   role: 読み上げの領域（"status" など）。titleRef: 見出しへフォーカスを移すとき（見出しに tabIndex=-1 を付ける）
  */
 export default function StatusMessage({
   icon,
@@ -22,13 +23,17 @@ export default function StatusMessage({
   children,
   titleAs: Title = "h1",
   contained = true,
+  role,
+  titleRef,
   className,
 }) {
   return (
-    <div className={cx(contained && "container-lux container-narrow section-lg", "text-center animate-fade-up", className)}>
+    <div role={role} className={cx(contained && "container-lux container-narrow section-lg", "text-center animate-fade-up", className)}>
       {icon && <StatusIcon kind={icon} />}
       <Eyebrow className={icon ? "mt-8" : undefined}>{eyebrow}</Eyebrow>
-      <Title className="heading heading-page mt-4">{title}</Title>
+      <Title ref={titleRef} tabIndex={titleRef ? -1 : undefined} className="heading heading-page mt-4">
+        {title}
+      </Title>
       <Divider variant="rule" className="mt-6" />
       <p className="lead mt-6">{lead}</p>
       {children}

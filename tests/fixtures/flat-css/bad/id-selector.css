@@ -1,0 +1,6 @@
+/* expect: ID セレクタ */
+@layer components {
+  #main {
+    color: red;
+  }
+}
