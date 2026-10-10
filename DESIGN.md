@@ -59,3 +59,13 @@
 - 保証の範囲は全商品（`POLICIES.warrantyScope`）
 - デモであることの注記のパネルは `components/ui/DemoNote.tsx` を使う
 - プライバシーポリシーには、実際に保存・送信するものだけを書く。保存の中身を変えたら、localStorage を書き出して文面と突き合わせる
+
+## データベース
+
+- **スキーマの正本は `lib/db/schema.ts`**: 表・制約・外部キーはここだけに書く。直したら `npm run db:generate` で `drizzle/` の SQL を出して一緒にコミットする（CI の `db-migrations-fresh` が、generate を打って差分が出ないことを確かめる）。`drizzle-kit push` は使わない（履歴が残らない）。生成された SQL は手で直さない
+- **変更は「足す → 使う → 消す」の 3 段**: 1 つの PR で列を消して、同時にその列を使うのをやめる変更はしない（Vercel のデプロイとマイグレーションの順番は保証されない）
+- **接続先の切り替えは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所**: `DATABASE_URL` があれば Neon、無ければ PGlite。ほかの場所で `process.env.DATABASE_URL` を読まない
+- **DB は関数の引数で受け取る**（`Db` 型）: アプリは `lib/db/client.ts` の `getDb()`（`server-only`）だけから受け取り、テストは `lib/db/test-helpers.ts` の `withTestDb` の接続を差し込む。テストは `client.ts` を import しない（Stripe の `getStripe` と同じ流儀）
+- **DB の制約に写す値は、持ち主の定数から読む**: 数量の上下限は `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY` を schema が読む（定数を変えると generate の差分が出て CI が落ちる）。同じ数を schema に直書きしない
+- **在庫（`products.stock`）は DB が正本**: seed（`lib/db/seed.ts`）は価格だけを合わせ、在庫は上書きしない。カタログから消えた商品も消さない（注文の明細が参照している）
+- **DB のテストは PGlite**: `withTestDb` がテストごとに全マイグレーションを当てた状態の DB を立てる。外部のサービスや docker に依存しない。PGlite と本物の Postgres の差は CI の `db-migrate-postgres`（`services: postgres`）で拾う

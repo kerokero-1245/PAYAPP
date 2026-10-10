@@ -122,3 +122,98 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # DB のマイグレーション（drizzle/ の SQL）が、スキーマ（lib/db/schema.ts）から作り直した結果と同じか。
+  # スキーマを変えて npm run db:generate を忘れたら、ここで落とす（GraphQL の生成物の鮮度と同じ形）。
+  # generate は DB に繋がない。Secrets も使わない。
+  db-migrations-fresh:
+    name: マイグレーションが最新か
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: generate を打って差分が出ないこと
+        run: |
+          npx drizzle-kit generate
+          git diff --exit-code -- drizzle
+          test -z "$(git status --porcelain -- drizzle)"
+
+  # 本物の Postgres に、全マイグレーションを drizzle-kit migrate で当てる。
+  # npm test は PGlite（WASM の Postgres）にマイグレーションを当てるので、本物との差（版・DDL の細かな挙動）をここで拾う。
+  # Postgres は services のコンテナなので Secrets は使わない（下の接続文字列はこのジョブの中のコンテナ専用）。
+  # 17 は本番の想定、18 は PGlite が載せている版。
+  #
+  # drizzle-kit が素の Postgres に TCP で繋ぐには pg（か postgres）のドライバが要る。
+  # 入っていないと @neondatabase/serverless を使い、これは WebSocket のプロキシ越しに Neon へ繋ぐものなので localhost の Postgres には繋がらない。
+  # アプリは pg を使わないので、依存には入れず、このジョブの中だけで入れる（package.json と package-lock.json は変わらない）。
+  db-migrate-postgres:
+    name: マイグレーションの適用（Postgres ${{ matrix.postgres }}）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [17, 18]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: payapp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/payapp
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: Postgres に繋ぐドライバ（pg）をこのジョブにだけ入れる
+        run: npm install --no-save pg@8.23.0
+
+      - name: マイグレーションを当てる
+        run: npx drizzle-kit migrate
+
+      - name: もう一度当てても何も起きない
+        run: npx drizzle-kit migrate
+
+      - name: 4 つの表ができている
+        run: |
+          node -e '
+            const { Client } = require("pg");
+            (async () => {
+              const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+              await client.connect();
+              const { rows } = await client.query("select table_name from information_schema.tables where table_schema = $1 order by 1", ["public"]);
+              await client.end();
+              const tables = rows.map((row) => row.table_name).join(",");
+              if (tables !== "order_items,orders,products,stripe_events") throw new Error("表が違います: " + tables);
+              console.log("OK: " + tables);
+            })().catch((error) => { console.error(error); process.exit(1); });
+          '

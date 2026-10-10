@@ -23,6 +23,7 @@
 - **Stripe**（Checkout Session による決済）
 - **GraphQL**（graphql-yoga を Route Handler に載せた `/api/graphql`。型は GraphQL Code Generator で SDL から生成）
 - **Playwright**（E2E テスト。本番ビルドした `next start` に、ブラウザで画面を操作して通す。下の「E2E テスト」）
+- **PostgreSQL + Drizzle ORM**（表とマイグレーションを TypeScript と SQL で管理。本番は Neon、ローカルとテストは PGlite。画面はまだ DB を読みません。下の「データベース」）
 - 画像は `next/image`、フォントは `next/font`（Playfair Display / Inter）
 
 ## 主な機能
@@ -59,7 +60,7 @@ npm run dev            # http://localhost:3000
 npm run build
 npm run start
 
-# テスト（決済まわりの純粋な関数・GraphQL API・お問い合わせの検証・平坦な CSS の検査。Stripe には通信しません）
+# テスト（決済まわりの純粋な関数・GraphQL API・お問い合わせの検証・平坦な CSS の検査・DB のスキーマとマイグレーション。Stripe にも外部の DB にも通信しません）
 npm test               # node --test tests/*.test.ts（Node 22 / 24 で確認）
 
 # 型の検査（next typegen が Next のルートの型 PageProps・LayoutProps などを作ってから tsc を回す。CI でも実行）
@@ -75,6 +76,11 @@ npm run check:css
 # E2E テスト（Playwright。初回だけブラウザを入れる。詳しくは下の「E2E テスト」）
 npx playwright install chromium
 npm run test:e2e       # next build してから playwright test
+
+# データベース（下の「データベース」。DATABASE_URL が無ければローカルの PGlite）
+npm run db:generate    # lib/db/schema.ts を変えたら、マイグレーションの SQL を drizzle/ に出してコミット
+npm run db:migrate     # マイグレーションを当てる
+npm run db:seed        # カタログの商品を products に入れる（何度打っても同じ）
 ```
 
 ## 環境変数
@@ -84,10 +90,13 @@ npm run test:e2e       # next build してから playwright test
 | --- | --- | --- |
 | `STRIPE_SECRET_KEY` | **必須**（決済を使う場合） | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください |
 | `NEXT_PUBLIC_BASE_URL` | 任意（**本番では設定してください**） | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります |
+| `DATABASE_URL` | 任意（画面が DB を読むようになる段から必要。今は不要） | 実行時の接続（プール経由）。Neon の接続文字列。未設定ならローカルの PGlite（`.pglite/`）に繋ぎます。下の「データベース」 |
+| `DATABASE_URL_UNPOOLED` | 任意 | マイグレーション用の直結（プールを通さない）。未設定なら `DATABASE_URL` を使います |
 
 ```
 STRIPE_SECRET_KEY=sk_test_xxxx
 # NEXT_PUBLIC_BASE_URL=https://your-domain.example
+# DATABASE_URL=postgres://user:password@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require
 ```
 
 ## 公開（Vercel）
@@ -103,6 +112,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 
    - `NEXT_PUBLIC_BASE_URL` を Preview にも入れると、プレビューで決済したときの戻り先が本番になります。Preview では未設定にしておけば、戻り先はそのプレビューの URL になります。
    - `NEXT_PUBLIC_` で始まる値はビルド時に埋め込まれるので、変えたら再デプロイしてください。
+   - データベースの `DATABASE_URL` は、画面や API が DB を読むようになる段から必要です。今は設定しなくても動きます（置き場所は「データベース」の環境変数の表）。
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
 4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
 
@@ -211,6 +221,54 @@ npx playwright show-report               # 直近の HTML レポート
 
 `e2e/` の構成は下の「ディレクトリ構成」のとおりです。localStorage の形（カート・注文履歴・ログイン状態）は `e2e/fixtures/storage.ts` の 1 か所だけが知っていて、期待値（件数・商品名・金額）はカタログから組みます。
 
+## データベース
+
+注文と在庫をサーバに置くための土台です。**今の画面と API は DB をまだ読みません**（注文履歴はこれまでどおりブラウザの localStorage です）。表・制約・マイグレーション・seed・テスト用の DB・CI の検査を先に入れてあります。
+
+- **Drizzle ORM**: 表と制約は `lib/db/schema.ts` が正本です。`npm run db:generate`（`drizzle-kit generate`）が SQL のマイグレーションを `drizzle/` に出すので、**生成物もコミット**します。`drizzle-kit push` は使いません（履歴が残らないため）。
+- **本番は Neon、ローカルとテストは PGlite**: Neon は Postgres で、`@neondatabase/serverless` の Pool（WebSocket 越し）で繋ぐのでトランザクションが使えます。PGlite は Postgres を WASM で同じプロセスの中に立てるもので、docker も Neon のアカウントもネットも要りません。どちらに繋ぐかを決めるのは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所だけで、`DATABASE_URL` があれば Neon、無ければ PGlite（`.pglite/` に保存）です。
+- 商品の正本は `lib/catalog.ts` のままです。`products` 表は `npm run db:seed` がカタログから作る写しで、注文の明細の外部キーと在庫のためにあります（商品ページは DB を読まないので、ビルドに DB は要りません）。
+
+### ローカルで動かす（Neon なし）
+
+```bash
+npm run db:migrate   # .pglite/ に PGlite のデータベースを作り、マイグレーションを当てる（初回は初期化で数秒かかります）
+npm run db:seed      # カタログの商品を products に入れる（2 回目からは 0 件。在庫は上書きしません）
+```
+
+PGlite のファイルを開けるのは同時に 1 プロセスだけです。ほかのプロセス（dev サーバなど）が開いている間は `db:migrate` / `db:seed` を打たないでください。
+
+### Neon に繋ぐ
+
+Neon の開発用ブランチの接続文字列を、`.env.local` の `DATABASE_URL`（プール経由）と `DATABASE_URL_UNPOOLED`（直結）に置き、同じ `npm run db:migrate` → `npm run db:seed` を打ちます（`drizzle-kit` と seed は `.env.local` を自分で読みます）。Neon のドライバは WebSocket のプロキシ越しに Neon へ繋ぐものなので、素の Postgres（docker の postgres など）には繋がりません。
+
+### 表と制約
+
+| 表 | 主な列 | 制約 |
+| --- | --- | --- |
+| `products` | `id`（カタログの id）・`price`（税込の円）・`stock`（null = 在庫を管理しない）・`updated_at` | 主キー `id` / `price >= 0` / `stock >= 0` |
+| `orders` | `id`（uuid）・`order_no`（画面に出す番号）・`user_id`（null = ゲスト）・`stripe_session_id`・`status`・`total`・`paid_at`・`created_at` | 主キー `id` / `order_no` と `stripe_session_id` は一意 / `total >= 0` / `status` は `paid`・`pending`・`failed` のどれか |
+| `order_items` | `order_id`・`product_id`・`name` と `unit_price`（購入した時点の写し）・`quantity` | 主キー (`order_id`, `product_id`) / `quantity` は `lib/cart.ts` の `MIN_QUANTITY`〜`MAX_QUANTITY`（1〜99）/ `unit_price >= 0` / `order_id` → `orders`（注文を消すと明細も消える）/ `product_id` → `products`（売れた商品は消せない） |
+| `stripe_events` | `id`（`evt_...`）・`processed_at` | 主キー `id`（同じ Webhook イベントを 2 回処理しないための一意制約） |
+
+`orders.user_id` の外部キーは、user 表を作る認証の段で張ります。
+
+### 環境変数（データベース）
+
+| 変数 | 用途 | Production | Preview | Development（.env.local） | CI |
+| --- | --- | --- | --- | --- | --- |
+| `DATABASE_URL` | 実行時の接続（プール経由） | Neon の本番ブランチ | Neon のプレビューブランチ（既存アカウント連携の方式で自動）か開発ブランチ | Neon の開発ブランチ | テストは PGlite なので不要。移行ジョブだけ Secrets |
+| `DATABASE_URL_UNPOOLED` | マイグレーション用の直結 | 同上 | 同上 | 同上 | 移行ジョブの Secrets |
+
+- どちらも未設定ならローカルの PGlite です。Vercel の Neon 連携が実際に入れる変数名は、連携したあとの Vercel の画面で確かめて、違えばこの表を直してください。
+- CI の列の「移行ジョブ」は、本番の DB へ自動で当てるジョブです（まだありません。Neon を用意したら足します）。今の CI は Secrets を使わず、`services: postgres` の Postgres に当てて確かめるだけです。
+
+### マイグレーションの運用
+
+- 変更は「足す → 使う → 消す」の 3 段に分けます。1 つの PR で列を消して、同時にその列を使うのをやめる変更はしません（Vercel のデプロイとマイグレーションの順番は保証されないため）。
+- CI（`.github/workflows/ci.yml`）は Secrets を使わずに 3 つを確かめます。(1) `npm test` が PGlite に全マイグレーションを当てて、制約と seed を検査する。(2) `db-migrations-fresh` ジョブが `drizzle-kit generate` を打って `drizzle/` に差分が出ない（スキーマを変えて generate を忘れていない）ことを確かめる。(3) `db-migrate-postgres` ジョブが、`services: postgres`（17 と 18）の本物の Postgres に `drizzle-kit migrate` を 2 回当てる。
+- 本番の DB への適用は、`main` で CI が通ったあとに走るジョブとして足す予定です。Vercel のビルドコマンドには入れません（プレビューのビルドが本番の DB に当たる事故を避けるため）。それまでは `DATABASE_URL_UNPOOLED` を指定して手元で `npm run db:migrate` を打ちます。
+
 ## ディレクトリ構成
 ```
 app/
@@ -245,8 +303,12 @@ lib/contact.ts          お問い合わせの検証（純粋な関数）
 lib/policies.ts         配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
 lib/links.ts            カテゴリへのリンク（ヘッダー・フッター・サイドメニュー・トップのタイルで共有）
 lib/types.ts            共有するドメインの型（Product・CartLine・Order・User など。型だけで、実行時の値は置かない）
+lib/db/                 DB のスキーマ（schema.ts）・Neon / PGlite の接続（connect.ts）・アプリの入口（client.ts）・seed・テスト用の DB（test-helpers.ts）
+drizzle/                DB のマイグレーション（drizzle-kit generate が出す SQL と履歴。コミットする）
+drizzle.config.ts       drizzle-kit の設定
 scripts/check-flat-css.ts  平坦な CSS の検査（npm run check:css）
-tests/                  node --test のテスト（決済・決済確認・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査。TypeScript のまま Node 22.18 以上が型を剥がして実行する）
+scripts/seed-products.ts   カタログの商品を products 表に入れる（npm run db:seed）
+tests/                  node --test のテスト（決済・決済確認・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 22.18 以上が型を剥がして実行する）
 e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ、constants.ts = URL とビューポート）
 playwright.config.ts    E2E の設定（next start -p 3210・幅 390 / 1280・retries は CI だけ 1・reporter は list + html）
 DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
