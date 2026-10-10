@@ -207,8 +207,10 @@ lib/stripe.js           Stripe クライアント（サーバ専用）
 lib/format.js           金額・日付の整形ユーティリティ
 lib/contact.mjs         お問い合わせの検証（純粋な関数）
 lib/policies.mjs        配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
+lib/links.ts            カテゴリへのリンク（ヘッダー・フッター・サイドメニュー・トップのタイルで共有）
 scripts/check-flat-css.mjs  平坦な CSS の検査（npm run check:css）
 tests/                  node --test のテスト（決済・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査）
+DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
 ```
 
 ## デザインの書き方
