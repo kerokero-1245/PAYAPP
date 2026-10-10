@@ -2,8 +2,8 @@
 @layer components {
   /* パンくず */
   .breadcrumb {
-    font-size: 0.75rem;
-    line-height: var(--lh-xs);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     color: var(--color-muted);
   }
   @media (hover: hover) {
@@ -40,16 +40,16 @@
 
   /* 「カートに追加しました」 */
   .notice-text {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--color-cream);
   }
   .notice-mark {
     color: var(--color-gold);
   }
   .notice-link {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--color-gold-soft);
   }
   @media (hover: hover) {
@@ -60,8 +60,8 @@
 
   /* DETAILS の箇条書き */
   .detail-points {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--color-muted);
   }
 }

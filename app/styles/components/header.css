@@ -16,8 +16,8 @@
 
   /* ブランド名（ヘッダー・フッター）。書体は .type-display を足し、字間はここで広げる */
   .brand {
-    font-size: 1.5rem;
-    line-height: var(--lh-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
     letter-spacing: 0.18em;
     color: var(--color-cream);
   }
@@ -37,9 +37,9 @@
     border-bottom: 1px solid var(--color-line);
   }
   .mobile-link {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
-    letter-spacing: 0.025em;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    letter-spacing: var(--tracking-wide);
     border-bottom: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent);
     color: var(--color-muted);
   }

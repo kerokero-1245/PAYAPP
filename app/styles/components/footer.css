@@ -18,8 +18,8 @@
   }
   /* 下段（著作権・規約のリンク・タグライン） */
   .footer-legal {
-    font-size: 0.75rem;
-    line-height: var(--lh-xs);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     color: var(--color-faint);
   }
   .footer-legal-link {
@@ -31,7 +31,7 @@
     }
   }
   .footer-tagline {
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-widest);
     text-transform: uppercase;
   }
 }

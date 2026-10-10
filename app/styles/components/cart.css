@@ -3,8 +3,8 @@
   /* h1 の中の点数（「（3点）」） */
   .title-meta {
     font-family: var(--font-sans);
-    font-size: 1.125rem;
-    line-height: var(--lh-lg);
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
     color: var(--color-muted);
     vertical-align: middle;
   }
@@ -14,8 +14,8 @@
     border-bottom: 1px solid var(--color-line);
   }
   .remove-btn {
-    font-size: 0.75rem;
-    line-height: var(--lh-xs);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     color: var(--color-faint);
     transition: color var(--duration-quick) var(--ease-standard);
   }
@@ -27,8 +27,8 @@
 
   /* 注文サマリー */
   .summary-list {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
   .summary-term {
     color: var(--color-muted);
@@ -38,7 +38,7 @@
   }
   .summary-total-label {
     color: var(--color-cream);
-    letter-spacing: 0.025em;
+    letter-spacing: var(--tracking-wide);
   }
   .summary-note {
     font-size: 0.7rem;
@@ -48,7 +48,7 @@
 
   /* 送信の失敗などの短いエラー */
   .form-error {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     line-height: 1.625;
     color: var(--color-danger);
   }

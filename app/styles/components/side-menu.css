@@ -3,7 +3,7 @@
   /* .link-quiet .link-quiet-sm に足す（左の線と字間） */
   .side-link {
     border-left: 2px solid transparent;
-    letter-spacing: 0.025em;
+    letter-spacing: var(--tracking-wide);
   }
   /* 選択中（aria-current="page" がリンク自身に付く。値に結び付けず、属性があれば選択中とする） */
   .side-link[aria-current] {

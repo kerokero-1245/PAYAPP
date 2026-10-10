@@ -4,7 +4,7 @@
  */
 @layer components {
   .price-wide {
-    letter-spacing: 0.025em;
+    letter-spacing: var(--tracking-wide);
   }
   .price-tabular {
     font-variant-numeric: tabular-nums;
@@ -14,26 +14,26 @@
     font-size: 0.7rem;
   }
   .price-base {
-    font-size: 1rem;
+    font-size: var(--text-base);
     line-height: 1.5;
   }
   .price-lg {
-    font-size: 1.125rem;
-    line-height: var(--lh-lg);
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
   }
   .price-xl {
-    font-size: 1.5rem;
-    line-height: var(--lh-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
   }
   /* 商品詳細の価格（md で 1 段大きく） */
   .price-hero {
-    font-size: 1.5rem;
-    line-height: var(--lh-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
   }
   @media (min-width: 48rem) {
     .price-hero {
-      font-size: 1.875rem;
-      line-height: var(--lh-3xl);
+      font-size: var(--text-3xl);
+      line-height: var(--text-3xl--line-height);
     }
   }
 

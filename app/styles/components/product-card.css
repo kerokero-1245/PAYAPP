@@ -20,8 +20,8 @@
 
   /* 商品の一言説明 */
   .tagline {
-    font-size: 0.75rem;
-    line-height: var(--lh-xs);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     color: var(--color-muted);
   }
 

@@ -14,8 +14,8 @@
     }
   }
   .link-quiet-sm {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
 
   /* リンクの下線アニメ */

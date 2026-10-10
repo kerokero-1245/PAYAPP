@@ -18,9 +18,9 @@
     padding: 0.75rem 1.25rem;
   }
   .status-ref-value {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
-    letter-spacing: 0.1em;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    letter-spacing: var(--tracking-widest);
     color: var(--color-gold-soft);
   }
 }

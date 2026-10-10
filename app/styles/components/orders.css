@@ -1,8 +1,8 @@
 /* 注文履歴の品目の行 */
 @layer components {
   .order-lines {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
   .order-line-name {
     color: var(--color-cream);

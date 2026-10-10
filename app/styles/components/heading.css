@@ -10,74 +10,74 @@
 
   /* h1（全ページ共通）と、トップの h2 */
   .heading-page {
-    font-size: 1.875rem;
-    line-height: var(--lh-3xl);
+    font-size: var(--text-3xl);
+    line-height: var(--text-3xl--line-height);
   }
   /* 節の見出し（h2） */
   .heading-section {
-    font-size: 1.5rem;
-    line-height: var(--lh-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
   }
   /* 大きさが変わらない h2（空状態・プロフィールの名前） */
   .heading-block {
-    font-size: 1.5rem;
-    line-height: var(--lh-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
   }
   /* カードの見出し（注文番号・注文サマリー） */
   .heading-card {
-    font-size: 1.25rem;
-    line-height: var(--lh-xl);
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
   }
   /* 一覧の項目の見出し（商品名・プレッジ） */
   .heading-item {
-    font-size: 1.125rem;
-    line-height: var(--lh-lg);
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
   }
   /* トップの CTA */
   .heading-display {
-    font-size: 1.875rem;
+    font-size: var(--text-3xl);
     line-height: 1.25;
   }
   /* ヒーローの h1 */
   .heading-hero {
-    font-size: 2.25rem;
+    font-size: var(--text-4xl);
     line-height: 1.25;
   }
   /* カテゴリのタイル */
   .heading-tile {
-    font-size: 1.125rem;
-    line-height: var(--lh-lg);
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
     white-space: nowrap;
   }
 
   @media (min-width: 40rem) {
     .heading-hero {
-      font-size: 3rem;
+      font-size: var(--text-5xl);
     }
     .heading-tile {
-      font-size: 1.5rem;
-      line-height: var(--lh-2xl);
+      font-size: var(--text-2xl);
+      line-height: var(--text-2xl--line-height);
     }
   }
   @media (min-width: 48rem) {
     .heading-page {
-      font-size: 2.25rem;
-      line-height: var(--lh-4xl);
+      font-size: var(--text-4xl);
+      line-height: var(--text-4xl--line-height);
     }
     .heading-section {
-      font-size: 1.875rem;
-      line-height: var(--lh-3xl);
+      font-size: var(--text-3xl);
+      line-height: var(--text-3xl--line-height);
     }
     .heading-display {
-      font-size: 3rem;
+      font-size: var(--text-5xl);
     }
     .heading-hero {
-      font-size: 3.75rem;
+      font-size: var(--text-6xl);
     }
   }
   @media (min-width: 64rem) {
     .heading-hero {
-      font-size: 4.5rem;
+      font-size: var(--text-7xl);
     }
   }
 

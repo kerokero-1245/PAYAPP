@@ -16,9 +16,9 @@
     }
   }
   .info-term {
-    font-size: 0.875rem;
-    line-height: var(--lh-sm);
-    letter-spacing: 0.025em;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    letter-spacing: var(--tracking-wide);
     color: var(--color-gold-soft);
   }
   .info-desc {
