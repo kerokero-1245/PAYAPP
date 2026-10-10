@@ -14,7 +14,14 @@ type EyebrowProps = {
 /**
  * 小さなラベル見出し（NEW ARRIVALS など）。
  */
-export default function Eyebrow({ as: Tag = "p", size = "md", tone = "gold", tracking, className, children }: EyebrowProps) {
+export default function Eyebrow({
+  as: Tag = "p",
+  size = "md",
+  tone = "gold",
+  tracking,
+  className,
+  children,
+}: EyebrowProps) {
   return (
     <Tag
       className={cx(
@@ -22,7 +29,7 @@ export default function Eyebrow({ as: Tag = "p", size = "md", tone = "gold", tra
         size === "sm" && "eyebrow-sm",
         tone !== "gold" && `eyebrow-${tone}`,
         tracking && `eyebrow-track-${tracking}`,
-        className
+        className,
       )}
     >
       {children}

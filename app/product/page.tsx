@@ -67,7 +67,11 @@ function ShopInner() {
             eyebrow="Shop"
             title={heading}
             meta={`${filtered.length} 件`}
-            note={query && activeCategory.slug !== "all" ? `カテゴリ: ${activeCategory.label}` : null}
+            note={
+              query && activeCategory.slug !== "all"
+                ? `カテゴリ: ${activeCategory.label}`
+                : null
+            }
           />
 
           {/* 絞り込みチップ（モバイル用にも重複配置） */}
@@ -77,7 +81,11 @@ function ShopInner() {
                 key={c.slug}
                 type="button"
                 onClick={() => router.push(buildHref(c.slug))}
-                className={c.slug === activeCategory.slug ? "pill chip chip-active" : "pill chip"}
+                className={
+                  c.slug === activeCategory.slug
+                    ? "pill chip chip-active"
+                    : "pill chip"
+                }
               >
                 {c.label}
               </button>
@@ -100,7 +108,11 @@ function ShopInner() {
               title="該当する商品がありません"
               titleSize="block"
               description="検索条件やカテゴリを変更してお試しください。"
-              action={{ href: "/product", label: "すべての商品を見る", variant: "outline" }}
+              action={{
+                href: "/product",
+                label: "すべての商品を見る",
+                variant: "outline",
+              }}
               actionClassName="mt-2"
             />
           )}

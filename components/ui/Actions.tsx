@@ -12,9 +12,20 @@ type ActionsProps = {
 /**
  * ボタンの並び。row: スマホは縦積み・sm から横並び / stack: 常に縦積み（全幅ボタン向け）
  */
-export default function Actions({ layout = "row", align = "center", className, children }: ActionsProps) {
+export default function Actions({
+  layout = "row",
+  align = "center",
+  className,
+  children,
+}: ActionsProps) {
   return (
-    <div className={cx(layout === "stack" ? "actions-stack" : "actions", layout !== "stack" && align === "start" && "actions-start", className)}>
+    <div
+      className={cx(
+        layout === "stack" ? "actions-stack" : "actions",
+        layout !== "stack" && align === "start" && "actions-start",
+        className,
+      )}
+    >
       {children}
     </div>
   );

@@ -14,7 +14,9 @@ type NextWindow = Window & { next?: { router?: unknown } };
  * （同じ URL への GET）になって画面が作り直されるため。
  */
 export async function waitForHydration(page: Page): Promise<void> {
-  await page.waitForFunction(() => Boolean((window as NextWindow).next?.router));
+  await page.waitForFunction(() =>
+    Boolean((window as NextWindow).next?.router),
+  );
 }
 
 /** 画面を開き、hydration を待つ */
@@ -44,22 +46,30 @@ export function mainRegion(page: Page): Locator {
  * バッジ自身の読み上げ名（role="img" の aria-label）で取る。
  */
 export function cartBadge(page: Page, count: number): Locator {
-  return page.getByRole("banner").getByRole("img", { name: `カート内 ${count} 点`, exact: true });
+  return page
+    .getByRole("banner")
+    .getByRole("img", { name: `カート内 ${count} 点`, exact: true });
 }
 
 /** ヘッダーのアカウントのリンク（aria-label="アカウント"。ログイン前は /login、ログイン後は /account） */
 export function accountLink(page: Page): Locator {
-  return page.getByRole("banner").getByRole("link", { name: "アカウント", exact: true });
+  return page
+    .getByRole("banner")
+    .getByRole("link", { name: "アカウント", exact: true });
 }
 
 /** カートの「購入手続きへ」 */
 export function checkoutButton(page: Page): Locator {
-  return mainRegion(page).getByRole("button", { name: "購入手続きへ", exact: true });
+  return mainRegion(page).getByRole("button", {
+    name: "購入手続きへ",
+    exact: true,
+  });
 }
 
 /** ヘッダーの検索欄に入力して送る（md 未満ではメニューの中にあるので先に開く） */
 export async function searchProducts(page: Page, query: string): Promise<void> {
-  if (isNarrow(page)) await page.getByRole("button", { name: "メニュー" }).click();
+  if (isNarrow(page))
+    await page.getByRole("button", { name: "メニュー" }).click();
   const box = page.getByRole("textbox", { name: "商品を検索" });
   await box.fill(query);
   await box.press("Enter");

@@ -9,7 +9,15 @@
  * 段 1 では画面も API も DB をまだ読まない。
  */
 import { sql } from "drizzle-orm";
-import { check, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { MAX_QUANTITY, MIN_QUANTITY } from "../cart.ts";
 
 /** 注文の状態（orders.status）。型と CHECK 制約の両方がこの 1 つから作られる */
@@ -21,7 +29,11 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
  * このファイルの定数（数・固定の文字列）だけを渡す。外から来た値は渡さない。
  */
 const literal = (value: number | string) =>
-  sql.raw(typeof value === "number" ? String(value) : `'${value.replaceAll("'", "''")}'`);
+  sql.raw(
+    typeof value === "number"
+      ? String(value)
+      : `'${value.replaceAll("'", "''")}'`,
+  );
 
 /** 時刻の列（タイムゾーン付き） */
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -52,7 +64,9 @@ export const orders = pgTable(
     orderNo: text("order_no").notNull().unique("orders_order_no_unique"),
     /** 持ち主。null = ゲスト。user 表は段 3（認証）で作るので、外部キーはそのときに張る */
     userId: text("user_id"),
-    stripeSessionId: text("stripe_session_id").notNull().unique("orders_stripe_session_id_unique"),
+    stripeSessionId: text("stripe_session_id")
+      .notNull()
+      .unique("orders_stripe_session_id_unique"),
     status: text("status", { enum: ORDER_STATUSES }).notNull(),
     /** 税込の円（整数） */
     total: integer("total").notNull(),
@@ -61,7 +75,10 @@ export const orders = pgTable(
   },
   (t) => [
     check("orders_total_nonnegative", sql`${t.total} >= 0`),
-    check("orders_status_valid", sql`${t.status} in (${sql.join(ORDER_STATUSES.map(literal), sql`, `)})`),
+    check(
+      "orders_status_valid",
+      sql`${t.status} in (${sql.join(ORDER_STATUSES.map(literal), sql`, `)})`,
+    ),
   ],
 );
 
@@ -84,7 +101,10 @@ export const orderItems = pgTable(
   },
   (t) => [
     primaryKey({ name: "order_items_pkey", columns: [t.orderId, t.productId] }),
-    check("order_items_quantity_range", sql`${t.quantity} between ${literal(MIN_QUANTITY)} and ${literal(MAX_QUANTITY)}`),
+    check(
+      "order_items_quantity_range",
+      sql`${t.quantity} between ${literal(MIN_QUANTITY)} and ${literal(MAX_QUANTITY)}`,
+    ),
     check("order_items_unit_price_nonnegative", sql`${t.unitPrice} >= 0`),
   ],
 );

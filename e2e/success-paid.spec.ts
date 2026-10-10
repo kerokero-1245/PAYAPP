@@ -5,19 +5,33 @@
  */
 import { test, expect } from "./fixtures/index.ts";
 import { PATHS, SESSION_IDS } from "./constants.ts";
-import { quantitiesOf, readCart, readOrders, seedStorage } from "./fixtures/storage.ts";
+import {
+  quantitiesOf,
+  readCart,
+  readOrders,
+  seedStorage,
+} from "./fixtures/storage.ts";
 import { mockVerify } from "./fixtures/stripe-mock.ts";
 import { CART_ITEMS, product, totalPrice, yen } from "./support/catalog.ts";
 import { mainRegion, open, reload } from "./support/page.ts";
 import type { ItemQuantity } from "../lib/types.ts";
 
-test("success: 支払い済みなら注文を 1 件だけ記録し、買った分だけカートから外す", async ({ page, context }) => {
+test("success: 支払い済みなら注文を 1 件だけ記録し、買った分だけカートから外す", async ({
+  page,
+  context,
+}) => {
   // カートには 2 品。そのうち 1 つめを 1 点だけ買った（決済のあとにも残る分がある）
   const [first, second] = CART_ITEMS;
   const bought: ItemQuantity[] = [{ id: first.id, quantity: 1 }];
-  const remaining: ItemQuantity[] = [{ id: first.id, quantity: first.quantity - 1 }, second];
+  const remaining: ItemQuantity[] = [
+    { id: first.id, quantity: first.quantity - 1 },
+    second,
+  ];
   const main = mainRegion(page);
-  const confirmed = main.getByRole("heading", { level: 1, name: "ご購入ありがとうございます" });
+  const confirmed = main.getByRole("heading", {
+    level: 1,
+    name: "ご購入ありがとうございます",
+  });
 
   await seedStorage(context, { cart: CART_ITEMS });
   const verify = await mockVerify(page, { kind: "paid", items: bought });
@@ -27,7 +41,10 @@ test("success: 支払い済みなら注文を 1 件だけ記録し、買った�
     await expect(confirmed).toBeVisible();
     await expect.poll(async () => (await readOrders(page)).length).toBe(1);
     const [order] = await readOrders(page);
-    expect(order).toMatchObject({ sessionId: SESSION_IDS.paid, total: totalPrice(bought) });
+    expect(order).toMatchObject({
+      sessionId: SESSION_IDS.paid,
+      total: totalPrice(bought),
+    });
     expect(quantitiesOf(order.items)).toEqual(bought);
     await expect(main.getByText(/^ORD-[0-9A-Z]+$/)).toHaveText(order.id);
   });
@@ -51,7 +68,9 @@ test("success: 支払い済みなら注文を 1 件だけ記録し、買った�
     const articles = main.getByRole("article");
     await expect(articles).toHaveCount(1);
     await expect(articles).toContainText(order.id);
-    await expect(articles).toContainText(`${product(first.id).name} × ${bought[0].quantity}`);
+    await expect(articles).toContainText(
+      `${product(first.id).name} × ${bought[0].quantity}`,
+    );
     await expect(articles).toContainText(yen(order.total));
   });
 });

@@ -8,9 +8,26 @@ type StatusIconProps = {
 export default function StatusIcon({ kind }: StatusIconProps) {
   if (kind === "cancel") {
     return (
-      <svg viewBox="0 0 88 88" className="status-icon" fill="none" aria-hidden="true">
-        <circle cx="44" cy="44" r="40" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
-        <path d="M32 32 L56 56 M56 32 L32 56" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <svg
+        viewBox="0 0 88 88"
+        className="status-icon"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle
+          cx="44"
+          cy="44"
+          r="40"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          opacity="0.5"
+        />
+        <path
+          d="M32 32 L56 56 M56 32 L32 56"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
       </svg>
     );
   }

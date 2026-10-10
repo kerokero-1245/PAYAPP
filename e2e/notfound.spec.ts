@@ -10,15 +10,21 @@ const NOT_FOUND_TITLE = "ページが見つかりませんでした";
 /** カタログに無い商品と、存在しない URL */
 const MISSING_PATHS = ["/product/999", "/zzz"];
 
-test("notfound: 存在しない商品・URL は、サーバの HTML が 404 と本文を返す", async ({ page }) => {
+test("notfound: 存在しない商品・URL は、サーバの HTML が 404 と本文を返す", async ({
+  page,
+}) => {
   for (const path of MISSING_PATHS) {
     await test.step(path, async () => {
       const response = await page.goto(path);
       if (!response) throw new Error(`${path} の応答がありません`);
       expect(response.status()).toBe(404);
       // JS を実行する前の HTML（ブラウザ側で描いたものではない）に見出しが入っている
-      expect(await response.text()).toMatch(new RegExp(`<h1[^>]*>${NOT_FOUND_TITLE}</h1>`));
-      await expect(page.getByRole("heading", { level: 1, name: NOT_FOUND_TITLE })).toBeVisible();
+      expect(await response.text()).toMatch(
+        new RegExp(`<h1[^>]*>${NOT_FOUND_TITLE}</h1>`),
+      );
+      await expect(
+        page.getByRole("heading", { level: 1, name: NOT_FOUND_TITLE }),
+      ).toBeVisible();
     });
   }
 });

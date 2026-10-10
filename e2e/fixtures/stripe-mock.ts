@@ -23,7 +23,9 @@ const STRIPE_HOST_ROUTE = "https://checkout.stripe.com/**";
  * Stripe 行きの通信を塞ぐ。モックされずにここへ届いた通信は止めて、記録を返す
  * （呼び出し側が、テストの最後に空であることを確かめる）。
  */
-export async function closeStripeRoutes(context: BrowserContext): Promise<string[]> {
+export async function closeStripeRoutes(
+  context: BrowserContext,
+): Promise<string[]> {
   const leaks: string[] = [];
   const close = (route: Route) => {
     const request = route.request();
@@ -63,17 +65,31 @@ export type CheckoutMock = {
 
 function readGraphqlRequest(request: Request): CheckoutRequest {
   const body: unknown = request.postDataJSON();
-  const { query, variables } = (body ?? {}) as { query?: unknown; variables?: unknown };
+  const { query, variables } = (body ?? {}) as {
+    query?: unknown;
+    variables?: unknown;
+  };
   return { query: typeof query === "string" ? query : "", variables };
 }
 
-function graphqlBody(reply: Exclude<CheckoutReply, { kind: "network-error" }>): unknown {
+function graphqlBody(
+  reply: Exclude<CheckoutReply, { kind: "network-error" }>,
+): unknown {
   switch (reply.kind) {
     case "url":
-      return { data: { createCheckoutSession: { url: CHECKOUT_REDIRECT_URL, errors: [] } } };
+      return {
+        data: {
+          createCheckoutSession: { url: CHECKOUT_REDIRECT_URL, errors: [] },
+        },
+      };
     case "user-error":
       return {
-        data: { createCheckoutSession: { url: null, errors: [{ code: reply.code, message: reply.message }] } },
+        data: {
+          createCheckoutSession: {
+            url: null,
+            errors: [{ code: reply.code, message: reply.message }],
+          },
+        },
       };
     case "masked-error":
       return { data: null, errors: [{ message: "Unexpected error." }] };
@@ -81,7 +97,10 @@ function graphqlBody(reply: Exclude<CheckoutReply, { kind: "network-error" }>): 
 }
 
 /** createCheckoutSession への応答を差し替える */
-export async function mockCheckout(page: Page, initial: CheckoutReply): Promise<CheckoutMock> {
+export async function mockCheckout(
+  page: Page,
+  initial: CheckoutReply,
+): Promise<CheckoutMock> {
   const requests: CheckoutRequest[] = [];
   let current = initial;
   let gate: Promise<void> | null = null;
@@ -119,7 +138,7 @@ export async function mockStripeHost(page: Page): Promise<void> {
     route.fulfill({
       contentType: "text/html; charset=utf-8",
       body: `<!doctype html><html lang="ja"><meta charset="utf-8"><title>${STRIPE_MOCK_HEADING}</title><h1>${STRIPE_MOCK_HEADING}</h1></html>`,
-    })
+    }),
   );
 }
 
@@ -151,11 +170,16 @@ export type VerifyMock = {
 };
 
 /** 決済の確認への応答を差し替える */
-export async function mockVerify(page: Page, initial: VerifyReply): Promise<VerifyMock> {
+export async function mockVerify(
+  page: Page,
+  initial: VerifyReply,
+): Promise<VerifyMock> {
   const calls: VerifyCall[] = [];
   let current = initial;
   await page.route(VERIFY_ROUTE, async (route) => {
-    const sessionId = new URL(route.request().url()).searchParams.get("session_id");
+    const sessionId = new URL(route.request().url()).searchParams.get(
+      "session_id",
+    );
     const reply = current;
     switch (reply.kind) {
       case "real-server": {
@@ -165,7 +189,10 @@ export async function mockVerify(page: Page, initial: VerifyReply): Promise<Veri
       }
       case "paid":
         calls.push({ sessionId, realStatus: null });
-        return route.fulfill({ status: 200, json: { paid: true, order: paidOrder(sessionId ?? "", reply.items) } });
+        return route.fulfill({
+          status: 200,
+          json: { paid: true, order: paidOrder(sessionId ?? "", reply.items) },
+        });
       case "unpaid":
         calls.push({ sessionId, realStatus: null });
         return route.fulfill({ status: 200, json: { paid: false } });

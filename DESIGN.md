@@ -24,19 +24,19 @@
 
 ## トークンと部品の置き場
 
-| 置くもの | 場所 |
-| --- | --- |
-| 色・書体・角丸（Tailwind のユーティリティにもなるもの） | `app/styles/tokens.css` の `@theme` |
-| それ以外のトークン（金の半透明・影・余白・小さい文字・イージング・速さ） | `app/styles/tokens.css` の `:root` |
-| 文字の大きさの目盛り・行の高さ・字間 wide / widest | Tailwind のテーマ変数を参照する（`var(--text-sm)` `var(--text-sm--line-height)` `var(--tracking-wide)`。参照したものだけ出力される） |
-| body・フォーカス表示・スキップリンク（層の外） | `app/styles/base.css` |
-| 部品のクラス（すべて `@layer components`、1 部品 1 ファイル） | `app/styles/components/*.css` |
-| 形の土台（円・ピル・下からの影） | `app/styles/components/shape.css`（`.circle-icon` `.pill` `.shade-up`） |
-| 表示書体（見出し・金額・ブランド名） | `.type-display`（`typography.css`）。見出しは `components/ui/Heading.tsx` が組み立てる |
-| 控えめなリンク | `.link-quiet`（+ `.link-quiet-sm`）（`link.css`） |
-| React の共通部品 | `components/ui/`（`.tsx`） |
-| 数量の上下限 | `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY` |
-| カテゴリへのリンク | `lib/links.ts`（`categoryHref` / `CATEGORY_LINKS`。カテゴリの正本は `lib/catalog.ts`） |
+| 置くもの                                                                 | 場所                                                                                                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 色・書体・角丸（Tailwind のユーティリティにもなるもの）                  | `app/styles/tokens.css` の `@theme`                                                                                                  |
+| それ以外のトークン（金の半透明・影・余白・小さい文字・イージング・速さ） | `app/styles/tokens.css` の `:root`                                                                                                   |
+| 文字の大きさの目盛り・行の高さ・字間 wide / widest                       | Tailwind のテーマ変数を参照する（`var(--text-sm)` `var(--text-sm--line-height)` `var(--tracking-wide)`。参照したものだけ出力される） |
+| body・フォーカス表示・スキップリンク（層の外）                           | `app/styles/base.css`                                                                                                                |
+| 部品のクラス（すべて `@layer components`、1 部品 1 ファイル）            | `app/styles/components/*.css`                                                                                                        |
+| 形の土台（円・ピル・下からの影）                                         | `app/styles/components/shape.css`（`.circle-icon` `.pill` `.shade-up`）                                                              |
+| 表示書体（見出し・金額・ブランド名）                                     | `.type-display`（`typography.css`）。見出しは `components/ui/Heading.tsx` が組み立てる                                               |
+| 控えめなリンク                                                           | `.link-quiet`（+ `.link-quiet-sm`）（`link.css`）                                                                                    |
+| React の共通部品                                                         | `components/ui/`（`.tsx`）                                                                                                           |
+| 数量の上下限                                                             | `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY`                                                                                     |
+| カテゴリへのリンク                                                       | `lib/links.ts`（`categoryHref` / `CATEGORY_LINKS`。カテゴリの正本は `lib/catalog.ts`）                                               |
 
 - ページの `className` には配置と大きさのユーティリティだけを書き、見た目は部品へ寄せる
 - 新しい部品クラスを足す前に、同じ宣言の組を持つ役割クラス（`.fine` `.lead` `.meta` など）が無いかを探す

@@ -3,7 +3,8 @@ import { cx } from "./cx";
 import type { PolymorphicProps } from "./polymorphic";
 
 /** 見出しの大きさ（.heading-page など） */
-export type HeadingSize = "page" | "section" | "block" | "card" | "item" | "display" | "hero" | "tile";
+export type HeadingSize =
+  "page" | "section" | "block" | "card" | "item" | "display" | "hero" | "tile";
 
 type HeadingOwnProps = {
   size?: HeadingSize;
@@ -17,7 +18,9 @@ type HeadingOwnProps = {
  * 見出しの文字（.type-display の書体 + .heading の色 + 大きさ）。見出しの class はここでだけ組み立てる。
  * ほかの props（href・ref・tabIndex）は要素へ渡す。
  */
-export default function Heading<T extends ElementType = "h2">(props: PolymorphicProps<T, HeadingOwnProps>): ReactElement;
+export default function Heading<T extends ElementType = "h2">(
+  props: PolymorphicProps<T, HeadingOwnProps>,
+): ReactElement;
 export default function Heading({
   as: Tag = "h2",
   size = "section",
@@ -27,7 +30,15 @@ export default function Heading({
   ...rest
 }: HeadingOwnProps & { as?: ElementType }) {
   return (
-    <Tag className={cx("type-display heading", `heading-${size}`, leading && `heading-${leading}`, className)} {...rest}>
+    <Tag
+      className={cx(
+        "type-display heading",
+        `heading-${size}`,
+        leading && `heading-${leading}`,
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </Tag>
   );

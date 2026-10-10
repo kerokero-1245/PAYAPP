@@ -29,7 +29,8 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: BAD_REQUEST }, { status: 400 });
   }
-  if (text === null) return Response.json({ error: TOO_LARGE }, { status: 413 });
+  if (text === null)
+    return Response.json({ error: TOO_LARGE }, { status: 413 });
 
   let body: unknown;
   try {
@@ -50,7 +51,10 @@ export async function POST(request: Request) {
   }
   console.error("Checkout error:", result.cause);
   return Response.json(
-    { error: "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください" },
-    { status: 500 }
+    {
+      error:
+        "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください",
+    },
+    { status: 500 },
   );
 }

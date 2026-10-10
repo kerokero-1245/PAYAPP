@@ -43,9 +43,16 @@ export type Seed = {
 /** seed を localStorage に書く文字列にする（キー → JSON） */
 export function seedEntries(seed: Seed): Record<string, string> {
   const entries: Record<string, string> = {};
-  if (seed.cart) entries[STORAGE_KEYS.cart] = JSON.stringify(persisted({ items: seed.cart }));
-  if (seed.orders) entries[STORAGE_KEYS.orders] = JSON.stringify(persisted({ orders: seed.orders }));
-  if (seed.auth) entries[STORAGE_KEYS.auth] = JSON.stringify(persisted({ user: seed.auth }));
+  if (seed.cart)
+    entries[STORAGE_KEYS.cart] = JSON.stringify(
+      persisted({ items: seed.cart }),
+    );
+  if (seed.orders)
+    entries[STORAGE_KEYS.orders] = JSON.stringify(
+      persisted({ orders: seed.orders }),
+    );
+  if (seed.auth)
+    entries[STORAGE_KEYS.auth] = JSON.stringify(persisted({ user: seed.auth }));
   return entries;
 }
 
@@ -55,12 +62,16 @@ export function seedEntries(seed: Seed): Record<string, string> {
  * 読み込みのたびに走るため、キーが無いときだけ書く。書き直すと、画面で変えた状態（数量の変更・削除）が
  * 再読み込みで seed に戻ってしまい、永続化を確かめられなくなる。
  */
-export async function seedStorage(context: BrowserContext, seed: Seed): Promise<void> {
+export async function seedStorage(
+  context: BrowserContext,
+  seed: Seed,
+): Promise<void> {
   await context.addInitScript((entries: Record<string, string>) => {
     // 最初の about:blank など、localStorage に触れない文書では何もしない
     if (!location.origin.startsWith("http")) return;
     for (const [key, value] of Object.entries(entries)) {
-      if (window.localStorage.getItem(key) === null) window.localStorage.setItem(key, value);
+      if (window.localStorage.getItem(key) === null)
+        window.localStorage.setItem(key, value);
     }
   }, seedEntries(seed));
 }
@@ -75,7 +86,7 @@ const SEED_ORDER_DATE = "2026-01-15T03:00:00.000Z";
  */
 export function orderFor(
   items: ItemQuantity[],
-  options: { sessionId: string; id?: string; date?: string }
+  options: { sessionId: string; id?: string; date?: string },
 ): Order {
   const { items: lines, total } = paidOrder(options.sessionId, items);
   return {
@@ -88,7 +99,10 @@ export function orderFor(
 }
 
 /** localStorage の値を JSON として読む（キーが無ければ null） */
-export async function readStorage(page: Page, key: StorageKey): Promise<unknown> {
+export async function readStorage(
+  page: Page,
+  key: StorageKey,
+): Promise<unknown> {
   const raw = await page.evaluate((k) => window.localStorage.getItem(k), key);
   return raw === null ? null : (JSON.parse(raw) as unknown);
 }
@@ -96,7 +110,9 @@ export async function readStorage(page: Page, key: StorageKey): Promise<unknown>
 /** persist の入れ物から state を取り出す（キーが無い・形が違うときは空のオブジェクト） */
 function stateOf(stored: unknown): Record<string, unknown> {
   const state = (stored as { state?: unknown } | null)?.state;
-  return typeof state === "object" && state !== null ? (state as Record<string, unknown>) : {};
+  return typeof state === "object" && state !== null
+    ? (state as Record<string, unknown>)
+    : {};
 }
 
 /** カートの行（アプリが書いた形。キーが無ければ空） */

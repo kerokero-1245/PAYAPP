@@ -38,7 +38,10 @@ function toCartLine(product: Product, quantity: number): CartLine {
  * 保存されていた（または追加しようとしている）カートの行を、カタログに合わせて作り直す。
  * 行の順番は最初に現れた順を保つ。
  */
-export function reconcileCart(items: unknown, lookup: ProductLookup = getProductById): CartLine[] {
+export function reconcileCart(
+  items: unknown,
+  lookup: ProductLookup = getProductById,
+): CartLine[] {
   if (!Array.isArray(items)) return [];
   const merged = new Map<string, number>();
   for (const item of items as RawItem[]) {
@@ -55,14 +58,27 @@ export function reconcileCart(items: unknown, lookup: ProductLookup = getProduct
  * 決済が済んだ品目と数量だけをカートから取り除く。
  * 決済の後にカートへ足した品や、買った数より多く入っている分は残す。
  */
-export function removePurchasedFromCart(cartItems: CartLine[], purchasedItems: unknown): CartLine[] {
+export function removePurchasedFromCart(
+  cartItems: CartLine[],
+  purchasedItems: unknown,
+): CartLine[] {
   if (!Array.isArray(cartItems)) return [];
   const bought = new Map<string, number>();
-  for (const p of (Array.isArray(purchasedItems) ? purchasedItems : []) as RawItem[]) {
-    if (typeof p?.id !== "string" || typeof p.quantity !== "number" || !Number.isInteger(p.quantity)) continue;
+  for (const p of (Array.isArray(purchasedItems)
+    ? purchasedItems
+    : []) as RawItem[]) {
+    if (
+      typeof p?.id !== "string" ||
+      typeof p.quantity !== "number" ||
+      !Number.isInteger(p.quantity)
+    )
+      continue;
     bought.set(p.id, (bought.get(p.id) ?? 0) + p.quantity);
   }
   return cartItems
-    .map((item) => ({ ...item, quantity: item.quantity - (bought.get(item.id) ?? 0) }))
+    .map((item) => ({
+      ...item,
+      quantity: item.quantity - (bought.get(item.id) ?? 0),
+    }))
     .filter((item) => item.quantity > 0);
 }

@@ -33,8 +33,7 @@ export const PGLITE_DATA_DIR = ".pglite";
 
 /** 接続先 */
 export type DbTarget =
-  | { kind: "neon"; url: string }
-  | { kind: "pglite"; dataDir: string };
+  { kind: "neon"; url: string } | { kind: "pglite"; dataDir: string };
 
 /**
  * どの用途の接続か。
@@ -64,28 +63,38 @@ export function resolveDbTarget(
     nonEmpty(env.DATABASE_URL);
   if (url === undefined) return { kind: "pglite", dataDir: PGLITE_DATA_DIR };
   if (!POSTGRES_URL.test(url)) {
-    throw new Error("DATABASE_URL は postgres:// か postgresql:// で始まる接続文字列にしてください");
+    throw new Error(
+      "DATABASE_URL は postgres:// か postgresql:// で始まる接続文字列にしてください",
+    );
   }
   return { kind: "neon", url };
 }
 
 /** 接続先を画面・ログに出すための文（接続文字列そのものは出さない） */
 export function describeDbTarget(target: DbTarget): string {
-  return target.kind === "neon" ? "Neon（DATABASE_URL）" : `PGlite（${target.dataDir}）`;
+  return target.kind === "neon"
+    ? "Neon（DATABASE_URL）"
+    : `PGlite（${target.dataDir}）`;
 }
 
 /**
  * PGlite に繋ぐ。dataDir が無ければメモリ上（テスト用）、あれば同じ名前のディレクトリに保存する。
  * 新しいディレクトリの初期化（initdb）は 1 回に数秒かかる。2 回目からは速い。
  */
-export async function connectPglite(options: PGliteOptions = {}): Promise<PgliteConnection> {
+export async function connectPglite(
+  options: PGliteOptions = {},
+): Promise<PgliteConnection> {
   const [{ PGlite }, { drizzle }] = await Promise.all([
     import("@electric-sql/pglite"),
     import("drizzle-orm/pglite"),
   ]);
   const client = new PGlite(options);
   await client.waitReady;
-  return { db: drizzle({ client, schema }), client, close: () => client.close() };
+  return {
+    db: drizzle({ client, schema }),
+    client,
+    close: () => client.close(),
+  };
 }
 
 /** Neon に繋ぐ。Node 22 には WebSocket が標準であるので、ws は要らない */
@@ -96,11 +105,15 @@ async function connectNeon(url: string): Promise<DbConnection> {
   ]);
   const pool = new Pool({ connectionString: url });
   // 待機中の接続が切れたときのエラーを拾わないと、プロセスが落ちる
-  pool.on("error", (error: Error) => console.error("DB（Neon）の接続でエラー:", error.message));
+  pool.on("error", (error: Error) =>
+    console.error("DB（Neon）の接続でエラー:", error.message),
+  );
   return { db: drizzle({ client: pool, schema }), close: () => pool.end() };
 }
 
 /** 接続先に繋ぐ */
 export function connectDb(target: DbTarget): Promise<DbConnection> {
-  return target.kind === "neon" ? connectNeon(target.url) : connectPglite({ dataDir: target.dataDir });
+  return target.kind === "neon"
+    ? connectNeon(target.url)
+    : connectPglite({ dataDir: target.dataDir });
 }

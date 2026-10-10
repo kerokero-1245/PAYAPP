@@ -43,7 +43,12 @@ function walk(d: string): void {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name);
     if (e.isDirectory()) {
-      if (e.name !== "node_modules" && e.name !== ".next" && e.name !== "__generated__") walk(p);
+      if (
+        e.name !== "node_modules" &&
+        e.name !== ".next" &&
+        e.name !== "__generated__"
+      )
+        walk(p);
     } else if (CSS_EXT.test(e.name)) cssFiles.push(p);
     else if (JS_EXT.test(e.name)) jsFiles.push(p);
   }
@@ -51,7 +56,9 @@ function walk(d: string): void {
 for (const d of dirs) walk(d);
 
 if (cssFiles.length === 0 || jsFiles.length === 0) {
-  console.error(`check-flat-css: 対象が足りません（.css ${cssFiles.length} 件 / JS ${jsFiles.length} 件）`);
+  console.error(
+    `check-flat-css: 対象が足りません（.css ${cssFiles.length} 件 / JS ${jsFiles.length} 件）`,
+  );
   process.exit(1);
 }
 
@@ -93,7 +100,8 @@ function hasCombinator(sel: string): boolean {
       else if (s[j] === ")") depth--;
     }
     const inner = s.slice(start, j - 1);
-    if (splitTop(inner).some((p) => /^\s*[>+~]/.test(p) || hasCombinator(p))) return true;
+    if (splitTop(inner).some((p) => /^\s*[>+~]/.test(p) || hasCombinator(p)))
+      return true;
   }
   // 外側: 括弧の中身は見ない（:nth-child(2n + 1) の + を結合子と取らない）
   let outer = s;
@@ -110,7 +118,10 @@ for (const f of cssFiles) {
   for (const m of src.matchAll(/!important|@apply\b|:deep\b/g)) {
     bad.push(`${f}:${lineOf(src, m.index)} ${m[0]}`);
   }
-  const stack: { kind: "style" | "group" | "keyframes" | "other"; prelude: string }[] = [];
+  const stack: {
+    kind: "style" | "group" | "keyframes" | "other";
+    prelude: string;
+  }[] = [];
   const kinds = () => stack.map((e) => e.kind);
   let start = 0;
   for (let i = 0; i < src.length; i++) {
@@ -125,16 +136,22 @@ for (const f of cssFiles) {
       else if (GROUP_AT.test(prelude)) kind = "group";
       else if (prelude.startsWith("@")) kind = "other";
       else kind = "style";
-      if (kind !== "style" && kinds().includes("style")) bad.push(`${at} 規則の中の @規則: ${prelude}`);
+      if (kind !== "style" && kinds().includes("style"))
+        bad.push(`${at} 規則の中の @規則: ${prelude}`);
       if (kind === "style") {
         if (kinds().includes("style")) bad.push(`${at} 入れ子: ${prelude}`);
         if (prelude.includes("&")) bad.push(`${at} &: ${prelude}`);
         for (const sel of splitTop(prelude)) {
           if (hasCombinator(sel)) bad.push(`${at} 結合子: ${sel.trim()}`);
-          if (sel.replace(/\[[^\]]*\]/g, "[]").includes("#")) bad.push(`${at} ID セレクタ: ${sel.trim()}`);
+          if (sel.replace(/\[[^\]]*\]/g, "[]").includes("#"))
+            bad.push(`${at} ID セレクタ: ${sel.trim()}`);
         }
-        const inComponents = stack.some((e) => /^@layer\s+components\b/.test(e.prelude));
-        const inHoverMedia = stack.some((e) => /^@media\b.*\(\s*hover\s*:\s*hover\s*\)/.test(e.prelude));
+        const inComponents = stack.some((e) =>
+          /^@layer\s+components\b/.test(e.prelude),
+        );
+        const inHoverMedia = stack.some((e) =>
+          /^@media\b.*\(\s*hover\s*:\s*hover\s*\)/.test(e.prelude),
+        );
         if (/:hover\b/.test(prelude) && inComponents && !inHoverMedia) {
           bad.push(`${at} @media (hover: hover) の外の :hover: ${prelude}`);
         }
@@ -154,14 +171,38 @@ const V = "(?:[a-z0-9-]+:)*"; // 前に付く変種（md: hover: など）
 const JS_RULES: [RegExp, string][] = [
   [/!important/g, "!important"],
   [/:deep\b/g, ":deep"],
-  [new RegExp(`${D}[a-z][a-z0-9:./%\\[\\]-]*-[a-z0-9./%\\[\\]-]*!(?=$|[\\s"'\`])`, "gm"), "Tailwind の ! 接尾辞"],
-  [new RegExp(`${D}![a-z][a-z0-9]*-[a-z0-9./%-]+(?=$|[\\s"'\`])`, "gm"), "Tailwind の ! 接頭辞"],
-  [new RegExp(`${D}${V}(?:group|peer)-[a-z-]+(?:/[a-z0-9_-]+)?:`, "gm"), "group-*/peer-*（子孫・兄弟セレクタ）"],
-  [new RegExp(`${D}${V}(?:\\*\\*?|in-[a-z0-9-]+|has-[a-z0-9-]+):`, "gm"), "*: / in-*: / has-*:（子・子孫セレクタ）"],
+  [
+    new RegExp(
+      `${D}[a-z][a-z0-9:./%\\[\\]-]*-[a-z0-9./%\\[\\]-]*!(?=$|[\\s"'\`])`,
+      "gm",
+    ),
+    "Tailwind の ! 接尾辞",
+  ],
+  [
+    new RegExp(`${D}![a-z][a-z0-9]*-[a-z0-9./%-]+(?=$|[\\s"'\`])`, "gm"),
+    "Tailwind の ! 接頭辞",
+  ],
+  [
+    new RegExp(`${D}${V}(?:group|peer)-[a-z-]+(?:/[a-z0-9_-]+)?:`, "gm"),
+    "group-*/peer-*（子孫・兄弟セレクタ）",
+  ],
+  [
+    new RegExp(`${D}${V}(?:\\*\\*?|in-[a-z0-9-]+|has-[a-z0-9-]+):`, "gm"),
+    "*: / in-*: / has-*:（子・子孫セレクタ）",
+  ],
   [new RegExp(`${D}${V}-?space-[xy]-`, "gm"), "space-x/space-y（子セレクタ）"],
   [new RegExp(`${D}${V}divide-`, "gm"), "divide-（子セレクタ）"],
-  [new RegExp(`${D}${V}-?[a-z][a-z0-9-]*-\\[[^\\]\\s]+\\]`, "gm"), "任意値 [...]"],
-  [new RegExp(`${D}${V}-?[a-z][a-z0-9-]*-\\((?:[a-z-]+:)?--[a-z0-9-]+\\)`, "gm"), "任意値（変数の省略記法 -(--x)）"],
+  [
+    new RegExp(`${D}${V}-?[a-z][a-z0-9-]*-\\[[^\\]\\s]+\\]`, "gm"),
+    "任意値 [...]",
+  ],
+  [
+    new RegExp(
+      `${D}${V}-?[a-z][a-z0-9-]*-\\((?:[a-z-]+:)?--[a-z0-9-]+\\)`,
+      "gm",
+    ),
+    "任意値（変数の省略記法 -(--x)）",
+  ],
   // [&>*]: や [@media…]: の形だけを見る（JS の計算されたキー { [field]: v } は対象外）
   [new RegExp(`${D}\\[[&@][^\\]\\s]*\\]:`, "gm"), "任意の変種 [&…]:"],
   [/\bstyle=\{/g, "style 属性の直書き"],
@@ -173,13 +214,17 @@ const TOKEN_RULES: [RegExp, string][] = [
   [/^![a-z][a-z0-9-]*$/, "Tailwind の ! 接頭辞"],
   [/^(?:[a-z0-9-]+:)*-?[a-z][a-z0-9-]*!$/, "Tailwind の ! 接尾辞"],
 ];
-const BUILT_PREFIX = /(?:^|[\s"'`])(?:[a-z0-9-]+:)*-?(?:space|divide|group|peer)(?:-[a-z]*)?-?$/;
+const BUILT_PREFIX =
+  /(?:^|[\s"'`])(?:[a-z0-9-]+:)*-?(?:space|divide|group|peer)(?:-[a-z]*)?-?$/;
 
 for (const f of jsFiles) {
   const src = fs
     .readFileSync(f, "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, blank)
-    .replace(/(^|[^:"'`\\])\/\/[^\n]*/g, (m, p1) => p1 + blank(m.slice(p1.length)));
+    .replace(
+      /(^|[^:"'`\\])\/\/[^\n]*/g,
+      (m, p1) => p1 + blank(m.slice(p1.length)),
+    );
   for (const [re, label] of JS_RULES) {
     for (const m of src.matchAll(re)) {
       bad.push(`${f}:${lineOf(src, m.index)} ${label}: ${m[0]}`);
@@ -191,14 +236,18 @@ for (const f of jsFiles) {
     // テンプレートの ${…} の中はコードなので語の検査から外す
     const text = m[0][0] === "`" ? body.replace(/\$\{[^}]*\}/g, " ") : body;
     for (const tok of text.split(/\s+/).filter(Boolean)) {
-      for (const [re, label] of TOKEN_RULES) if (re.test(tok)) bad.push(`${f}:${line} ${label}: ${tok}`);
+      for (const [re, label] of TOKEN_RULES)
+        if (re.test(tok)) bad.push(`${f}:${line} ${label}: ${tok}`);
     }
     // 組み立て: "space-" + …（文字列の末尾）/ `space-${…}`（${ の直前）
     const tails = m[0][0] === "`" ? body.split(/\$\{[^}]*\}/).slice(0, -1) : [];
     const followedByPlus = /^\s*\+/.test(src.slice(m.index + m[0].length));
     if (followedByPlus) tails.push(body);
     for (const t of tails) {
-      if (BUILT_PREFIX.test(t)) bad.push(`${f}:${line} 文字列の組み立て（禁止の接頭辞）: ${m[0].slice(0, 40)}`);
+      if (BUILT_PREFIX.test(t))
+        bad.push(
+          `${f}:${line} 文字列の組み立て（禁止の接頭辞）: ${m[0].slice(0, 40)}`,
+        );
     }
   }
 }

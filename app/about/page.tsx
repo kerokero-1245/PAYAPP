@@ -37,11 +37,21 @@ const CHAPTERS = [
 export default function AboutPage() {
   return (
     <Section spacing="md">
-      <PageHeader eyebrow="Our Story" title="ブランドストーリー" dividerClassName="mt-8 mb-10" />
+      <PageHeader
+        eyebrow="Our Story"
+        title="ブランドストーリー"
+        dividerClassName="mt-8 mb-10"
+      />
 
       <div className="flex flex-col gap-12 max-w-2xl">
         {CHAPTERS.map((c) => (
-          <SectionHeading key={c.title} align="start" eyebrow={c.eyebrow} title={c.title} lead={c.body} />
+          <SectionHeading
+            key={c.title}
+            align="start"
+            eyebrow={c.eyebrow}
+            title={c.title}
+            lead={c.body}
+          />
         ))}
       </div>
 

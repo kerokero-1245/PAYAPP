@@ -13,16 +13,36 @@ type QuantityStepperProps = {
 /**
  * 数量の増減（− 数 +）。下限・上限は lib/cart.ts の MIN_QUANTITY / MAX_QUANTITY。
  */
-export default function QuantityStepper({ value, onDecrement, onIncrement, size = "md", label = "" }: QuantityStepperProps) {
+export default function QuantityStepper({
+  value,
+  onDecrement,
+  onIncrement,
+  size = "md",
+  label = "",
+}: QuantityStepperProps) {
   const sm = size === "sm";
   const btn = cx("stepper-btn", sm && "stepper-btn-sm");
   return (
     <div className={cx("stepper", sm && "stepper-sm")}>
-      <button type="button" onClick={onDecrement} disabled={value <= MIN_QUANTITY} aria-label={`${label}数量を減らす`} className={btn}>
+      <button
+        type="button"
+        onClick={onDecrement}
+        disabled={value <= MIN_QUANTITY}
+        aria-label={`${label}数量を減らす`}
+        className={btn}
+      >
         −
       </button>
-      <span className={cx("stepper-value", sm && "stepper-value-sm")}>{value}</span>
-      <button type="button" onClick={onIncrement} disabled={value >= MAX_QUANTITY} aria-label={`${label}数量を増やす`} className={btn}>
+      <span className={cx("stepper-value", sm && "stepper-value-sm")}>
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={onIncrement}
+        disabled={value >= MAX_QUANTITY}
+        aria-label={`${label}数量を増やす`}
+        className={btn}
+      >
         +
       </button>
     </div>

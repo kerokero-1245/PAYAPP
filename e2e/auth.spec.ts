@@ -11,7 +11,9 @@ const EMAIL = "demo@example.com";
 /** メールのローカル部 */
 const DISPLAY_NAME = "demo";
 
-test("auth: メールだけでログインし、ヘッダーの導線が変わり、ログアウトで戻る", async ({ page }) => {
+test("auth: メールだけでログインし、ヘッダーの導線が変わり、ログアウトで戻る", async ({
+  page,
+}) => {
   const main = mainRegion(page);
   await open(page, PATHS.login);
   await expect(accountLink(page)).toHaveAttribute("href", PATHS.login);
@@ -28,7 +30,9 @@ test("auth: メールだけでログインし、ヘッダーの導線が変わ�
 
   await test.step("ログイン済みで /login を開くと「ログイン中です」", async () => {
     await open(page, PATHS.login);
-    await expect(main.getByRole("heading", { name: "ログイン中です" })).toBeVisible();
+    await expect(
+      main.getByRole("heading", { name: "ログイン中です" }),
+    ).toBeVisible();
   });
 
   await test.step("ログアウトすると / に戻り、ヘッダーはログインへ向き、/account はログインを求める", async () => {
@@ -39,6 +43,8 @@ test("auth: メールだけでログインし、ヘッダーの導線が変わ�
     expect(await readAuth(page)).toBeNull();
 
     await open(page, PATHS.account);
-    await expect(main.getByRole("heading", { name: "ログインが必要です" })).toBeVisible();
+    await expect(
+      main.getByRole("heading", { name: "ログインが必要です" }),
+    ).toBeVisible();
   });
 });

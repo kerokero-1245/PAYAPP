@@ -49,14 +49,20 @@ export default function Footer() {
               選び抜かれた逸品だけを集めた、ラグジュアリー・オンラインストア。
             </p>
             <div className="footer-social mt-5 flex gap-4">
-              <span aria-hidden className="footer-social-item">Instagram</span>
-              <span aria-hidden className="footer-social-item">X</span>
+              <span aria-hidden className="footer-social-item">
+                Instagram
+              </span>
+              <span aria-hidden className="footer-social-item">
+                X
+              </span>
             </div>
           </div>
 
           {cols.map((col) => (
             <div key={col.title}>
-              <Eyebrow as="h4" className="mb-4">{col.title}</Eyebrow>
+              <Eyebrow as="h4" className="mb-4">
+                {col.title}
+              </Eyebrow>
               <ul className="flex flex-col gap-2.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
@@ -74,7 +80,10 @@ export default function Footer() {
 
         <div className="fine flex flex-col sm:flex-row items-center justify-between gap-3">
           <p>© 2026 MAISON (PAYAPP). All rights reserved.</p>
-          <nav aria-label="規約とご案内" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+          <nav
+            aria-label="規約とご案内"
+            className="flex flex-wrap justify-center gap-x-5 gap-y-2"
+          >
             {legalLinks.map((l) => (
               <Link key={l.href} href={l.href} className="footer-legal-link">
                 {l.label}

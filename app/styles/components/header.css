@@ -40,7 +40,8 @@
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
     letter-spacing: var(--tracking-wide);
-    border-bottom: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent);
+    border-bottom: 1px solid
+      color-mix(in oklab, var(--color-line) 60%, transparent);
     color: var(--color-muted);
   }
   .mobile-link[aria-current] {

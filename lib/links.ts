@@ -10,6 +10,9 @@ export function categoryHref(slug: string): string {
 }
 
 /** "all" を除くカテゴリのリンク（CATEGORIES の並び順） */
-export const CATEGORY_LINKS: { slug: string; href: string; label: string }[] = CATEGORIES.filter(
-  (c) => c.slug !== "all"
-).map((c) => ({ slug: c.slug, href: categoryHref(c.slug), label: c.label }));
+export const CATEGORY_LINKS: { slug: string; href: string; label: string }[] =
+  CATEGORIES.filter((c) => c.slug !== "all").map((c) => ({
+    slug: c.slug,
+    href: categoryHref(c.slug),
+    label: c.label,
+  }));

@@ -1,5 +1,10 @@
 import "server-only";
-import { connectDb, resolveDbTarget, type Db, type DbConnection } from "./connect.ts";
+import {
+  connectDb,
+  resolveDbTarget,
+  type Db,
+  type DbConnection,
+} from "./connect.ts";
 
 /**
  * アプリ（Route Handler・サーバコンポーネント）が DB を受け取る入口
@@ -12,7 +17,9 @@ import { connectDb, resolveDbTarget, type Db, type DbConnection } from "./connec
  * "server-only" により、クライアントのコードから import するとビルドが失敗する（lib/stripe.ts の getStripe と同じ）。
  * そのためテストはここを読まず、DB を関数の引数で受け取る側（fulfillCheckout など）に lib/db/test-helpers.ts の接続を差し込む。
  */
-const store = globalThis as typeof globalThis & { __payappDb?: Promise<DbConnection> };
+const store = globalThis as typeof globalThis & {
+  __payappDb?: Promise<DbConnection>;
+};
 
 export async function getDb(): Promise<Db> {
   if (store.__payappDb === undefined) {

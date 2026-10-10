@@ -33,7 +33,7 @@ function usePrefersReducedMotion() {
   return useSyncExternalStore(
     subscribeReducedMotion,
     () => window.matchMedia(REDUCED_MOTION).matches,
-    () => false
+    () => false,
   );
 }
 

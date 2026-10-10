@@ -16,7 +16,11 @@ import { CHECKOUT_ERRORS } from "../lib/checkout.ts";
 const FAILURES: { title: string; reply: CheckoutReply; message: string }[] = [
   {
     title: "利用者に見せてよい理由（UserError）はその文言",
-    reply: { kind: "user-error", code: "UNKNOWN_ITEM", message: CHECKOUT_ERRORS.unknownItem },
+    reply: {
+      kind: "user-error",
+      code: "UNKNOWN_ITEM",
+      message: CHECKOUT_ERRORS.unknownItem,
+    },
     message: CHECKOUT_ERRORS.unknownItem,
   },
   {
@@ -31,7 +35,10 @@ const FAILURES: { title: string; reply: CheckoutReply; message: string }[] = [
   },
 ];
 
-test("checkout: 失敗は理由に応じた文言を出し、ボタンを元に戻す", async ({ page, context }) => {
+test("checkout: 失敗は理由に応じた文言を出し、ボタンを元に戻す", async ({
+  page,
+  context,
+}) => {
   await seedStorage(context, { cart: CART_ITEMS });
   const checkout = await mockCheckout(page, FAILURES[0].reply);
   await open(page, PATHS.cart);

@@ -21,17 +21,22 @@ const NAV_CATEGORY_SLUGS: readonly (string | null)[] = ["watches", "jewelry"];
 const NAV_LINKS = [
   { href: "/", label: "ホーム" },
   { href: "/product", label: "ショップ" },
-  ...CATEGORY_LINKS.filter((c) => NAV_CATEGORY_SLUGS.includes(c.slug)).map(({ href, label }) => ({ href, label })),
+  ...CATEGORY_LINKS.filter((c) => NAV_CATEGORY_SLUGS.includes(c.slug)).map(
+    ({ href, label }) => ({ href, label }),
+  ),
   { href: "/orders", label: "注文履歴" },
 ];
-
 
 /**
  * href が現在の URL に当たるか。
  * - "/product?category=watches" は /product かつ category=watches のときだけ
  * - "/product"（ショップ）は /product 配下のうち、上のカテゴリリンクに当たらないとき
  */
-function isActiveHref(href: string, pathname: string, category: string | null): boolean {
+function isActiveHref(
+  href: string,
+  pathname: string,
+  category: string | null,
+): boolean {
   const [base, query] = href.split("?");
   if (base === "/") return pathname === "/";
   if (query) {
@@ -39,7 +44,11 @@ function isActiveHref(href: string, pathname: string, category: string | null): 
     return pathname === base && category === want;
   }
   const inSection = pathname === base || pathname.startsWith(base + "/");
-  if (base === "/product" && pathname === "/product" && NAV_CATEGORY_SLUGS.includes(category)) {
+  if (
+    base === "/product" &&
+    pathname === "/product" &&
+    NAV_CATEGORY_SLUGS.includes(category)
+  ) {
     return false;
   }
   return inSection;
@@ -49,7 +58,12 @@ function isActiveHref(href: string, pathname: string, category: string | null): 
  * aria-current の値。開いているページそのもの（パスとクエリが一致）なら "page"、
  * その配下（商品詳細のショップなど）なら "true"。
  */
-function ariaCurrentFor(href: string, pathname: string, search: string, active: boolean): "page" | "true" | undefined {
+function ariaCurrentFor(
+  href: string,
+  pathname: string,
+  search: string,
+  active: boolean,
+): "page" | "true" | undefined {
   if (!active) return undefined;
   const [base, query = ""] = href.split("?");
   return pathname === base && search === query ? "page" : "true";
@@ -75,7 +89,14 @@ type NavProps = Omit<NavItemsProps, "category" | "search" | "known">;
  * known=false（URL のクエリがまだ分からない Suspense の fallback）では、どの項目も光らせない。
  * 現在地の見た目は linkClass のクラスが aria-current で付ける（.nav-link[aria-current] など）。
  */
-function NavItems({ pathname, category, search, known, linkClass, onNavigate }: NavItemsProps) {
+function NavItems({
+  pathname,
+  category,
+  search,
+  known,
+  linkClass,
+  onNavigate,
+}: NavItemsProps) {
   return NAV_LINKS.map((l) => {
     const active = known && isActiveHref(l.href, pathname, category);
     return (
@@ -107,7 +128,9 @@ function NavItemsWithParams(props: NavProps) {
 
 function Nav(props: NavProps) {
   return (
-    <Suspense fallback={<NavItems {...props} category={null} search="" known={false} />}>
+    <Suspense
+      fallback={<NavItems {...props} category={null} search="" known={false} />}
+    >
       <NavItemsWithParams {...props} />
     </Suspense>
   );
@@ -265,7 +288,14 @@ export default function Header() {
 /* ---- インライン SVG アイコン（外部依存なし） ---- */
 function CartIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+    >
       <path d="M6 6h15l-1.5 9h-12z" strokeLinejoin="round" />
       <path d="M6 6L5 3H2" strokeLinecap="round" />
       <circle cx="9" cy="20" r="1.4" />
@@ -275,7 +305,14 @@ function CartIcon() {
 }
 function UserIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+    >
       <circle cx="12" cy="8" r="3.4" />
       <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" strokeLinecap="round" />
     </svg>
@@ -283,7 +320,14 @@ function UserIcon() {
 }
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    >
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4-4" strokeLinecap="round" />
     </svg>
@@ -291,7 +335,14 @@ function SearchIcon() {
 }
 function MenuIcon({ open }: { open: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
       {open ? (
         <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
       ) : (

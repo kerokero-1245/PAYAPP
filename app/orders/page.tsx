@@ -23,7 +23,12 @@ export default function OrdersPage() {
 
   return (
     <Section spacing="md" as="div">
-      <PageHeader eyebrow="MAISON — ORDER HISTORY" title="注文履歴" dividerClassName="mt-8 mb-10" dividerOutside />
+      <PageHeader
+        eyebrow="MAISON — ORDER HISTORY"
+        title="注文履歴"
+        dividerClassName="mt-8 mb-10"
+        dividerOutside
+      />
 
       {/* mounted 前はプレースホルダ（hydration 対策） */}
       {!mounted ? (
@@ -56,7 +61,14 @@ export default function OrdersPage() {
                   </div>
                   <div className="text-right">
                     <p className="meta">{formatDate(order.date)}</p>
-                    <Price as="p" amount={order.total} display size="lg" tone="gold" className="mt-1" />
+                    <Price
+                      as="p"
+                      amount={order.total}
+                      display
+                      size="lg"
+                      tone="gold"
+                      className="mt-1"
+                    />
                   </div>
                 </div>
 
@@ -69,7 +81,10 @@ export default function OrdersPage() {
                       .filter((item) => item.image)
                       // 上の filter で image のある品目だけに絞っている
                       .map((item) => (
-                        <MediaFrame key={`${order.id}-thumb-${item.id}`} thumb="sm">
+                        <MediaFrame
+                          key={`${order.id}-thumb-${item.id}`}
+                          thumb="sm"
+                        >
                           <Image
                             src={item.image!}
                             alt={item.name}
@@ -96,7 +111,11 @@ export default function OrdersPage() {
                           × {item.quantity}
                         </span>
                       </span>
-                      <Price amount={item.price * item.quantity} tone="muted" className="shrink-0" />
+                      <Price
+                        amount={item.price * item.quantity}
+                        tone="muted"
+                        className="shrink-0"
+                      />
                     </li>
                   ))}
                 </ul>

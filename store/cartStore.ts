@@ -51,7 +51,7 @@ export const useCartStore = create<CartState>()(
       updateQuantity: (id, quantity) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.id === id ? { ...i, quantity: clampQuantity(quantity) } : i
+            i.id === id ? { ...i, quantity: clampQuantity(quantity) } : i,
           ),
         })),
 
@@ -75,8 +75,10 @@ export const useCartStore = create<CartState>()(
       // localStorage から戻すときに、カタログに合わせて作り直す
       merge: (persisted, current) => ({
         ...current,
-        items: reconcileCart((persisted as { items?: unknown } | null | undefined)?.items),
+        items: reconcileCart(
+          (persisted as { items?: unknown } | null | undefined)?.items,
+        ),
       }),
-    }
-  )
+    },
+  ),
 );

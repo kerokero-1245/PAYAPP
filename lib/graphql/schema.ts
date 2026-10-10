@@ -65,13 +65,18 @@ function toCartItems(items: ItemQuantity[]): CartItem[] {
 }
 
 /** app/product/page.tsx と同じ絞り込み（カテゴリ → 小文字の部分一致） */
-function filterProducts(category?: string | null, q?: string | null): Product[] {
-  const slug = CATEGORIES.find((c) => c.slug === (category ?? "all"))?.slug ?? "all";
+function filterProducts(
+  category?: string | null,
+  q?: string | null,
+): Product[] {
+  const slug =
+    CATEGORIES.find((c) => c.slug === (category ?? "all"))?.slug ?? "all";
   const query = (q ?? "").trim().toLowerCase();
   return PRODUCTS.filter((p) => {
     if (slug !== "all" && p.category !== slug) return false;
     if (!query) return true;
-    const haystack = `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase();
+    const haystack =
+      `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase();
     return haystack.includes(query);
   });
 }
@@ -83,7 +88,8 @@ export const resolvers: Resolvers<GraphqlContext> = {
     product: (_parent, { id }) => getProductById(id) ?? null,
     cartQuote: (_parent, { items }) => {
       const normalized = normalizeOrderItems(items);
-      if (!normalized.ok) return { quote: null, errors: [toUserError(normalized.error)] };
+      if (!normalized.ok)
+        return { quote: null, errors: [toUserError(normalized.error)] };
       const lines = toCartItems(normalized.items);
       return {
         quote: {
@@ -99,7 +105,9 @@ export const resolvers: Resolvers<GraphqlContext> = {
       if (!isValidSessionId(sessionId)) return { state: "UNPAID", order: null };
       let session;
       try {
-        session = await context.getStripe().checkout.sessions.retrieve(sessionId);
+        session = await context
+          .getStripe()
+          .checkout.sessions.retrieve(sessionId);
       } catch (err) {
         if (isStripeNotFound(err)) return { state: "UNPAID", order: null };
         // それ以外は「確認できなかった」。例外の中身は maskedErrors で利用者に返さない
@@ -125,11 +133,14 @@ export const resolvers: Resolvers<GraphqlContext> = {
         getStripe: context.getStripe,
       });
       if (result.ok) return { url: result.url, errors: [] };
-      if (result.kind === "invalid") return { url: null, errors: [toUserError(result.error)] };
+      if (result.kind === "invalid")
+        return { url: null, errors: [toUserError(result.error)] };
       console.error("GraphQL checkout error:", result.cause);
       return {
         url: null,
-        errors: [{ code: "STRIPE_UNAVAILABLE", message: STRIPE_UNAVAILABLE_MESSAGE }],
+        errors: [
+          { code: "STRIPE_UNAVAILABLE", message: STRIPE_UNAVAILABLE_MESSAGE },
+        ],
       };
     },
   },

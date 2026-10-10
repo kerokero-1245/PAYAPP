@@ -37,8 +37,14 @@ export default defineConfig({
   },
   // 幅は撮影と同じ 390 / 1280。モバイル端末の模倣（isMobile・タッチ）はせず、幅だけを変える
   projects: [
-    { name: "mobile-390", use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.mobile } },
-    { name: "desktop-1280", use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.desktop } },
+    {
+      name: "mobile-390",
+      use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.mobile },
+    },
+    {
+      name: "desktop-1280",
+      use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.desktop },
+    },
   ],
   webServer: {
     command: `npm run start -- -p ${PORT}`,
@@ -48,7 +54,9 @@ export default defineConfig({
     env: {
       // サーバを Stripe から切り離す。空文字の環境変数は .env.local の値より優先される（getStripe は throw する）。
       // 実際の Stripe に通信する @stripe のテストを回すときだけ、キーを渡す
-      STRIPE_SECRET_KEY: STRIPE_ENABLED ? (process.env.STRIPE_SECRET_KEY ?? "") : "",
+      STRIPE_SECRET_KEY: STRIPE_ENABLED
+        ? (process.env.STRIPE_SECRET_KEY ?? "")
+        : "",
     },
   },
 });

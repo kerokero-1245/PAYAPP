@@ -23,7 +23,12 @@ import {
 } from "../lib/db/connect.ts";
 import type { Db } from "../lib/db/connect.ts";
 import { loadLocalEnv } from "../lib/db/load-env.ts";
-import { orderItems, orders, products, stripeEvents } from "../lib/db/schema.ts";
+import {
+  orderItems,
+  orders,
+  products,
+  stripeEvents,
+} from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import {
   MIGRATIONS_FOLDER,
@@ -48,8 +53,15 @@ const newOrder = (n: number, overrides: Partial<NewOrder> = {}): NewOrder => ({
 });
 
 /** 注文を 1 件入れて、その id を返す */
-async function insertOrder(db: Db, n = 1, overrides: Partial<NewOrder> = {}): Promise<string> {
-  const [row] = await db.insert(orders).values(newOrder(n, overrides)).returning({ id: orders.id });
+async function insertOrder(
+  db: Db,
+  n = 1,
+  overrides: Partial<NewOrder> = {},
+): Promise<string> {
+  const [row] = await db
+    .insert(orders)
+    .values(newOrder(n, overrides))
+    .returning({ id: orders.id });
   assert.ok(row);
   return row.id;
 }
@@ -63,7 +75,8 @@ const newItem = (orderId: string, productId: string, quantity = 1) => ({
   quantity,
 });
 
-const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const byId = (a: { id: string }, b: { id: string }) =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 // ---------- マイグレーション ----------
 
@@ -78,13 +91,31 @@ test("マイグレーション: 履歴どおり全部当たり、4 つの表が�
     );
 
     // drizzle/meta/_journal.json（外から来る値なので unknown で受けて絞る）の件数と、当たった件数・SQL の件数が一致する
-    const journal: unknown = JSON.parse(fs.readFileSync(path.join(MIGRATIONS_FOLDER, "meta", "_journal.json"), "utf8"));
-    assert.ok(typeof journal === "object" && journal !== null && "entries" in journal && Array.isArray(journal.entries));
-    const applied = await client.query<{ n: number }>("select count(*)::int as n from drizzle.__drizzle_migrations");
+    const journal: unknown = JSON.parse(
+      fs.readFileSync(
+        path.join(MIGRATIONS_FOLDER, "meta", "_journal.json"),
+        "utf8",
+      ),
+    );
+    assert.ok(
+      typeof journal === "object" &&
+        journal !== null &&
+        "entries" in journal &&
+        Array.isArray(journal.entries),
+    );
+    const applied = await client.query<{ n: number }>(
+      "select count(*)::int as n from drizzle.__drizzle_migrations",
+    );
     assert.equal(applied.rows[0]?.n, journal.entries.length);
     assert.ok(journal.entries.length >= 1);
-    const sqlFiles = fs.readdirSync(MIGRATIONS_FOLDER).filter((name) => name.endsWith(".sql"));
-    assert.equal(sqlFiles.length, journal.entries.length, "履歴に載っていない SQL がある（generate を打たずに手で置いた？）");
+    const sqlFiles = fs
+      .readdirSync(MIGRATIONS_FOLDER)
+      .filter((name) => name.endsWith(".sql"));
+    assert.equal(
+      sqlFiles.length,
+      journal.entries.length,
+      "履歴に載っていない SQL がある（generate を打たずに手で置いた？）",
+    );
   }));
 
 test("テストごとの DB は独立している（片方で入れた行がもう片方に見えない）", async () => {
@@ -111,18 +142,29 @@ test("seed: カタログの全商品が入り、2 回目は何も変えない（
 
     assert.equal(await seedProducts(db), 0, "変わった行が無いので 0 件");
     const second = await db.select().from(products);
-    assert.deepEqual(second.sort(byId), first.sort(byId), "updated_at も含めて 1 回目と同じ");
+    assert.deepEqual(
+      second.sort(byId),
+      first.sort(byId),
+      "updated_at も含めて 1 回目と同じ",
+    );
   }));
 
 test("seed: 価格がずれていれば直すが、在庫は上書きしない", () =>
   withTestDb(async ({ db }) => {
     await seedProducts(db);
-    await db.update(products).set({ price: 1, stock: 7 }).where(eq(products.id, "1"));
+    await db
+      .update(products)
+      .set({ price: 1, stock: 7 })
+      .where(eq(products.id, "1"));
 
     assert.equal(await seedProducts(db), 1, "ずれていた 1 件だけ更新する");
     const [row] = await db.select().from(products).where(eq(products.id, "1"));
     assert.equal(row?.price, PRODUCTS[0]?.price);
-    assert.equal(row?.stock, 7, "在庫は DB が正本。seed を打ち直しても戻さない");
+    assert.equal(
+      row?.stock,
+      7,
+      "在庫は DB が正本。seed を打ち直しても戻さない",
+    );
   }));
 
 test("seed: カタログから消えた商品は消さず、空のカタログは何もしない", () =>
@@ -138,36 +180,58 @@ test("seed: カタログから消えた商品は消さず、空のカタログ�
 test("制約: products — 同じ id は入らない / 価格と在庫は負にできない", () =>
   withTestDb(async ({ db }) => {
     await db.insert(products).values({ id: "p1", price: 1000 });
-    await assertPgError(() => db.insert(products).values({ id: "p1", price: 2000 }), {
-      code: PG_UNIQUE_VIOLATION,
-      constraint: "products_pkey",
-    });
-    await assertPgError(() => db.insert(products).values({ id: "p2", price: -1 }), {
-      code: PG_CHECK_VIOLATION,
-      constraint: "products_price_nonnegative",
-    });
-    await assertPgError(() => db.insert(products).values({ id: "p3", price: 1000, stock: -1 }), {
-      code: PG_CHECK_VIOLATION,
-      constraint: "products_stock_nonnegative",
-    });
+    await assertPgError(
+      () => db.insert(products).values({ id: "p1", price: 2000 }),
+      {
+        code: PG_UNIQUE_VIOLATION,
+        constraint: "products_pkey",
+      },
+    );
+    await assertPgError(
+      () => db.insert(products).values({ id: "p2", price: -1 }),
+      {
+        code: PG_CHECK_VIOLATION,
+        constraint: "products_price_nonnegative",
+      },
+    );
+    await assertPgError(
+      () => db.insert(products).values({ id: "p3", price: 1000, stock: -1 }),
+      {
+        code: PG_CHECK_VIOLATION,
+        constraint: "products_stock_nonnegative",
+      },
+    );
     // 在庫 0 と null（管理しない）は入る
-    await db.insert(products).values([{ id: "p4", price: 1000, stock: 0 }, { id: "p5", price: 1000 }]);
+    await db.insert(products).values([
+      { id: "p4", price: 1000, stock: 0 },
+      { id: "p5", price: 1000 },
+    ]);
   }));
 
 // ---------- 制約: orders ----------
 
 test("制約: orders — 合計は負にできない / 状態は paid・pending・failed だけ", () =>
   withTestDb(async ({ db, client }) => {
-    await assertPgError(() => db.insert(orders).values(newOrder(1, { total: -1 })), {
-      code: PG_CHECK_VIOLATION,
-      constraint: "orders_total_nonnegative",
-    });
+    await assertPgError(
+      () => db.insert(orders).values(newOrder(1, { total: -1 })),
+      {
+        code: PG_CHECK_VIOLATION,
+        constraint: "orders_total_nonnegative",
+      },
+    );
     // 型が許さない状態は、生の SQL で入れて DB が止めることを確かめる
     await assertPgError(
-      () => client.query("insert into orders (order_no, stripe_session_id, status, total) values ('MS-2', 'cs_test_2', 'shipped', 1)"),
+      () =>
+        client.query(
+          "insert into orders (order_no, stripe_session_id, status, total) values ('MS-2', 'cs_test_2', 'shipped', 1)",
+        ),
       { code: PG_CHECK_VIOLATION, constraint: "orders_status_valid" },
     );
-    for (const [n, status] of [[3, "paid"], [4, "pending"], [5, "failed"]] as const) {
+    for (const [n, status] of [
+      [3, "paid"],
+      [4, "pending"],
+      [5, "failed"],
+    ] as const) {
       await insertOrder(db, n, { status });
     }
     await insertOrder(db, 6, { total: 0, userId: null });
@@ -176,14 +240,21 @@ test("制約: orders — 合計は負にできない / 状態は paid・pending�
 test("制約: orders — 注文番号と Checkout Session の id は 1 つの注文にだけ付き、二重の確定は ON CONFLICT DO NOTHING で 0 件になる", () =>
   withTestDb(async ({ db }) => {
     await insertOrder(db, 1);
-    await assertPgError(() => db.insert(orders).values(newOrder(2, { orderNo: "MS-1" })), {
-      code: PG_UNIQUE_VIOLATION,
-      constraint: "orders_order_no_unique",
-    });
-    await assertPgError(() => db.insert(orders).values(newOrder(3, { stripeSessionId: "cs_test_1" })), {
-      code: PG_UNIQUE_VIOLATION,
-      constraint: "orders_stripe_session_id_unique",
-    });
+    await assertPgError(
+      () => db.insert(orders).values(newOrder(2, { orderNo: "MS-1" })),
+      {
+        code: PG_UNIQUE_VIOLATION,
+        constraint: "orders_order_no_unique",
+      },
+    );
+    await assertPgError(
+      () =>
+        db.insert(orders).values(newOrder(3, { stripeSessionId: "cs_test_1" })),
+      {
+        code: PG_UNIQUE_VIOLATION,
+        constraint: "orders_stripe_session_id_unique",
+      },
+    );
 
     const again = await db
       .insert(orders)
@@ -202,19 +273,33 @@ test("制約: order_items — 数量は MIN_QUANTITY〜MAX_QUANTITY（lib/cart.t
     const orderId = await insertOrder(db);
 
     for (const quantity of [MIN_QUANTITY - 1, -1, MAX_QUANTITY + 1]) {
-      await assertPgError(() => db.insert(orderItems).values(newItem(orderId, "1", quantity)), {
-        code: PG_CHECK_VIOLATION,
-        constraint: "order_items_quantity_range",
-      });
+      await assertPgError(
+        () => db.insert(orderItems).values(newItem(orderId, "1", quantity)),
+        {
+          code: PG_CHECK_VIOLATION,
+          constraint: "order_items_quantity_range",
+        },
+      );
     }
     // 端の値は入る
-    await db.insert(orderItems).values([newItem(orderId, "1", MIN_QUANTITY), newItem(orderId, "2", MAX_QUANTITY)]);
+    await db
+      .insert(orderItems)
+      .values([
+        newItem(orderId, "1", MIN_QUANTITY),
+        newItem(orderId, "2", MAX_QUANTITY),
+      ]);
     assert.equal((await db.select().from(orderItems)).length, 2);
 
-    await assertPgError(() => db.insert(orderItems).values({ ...newItem(orderId, "3"), unitPrice: -1 }), {
-      code: PG_CHECK_VIOLATION,
-      constraint: "order_items_unit_price_nonnegative",
-    });
+    await assertPgError(
+      () =>
+        db
+          .insert(orderItems)
+          .values({ ...newItem(orderId, "3"), unitPrice: -1 }),
+      {
+        code: PG_CHECK_VIOLATION,
+        constraint: "order_items_unit_price_nonnegative",
+      },
+    );
   }));
 
 test("制約: order_items — 存在しない注文・存在しない商品は参照できない", () =>
@@ -222,14 +307,20 @@ test("制約: order_items — 存在しない注文・存在しない商品は�
     await seedProducts(db);
     const orderId = await insertOrder(db);
 
-    await assertPgError(() => db.insert(orderItems).values(newItem(crypto.randomUUID(), "1")), {
-      code: PG_FOREIGN_KEY_VIOLATION,
-      constraint: "order_items_order_id_orders_id_fk",
-    });
-    await assertPgError(() => db.insert(orderItems).values(newItem(orderId, "no-such-product")), {
-      code: PG_FOREIGN_KEY_VIOLATION,
-      constraint: "order_items_product_id_products_id_fk",
-    });
+    await assertPgError(
+      () => db.insert(orderItems).values(newItem(crypto.randomUUID(), "1")),
+      {
+        code: PG_FOREIGN_KEY_VIOLATION,
+        constraint: "order_items_order_id_orders_id_fk",
+      },
+    );
+    await assertPgError(
+      () => db.insert(orderItems).values(newItem(orderId, "no-such-product")),
+      {
+        code: PG_FOREIGN_KEY_VIOLATION,
+        constraint: "order_items_product_id_products_id_fk",
+      },
+    );
     assert.equal((await db.select().from(orderItems)).length, 0);
   }));
 
@@ -238,10 +329,13 @@ test("制約: order_items — 同じ注文に同じ商品の行は 2 つ入ら�
     await seedProducts(db);
     const orderId = await insertOrder(db);
     await db.insert(orderItems).values(newItem(orderId, "1"));
-    await assertPgError(() => db.insert(orderItems).values(newItem(orderId, "1", 2)), {
-      code: PG_UNIQUE_VIOLATION,
-      constraint: "order_items_pkey",
-    });
+    await assertPgError(
+      () => db.insert(orderItems).values(newItem(orderId, "1", 2)),
+      {
+        code: PG_UNIQUE_VIOLATION,
+        constraint: "order_items_pkey",
+      },
+    );
   }));
 
 test("外部キー: 注文を消すと明細も消え、売れた商品は消せない", () =>
@@ -256,9 +350,17 @@ test("外部キー: 注文を消すと明細も消え、売れた商品は消せ
     });
 
     await db.delete(orders).where(eq(orders.id, orderId));
-    assert.equal((await db.select().from(orderItems)).length, 0, "注文と一緒に明細が消える");
+    assert.equal(
+      (await db.select().from(orderItems)).length,
+      0,
+      "注文と一緒に明細が消える",
+    );
     await db.delete(products).where(eq(products.id, "1"));
-    assert.equal((await db.select().from(products)).length, PRODUCTS.length - 1, "明細が無くなれば商品は消せる");
+    assert.equal(
+      (await db.select().from(products)).length,
+      PRODUCTS.length - 1,
+      "明細が無くなれば商品は消せる",
+    );
   }));
 
 // ---------- 制約: stripe_events ----------
@@ -266,10 +368,22 @@ test("外部キー: 注文を消すと明細も消え、売れた商品は消せ
 test("stripe_events: 同じイベント id は 2 回入らず、ON CONFLICT DO NOTHING なら 2 回目は 0 件になる", () =>
   withTestDb(async ({ db }) => {
     const record = (id: string) =>
-      db.insert(stripeEvents).values({ id }).onConflictDoNothing().returning({ id: stripeEvents.id });
+      db
+        .insert(stripeEvents)
+        .values({ id })
+        .onConflictDoNothing()
+        .returning({ id: stripeEvents.id });
 
-    assert.deepEqual(await record("evt_1"), [{ id: "evt_1" }], "初めてのイベントは記録できる（=処理してよい）");
-    assert.deepEqual(await record("evt_1"), [], "2 回目は何も返さない（=処理済み）");
+    assert.deepEqual(
+      await record("evt_1"),
+      [{ id: "evt_1" }],
+      "初めてのイベントは記録できる（=処理してよい）",
+    );
+    assert.deepEqual(
+      await record("evt_1"),
+      [],
+      "2 回目は何も返さない（=処理済み）",
+    );
     assert.deepEqual(await record("evt_2"), [{ id: "evt_2" }]);
 
     await assertPgError(() => db.insert(stripeEvents).values({ id: "evt_1" }), {
@@ -279,7 +393,10 @@ test("stripe_events: 同じイベント id は 2 回入らず、ON CONFLICT DO N
     const rows = await db.select().from(stripeEvents);
     assert.equal(rows.length, 2);
     for (const row of rows) {
-      assert.ok(Math.abs(Date.now() - row.processedAt.getTime()) < 60_000, "processed_at は記録した時刻が入る");
+      assert.ok(
+        Math.abs(Date.now() - row.processedAt.getTime()) < 60_000,
+        "processed_at は記録した時刻が入る",
+      );
     }
   }));
 
@@ -309,7 +426,10 @@ test("接続先: PGlite のファイルに保存でき、閉じて開き直し�
 });
 
 test("接続先: Neon の接続は作れて閉じられる（実際に繋ぐのは最初のクエリのとき。ここでは繋がない）", async () => {
-  const connection = await connectDb({ kind: "neon", url: "postgres://user:password@db.invalid/neondb" });
+  const connection = await connectDb({
+    kind: "neon",
+    url: "postgres://user:password@db.invalid/neondb",
+  });
   try {
     assert.equal(typeof connection.db.select, "function");
   } finally {
@@ -319,11 +439,23 @@ test("接続先: Neon の接続は作れて閉じられる（実際に繋ぐの�
 
 test("接続先: DATABASE_URL が無ければ（空・空白だけも）PGlite のファイル。runtime は DATABASE_URL_UNPOOLED を見ない", () => {
   const local = { kind: "pglite", dataDir: PGLITE_DATA_DIR };
-  for (const env of [{}, { DATABASE_URL: undefined }, { DATABASE_URL: "" }, { DATABASE_URL: "  \n" }]) {
+  for (const env of [
+    {},
+    { DATABASE_URL: undefined },
+    { DATABASE_URL: "" },
+    { DATABASE_URL: "  \n" },
+  ]) {
     assert.deepEqual(resolveDbTarget(env), local, JSON.stringify(env));
-    assert.deepEqual(resolveDbTarget(env, "migrate"), local, JSON.stringify(env));
+    assert.deepEqual(
+      resolveDbTarget(env, "migrate"),
+      local,
+      JSON.stringify(env),
+    );
   }
-  assert.deepEqual(resolveDbTarget({ DATABASE_URL_UNPOOLED: "postgres://direct.example/db" }), local);
+  assert.deepEqual(
+    resolveDbTarget({ DATABASE_URL_UNPOOLED: "postgres://direct.example/db" }),
+    local,
+  );
 });
 
 test("接続先: DATABASE_URL があれば Neon。migrate は DATABASE_URL_UNPOOLED（直結）を優先する", () => {
@@ -331,23 +463,50 @@ test("接続先: DATABASE_URL があれば Neon。migrate は DATABASE_URL_UNPOO
     DATABASE_URL: " postgresql://app@pooler.example/db ",
     DATABASE_URL_UNPOOLED: "postgres://app@direct.example/db",
   };
-  assert.deepEqual(resolveDbTarget(env), { kind: "neon", url: "postgresql://app@pooler.example/db" });
-  assert.deepEqual(resolveDbTarget(env, "migrate"), { kind: "neon", url: "postgres://app@direct.example/db" });
+  assert.deepEqual(resolveDbTarget(env), {
+    kind: "neon",
+    url: "postgresql://app@pooler.example/db",
+  });
+  assert.deepEqual(resolveDbTarget(env, "migrate"), {
+    kind: "neon",
+    url: "postgres://app@direct.example/db",
+  });
   // UNPOOLED が無い・空なら migrate も DATABASE_URL
-  const poolOnly = { DATABASE_URL: "postgres://app@pooler.example/db", DATABASE_URL_UNPOOLED: "" };
-  assert.deepEqual(resolveDbTarget(poolOnly, "migrate"), { kind: "neon", url: "postgres://app@pooler.example/db" });
+  const poolOnly = {
+    DATABASE_URL: "postgres://app@pooler.example/db",
+    DATABASE_URL_UNPOOLED: "",
+  };
+  assert.deepEqual(resolveDbTarget(poolOnly, "migrate"), {
+    kind: "neon",
+    url: "postgres://app@pooler.example/db",
+  });
 });
 
 test("接続先: postgres:// 以外の値は例外にし、パスワードをメッセージにも表示文にも出さない", () => {
-  for (const url of ["mysql://app:s3cret@host/db", "app:s3cret@host/db", "file:./local.db"]) {
+  for (const url of [
+    "mysql://app:s3cret@host/db",
+    "app:s3cret@host/db",
+    "file:./local.db",
+  ]) {
     assert.throws(
       () => resolveDbTarget({ DATABASE_URL: url }),
-      (error: unknown) => error instanceof Error && /postgres/.test(error.message) && !error.message.includes("s3cret"),
+      (error: unknown) =>
+        error instanceof Error &&
+        /postgres/.test(error.message) &&
+        !error.message.includes("s3cret"),
       url,
     );
   }
-  assert.ok(!describeDbTarget({ kind: "neon", url: "postgres://app:s3cret@host/db" }).includes("s3cret"));
-  assert.match(describeDbTarget({ kind: "pglite", dataDir: PGLITE_DATA_DIR }), /PGlite/);
+  assert.ok(
+    !describeDbTarget({
+      kind: "neon",
+      url: "postgres://app:s3cret@host/db",
+    }).includes("s3cret"),
+  );
+  assert.match(
+    describeDbTarget({ kind: "pglite", dataDir: PGLITE_DATA_DIR }),
+    /PGlite/,
+  );
 });
 
 test(".env.local の読み込み: 無ければ何もせず、あれば読み、既にある環境変数は上書きしない", () => {
@@ -358,11 +517,18 @@ test(".env.local の読み込み: 無ければ何もせず、あれば読み、�
     loadLocalEnv(file); // ファイルが無い: 例外にならない
     assert.equal(process.env.PAYAPP_TEST_ENV_NEW, undefined);
 
-    fs.writeFileSync(file, 'PAYAPP_TEST_ENV_NEW="from file"\nPAYAPP_TEST_ENV_EXISTING=from_file\n');
+    fs.writeFileSync(
+      file,
+      'PAYAPP_TEST_ENV_NEW="from file"\nPAYAPP_TEST_ENV_EXISTING=from_file\n',
+    );
     process.env.PAYAPP_TEST_ENV_EXISTING = "from_shell";
     loadLocalEnv(file);
     assert.equal(process.env.PAYAPP_TEST_ENV_NEW, "from file");
-    assert.equal(process.env.PAYAPP_TEST_ENV_EXISTING, "from_shell", "シェルや CI で指定した値が勝つ");
+    assert.equal(
+      process.env.PAYAPP_TEST_ENV_EXISTING,
+      "from_shell",
+      "シェルや CI で指定した値が勝つ",
+    );
   } finally {
     for (const name of names) delete process.env[name];
     fs.rmSync(dir, { recursive: true, force: true });

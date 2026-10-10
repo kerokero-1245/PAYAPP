@@ -18,10 +18,22 @@ type SectionHeadingProps = {
  * 節の見出し（eyebrow + h2 + 金の短い線 + 導入文）。
  * center: 中央寄せの縦並び（トップ）/ start: 左寄せ（関連商品・新ページの節）
  */
-export default function SectionHeading({ eyebrow, title, lead, align = "center", size, className }: SectionHeadingProps) {
+export default function SectionHeading({
+  eyebrow,
+  title,
+  lead,
+  align = "center",
+  size,
+  className,
+}: SectionHeadingProps) {
   if (align === "center") {
     return (
-      <div className={cx("flex flex-col items-center text-center gap-3", className)}>
+      <div
+        className={cx(
+          "flex flex-col items-center text-center gap-3",
+          className,
+        )}
+      >
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <Heading size={size ?? "page"}>{title}</Heading>
         <Divider variant="rule" />
@@ -32,7 +44,10 @@ export default function SectionHeading({ eyebrow, title, lead, align = "center",
   return (
     <div className={className}>
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <Heading size={size ?? "section"} className={eyebrow ? "mt-2" : undefined}>
+      <Heading
+        size={size ?? "section"}
+        className={eyebrow ? "mt-2" : undefined}
+      >
         {title}
       </Heading>
       <Divider variant="rule" className="mt-4" />

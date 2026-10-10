@@ -20,7 +20,12 @@
   }
 
   .text-gradient-gold {
-    background: linear-gradient(100deg, var(--color-gold-bright), var(--color-gold) 45%, var(--color-gold-deep));
+    background: linear-gradient(
+      100deg,
+      var(--color-gold-bright),
+      var(--color-gold) 45%,
+      var(--color-gold-deep)
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

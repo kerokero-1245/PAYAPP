@@ -24,13 +24,21 @@
 
   /* ゴールドのソリッド（主要CTA） */
   .btn-gold {
-    background: linear-gradient(180deg, var(--color-gold-soft), var(--color-gold));
+    background: linear-gradient(
+      180deg,
+      var(--color-gold-soft),
+      var(--color-gold)
+    );
     color: var(--color-on-gold);
     box-shadow: var(--shadow-gold);
   }
   @media (hover: hover) {
     .btn-gold:hover:not(:disabled) {
-      background: linear-gradient(180deg, var(--color-gold-bright), var(--color-gold-soft));
+      background: linear-gradient(
+        180deg,
+        var(--color-gold-bright),
+        var(--color-gold-soft)
+      );
       transform: translateY(-1px);
       box-shadow: var(--shadow-gold-hover);
     }

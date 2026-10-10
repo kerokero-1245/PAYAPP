@@ -45,7 +45,8 @@ export default function LoginPage() {
             </Heading>
             <Divider variant="rule" className="mt-4" />
             <p className="lead mt-4">
-              <span className="accent">{user.name}</span> 様としてサインインしています。
+              <span className="accent">{user.name}</span>{" "}
+              様としてサインインしています。
             </p>
             <Actions layout="stack" className="mt-8">
               <Button href="/account" block>
@@ -98,7 +99,8 @@ export default function LoginPage() {
             <Divider className="my-7" />
 
             <p className="fine fine-relaxed text-center">
-              ※ これはポートフォリオ用のデモ認証です。パスワードは検証されず、入力内容はこのブラウザにのみ保存されます。
+              ※
+              これはポートフォリオ用のデモ認証です。パスワードは検証されず、入力内容はこのブラウザにのみ保存されます。
             </p>
           </Card>
         )}

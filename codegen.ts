@@ -5,7 +5,8 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
 /** 生成物の先頭に付ける注記（生成コードの any で lint を落とさない。eslint の設定は変えない） */
-const HEADER = "// このファイルは npm run codegen が生成する。手で編集しない。\n/* eslint-disable */\n";
+const HEADER =
+  "// このファイルは npm run codegen が生成する。手で編集しない。\n/* eslint-disable */\n";
 
 const config: CodegenConfig = {
   schema: "lib/graphql/sdl.ts",
@@ -13,7 +14,9 @@ const config: CodegenConfig = {
     "lib/graphql/__generated__/types.ts": {
       plugins: ["typescript", "typescript-resolvers"],
       hooks: {
-        beforeOneFileWrite: [(_path: string, content: string) => HEADER + content],
+        beforeOneFileWrite: [
+          (_path: string, content: string) => HEADER + content,
+        ],
       },
       config: {
         // Node の型消去で動く範囲に限る（TS の enum を出さない）

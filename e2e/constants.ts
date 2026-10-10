@@ -39,7 +39,8 @@ export const SESSION_IDS = {
 } as const;
 
 /** Stripe のモックが返す決済ページの URL（遷移先もモックで返すので、外には出ない） */
-export const CHECKOUT_REDIRECT_URL = "https://checkout.stripe.com/c/pay/cs_test_e2e";
+export const CHECKOUT_REDIRECT_URL =
+  "https://checkout.stripe.com/c/pay/cs_test_e2e";
 
 /** 実際の Stripe に通信するテストにだけ付けるタグ（`--grep @stripe` で選べる） */
 export const STRIPE_TAG = "@stripe";
@@ -48,4 +49,5 @@ export const STRIPE_TAG = "@stripe";
  * 実際の Stripe に通信するテストを動かす条件。`STRIPE_SECRET_KEY` と `E2E_STRIPE=1` の両方があるときだけ。
  * `.env.local` にキーがあるだけでは回さない（意図せず Stripe に通信しないため）。
  */
-export const STRIPE_ENABLED = Boolean(process.env.STRIPE_SECRET_KEY) && process.env.E2E_STRIPE === "1";
+export const STRIPE_ENABLED =
+  Boolean(process.env.STRIPE_SECRET_KEY) && process.env.E2E_STRIPE === "1";

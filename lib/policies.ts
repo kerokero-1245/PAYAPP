@@ -23,7 +23,8 @@ export const POLICIES = {
 };
 
 /** 決済がテストモードであることの注記（特商法の表記・よくある質問・プライバシーポリシー） */
-export const TEST_MODE_NOTE = "このサイトはテストモードのため、実際の請求は発生しません";
+export const TEST_MODE_NOTE =
+  "このサイトはテストモードのため、実際の請求は発生しません";
 
 /** 商品詳細の DETAILS の箇条書き */
 export const PRODUCT_DETAIL_POINTS = [

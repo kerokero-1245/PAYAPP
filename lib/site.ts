@@ -53,7 +53,11 @@ export function resolveMetadataBase(value: unknown): URL | undefined {
  * リクエストの Origin ヘッダーは利用者が自由に書き換えられるので使わない
  * （引数で headers を受け取っても見ない）。
  */
-export function resolveReturnOrigin(input: { requestUrl: string; baseUrl?: string; headers?: unknown }): string {
+export function resolveReturnOrigin(input: {
+  requestUrl: string;
+  baseUrl?: string;
+  headers?: unknown;
+}): string {
   const base = parseBaseUrl(input.baseUrl);
   if (base) return base.origin;
   return new URL(input.requestUrl).origin;

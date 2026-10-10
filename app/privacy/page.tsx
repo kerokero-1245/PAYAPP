@@ -23,14 +23,21 @@ const STORAGE = [
     term: "order-storage",
     desc: "決済の確認が取れた注文（注文番号・日時・品目の id・商品名・単価・数量・画像の URL・カテゴリ・合計金額）と、同じ注文を二重に記録しないための Stripe の決済の番号（session_id）。注文履歴の表示に使います。",
   },
-  { term: "auth-storage", desc: "デモのログインで入力したメールアドレスと表示名。パスワードは扱いません。" },
+  {
+    term: "auth-storage",
+    desc: "デモのログインで入力したメールアドレスと表示名。パスワードは扱いません。",
+  },
 ];
 
 /** プライバシーポリシー（/privacy）。このデモが実際に保存・送信するものだけを書く */
 export default function PrivacyPage() {
   return (
     <Section spacing="md">
-      <PageHeader eyebrow="Privacy Policy" title="プライバシーポリシー" dividerClassName="mt-8 mb-10" />
+      <PageHeader
+        eyebrow="Privacy Policy"
+        title="プライバシーポリシー"
+        dividerClassName="mt-8 mb-10"
+      />
 
       <div className="flex flex-col gap-14 max-w-3xl">
         <section>

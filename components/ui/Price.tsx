@@ -22,7 +22,17 @@ type PriceProps = {
 /**
  * 金額（¥248,000）。
  */
-export default function Price({ amount, as: Tag = "span", size, tone, display, wide, tabular, suffix, className }: PriceProps) {
+export default function Price({
+  amount,
+  as: Tag = "span",
+  size,
+  tone,
+  display,
+  wide,
+  tabular,
+  suffix,
+  className,
+}: PriceProps) {
   return (
     <Tag
       className={cx(
@@ -31,7 +41,7 @@ export default function Price({ amount, as: Tag = "span", size, tone, display, w
         tone && `price-${tone}`,
         wide && "price-wide",
         tabular && "price-tabular",
-        className
+        className,
       )}
     >
       {formatYen(amount)}

@@ -28,6 +28,11 @@
     --shade-from: var(--color-ink);
     --shade-via: color-mix(in oklab, var(--color-ink) 40%, transparent);
     --shade-to: transparent;
-    background-image: linear-gradient(to top in oklab, var(--shade-from) 0%, var(--shade-via) 50%, var(--shade-to) 100%);
+    background-image: linear-gradient(
+      to top in oklab,
+      var(--shade-from) 0%,
+      var(--shade-via) 50%,
+      var(--shade-to) 100%
+    );
   }
 }

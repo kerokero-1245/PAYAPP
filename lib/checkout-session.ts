@@ -27,7 +27,9 @@ import { resolveReturnOrigin } from "./site.ts";
 export type StripeLike = {
   checkout: {
     sessions: {
-      create(params: Stripe.Checkout.SessionCreateParams): Promise<{ url: string | null }>;
+      create(
+        params: Stripe.Checkout.SessionCreateParams,
+      ): Promise<{ url: string | null }>;
       retrieve(id: string): Promise<unknown>;
     };
   };
@@ -48,7 +50,8 @@ export type CheckoutSessionResult =
   | { ok: false; kind: "stripe"; cause: unknown };
 
 /** Content-Type が application/json でないときの文言（/checkout と GraphQL で共通） */
-export const UNSUPPORTED_MEDIA_TYPE = "Content-Type は application/json にしてください";
+export const UNSUPPORTED_MEDIA_TYPE =
+  "Content-Type は application/json にしてください";
 
 /**
  * Content-Type が application/json か（大文字小文字は問わない。; charset=... などの引数は可）。
@@ -59,7 +62,10 @@ export function isJsonContentType(value: unknown): boolean {
 }
 
 /** 本文を上限つきで読む。上限を超えたら null */
-export async function readBodyWithLimit(request: Request, limit: number): Promise<string | null> {
+export async function readBodyWithLimit(
+  request: Request,
+  limit: number,
+): Promise<string | null> {
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > limit) return null;
   if (!request.body) return "";
@@ -131,10 +137,16 @@ const NO_STORE = { "Cache-Control": "no-store" };
  *  - 400                   session_id の形が不正（Stripe は呼ばない）
  *  - 500 / 502             確認できなかった（成功ページは「確認が取れていません」を出す）
  */
-export async function verifyCheckoutSession({ requestUrl, getStripe }: VerifyCheckoutSessionInput): Promise<Response> {
+export async function verifyCheckoutSession({
+  requestUrl,
+  getStripe,
+}: VerifyCheckoutSessionInput): Promise<Response> {
   const sessionId = new URL(requestUrl).searchParams.get("session_id");
   if (!isValidSessionId(sessionId)) {
-    return Response.json({ paid: false, error: "session_id が不正です" }, { status: 400, headers: NO_STORE });
+    return Response.json(
+      { paid: false, error: "session_id が不正です" },
+      { status: 400, headers: NO_STORE },
+    );
   }
 
   let session: unknown;
@@ -147,7 +159,7 @@ export async function verifyCheckoutSession({ requestUrl, getStripe }: VerifyChe
     console.error("Checkout session verify error:", err);
     return Response.json(
       { paid: false, error: "決済情報を確認できませんでした" },
-      { status: 502, headers: NO_STORE }
+      { status: 502, headers: NO_STORE },
     );
   }
 
@@ -159,8 +171,11 @@ export async function verifyCheckoutSession({ requestUrl, getStripe }: VerifyChe
     console.error("Checkout session order error:", result.error);
     return Response.json(
       { paid: false, error: "注文の内容を確認できませんでした" },
-      { status: 500, headers: NO_STORE }
+      { status: 500, headers: NO_STORE },
     );
   }
-  return Response.json({ paid: true, order: result.order }, { headers: NO_STORE });
+  return Response.json(
+    { paid: true, order: result.order },
+    { headers: NO_STORE },
+  );
 }

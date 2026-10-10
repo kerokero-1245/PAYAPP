@@ -50,8 +50,14 @@ const GROUPS = [
     title: "配送・返品について",
     items: [
       { q: "送料はかかりますか？", a: `${POLICIES.shippingFee}です。` },
-      { q: "どのくらいで届きますか？", a: `ご注文の確定から${POLICIES.deliveryDays}します。` },
-      { q: "返品はできますか？", a: `${POLICIES.returns}があります。${POLICIES.returnWindow}で、${POLICIES.returnCondition}。` },
+      {
+        q: "どのくらいで届きますか？",
+        a: `ご注文の確定から${POLICIES.deliveryDays}します。`,
+      },
+      {
+        q: "返品はできますか？",
+        a: `${POLICIES.returns}があります。${POLICIES.returnWindow}で、${POLICIES.returnCondition}。`,
+      },
     ],
   },
 ];
@@ -60,7 +66,11 @@ const GROUPS = [
 export default function FaqPage() {
   return (
     <Section spacing="md">
-      <PageHeader eyebrow="FAQ" title="よくある質問" dividerClassName="mt-8 mb-10" />
+      <PageHeader
+        eyebrow="FAQ"
+        title="よくある質問"
+        dividerClassName="mt-8 mb-10"
+      />
 
       <div className="flex flex-col gap-14 max-w-3xl">
         {GROUPS.map((g) => (

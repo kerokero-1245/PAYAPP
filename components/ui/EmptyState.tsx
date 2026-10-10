@@ -53,7 +53,7 @@ export default function EmptyState({
         stack && "empty-stack",
         framed !== "none" && framed,
         padding && `pad-${padding}`,
-        className
+        className,
       )}
     >
       {icon && <div className="circle-icon empty-icon mb-8">{icon}</div>}
@@ -61,9 +61,15 @@ export default function EmptyState({
       <Heading as={Title} size={titleSize} className={titleClassName}>
         {title}
       </Heading>
-      <p className={cx("lead", stack ? "max-w-md" : descriptionClassName)}>{description}</p>
+      <p className={cx("lead", stack ? "max-w-md" : descriptionClassName)}>
+        {description}
+      </p>
       {action && (
-        <Button href={action.href} variant={action.variant ?? "gold"} className={actionClassName}>
+        <Button
+          href={action.href}
+          variant={action.variant ?? "gold"}
+          className={actionClassName}
+        >
           {action.label}
         </Button>
       )}

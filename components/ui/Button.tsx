@@ -12,10 +12,14 @@ type ButtonOwnProps = {
 };
 
 /** href があるとき: next/link の props をそのまま受ける */
-type ButtonAsLinkProps = ButtonOwnProps & Omit<ComponentPropsWithoutRef<typeof Link>, keyof ButtonOwnProps>;
+type ButtonAsLinkProps = ButtonOwnProps &
+  Omit<ComponentPropsWithoutRef<typeof Link>, keyof ButtonOwnProps>;
 
 /** href が無いとき: <button> の props をそのまま受ける */
-type ButtonAsButtonProps = ButtonOwnProps & Omit<ComponentPropsWithoutRef<"button">, keyof ButtonOwnProps> & { href?: undefined };
+type ButtonAsButtonProps = ButtonOwnProps &
+  Omit<ComponentPropsWithoutRef<"button">, keyof ButtonOwnProps> & {
+    href?: undefined;
+  };
 
 /**
  * ボタン。href があればリンク（next/link）、無ければ <button>（既定 type="button"）。
@@ -33,7 +37,13 @@ export default function Button({
   children,
   ...rest
 }: ButtonOwnProps & { href?: ComponentPropsWithoutRef<typeof Link>["href"] }) {
-  const classes = cx("btn", `btn-${variant}`, size === "sm" && "btn-sm", block && "btn-block", className);
+  const classes = cx(
+    "btn",
+    `btn-${variant}`,
+    size === "sm" && "btn-sm",
+    block && "btn-block",
+    className,
+  );
   if (href) {
     return (
       <Link href={href} className={classes} {...rest}>

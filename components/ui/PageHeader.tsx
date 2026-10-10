@@ -42,12 +42,19 @@ export default function PageHeader({
       {title}
     </Heading>
   );
-  const line = divider === "hairline" && <Divider className={dividerClassName} />;
+  const line = divider === "hairline" && (
+    <Divider className={dividerClassName} />
+  );
   const header = (
     <header className={cx(animate && "animate-fade-up", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
       {meta ? (
-        <div className={cx("flex flex-wrap items-baseline gap-x-4 gap-y-1", titleClassName)}>
+        <div
+          className={cx(
+            "flex flex-wrap items-baseline gap-x-4 gap-y-1",
+            titleClassName,
+          )}
+        >
           {h1}
           <span className="meta">{meta}</span>
         </div>

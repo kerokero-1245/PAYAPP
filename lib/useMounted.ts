@@ -14,6 +14,6 @@ export function useMounted(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => true,
-    () => false
+    () => false,
   );
 }

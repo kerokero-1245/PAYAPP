@@ -10,11 +10,13 @@
 <img src="docs/screenshots/product.png" width="720" alt="MAISON の商品詳細ページ">
 
 ## 概要
+
 - 黒基調 × シャンパンゴールドの世界観（トークンと部品の CSS を `app/styles/` に、React の共通部品を `components/ui/` に集約）
 - 商品一覧 / 詳細 / カート / 決済 / 注文履歴 / 会員（モック認証）まで一通りの EC フロー
 - Stripe Checkout（テストモード）による実決済フロー
 
 ## 技術スタック
+
 - **Next.js 16**（App Router / Turbopack / SSR・SSG）
 - **React 19**
 - **TypeScript**（`strict`。アプリ・テスト・検査スクリプトまで全部 `.ts` / `.tsx`。JS で残すのはツールの設定 `eslint.config.mjs` `postcss.config.mjs` と、検査の見本 `tests/fixtures/flat-css/` だけ）
@@ -27,7 +29,9 @@
 - 画像は `next/image`、フォントは `next/font`（Playfair Display / Inter）
 
 ## 主な機能
+
 ### 実装済み
+
 - **トップ（ランディング）** — ヒーロースライダー / 新着 / カテゴリショーケース / ブランドプレッジ
 - **商品一覧** — カテゴリ絞り込み・キーワード検索（名前 / 説明の部分一致）・件数表示・空状態
 - **商品詳細** — 画像ギャラリー（サムネ切替）・数量指定でカート追加・関連商品
@@ -41,6 +45,7 @@
 - 共通ヘッダー（カート点数バッジ・検索・アカウント）/ フッター / レスポンシブ対応
 
 ### 今後の拡張候補
+
 - バックエンド連携（商品 API・実認証 / NextAuth・注文の永続化）
 - Stripe Webhook による注文確定・在庫管理
 - お気に入り / レビュー / クーポン
@@ -84,14 +89,15 @@ npm run db:seed        # カタログの商品を products に入れる（何度
 ```
 
 ## 環境変数
+
 `.env.example` を `.env.local` にコピーして設定してください。
 
-| 変数 | 必須 / 任意 | 用途 |
-| --- | --- | --- |
-| `STRIPE_SECRET_KEY` | **必須**（決済を使う場合） | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください |
-| `NEXT_PUBLIC_BASE_URL` | 任意（**本番では設定してください**） | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります |
-| `DATABASE_URL` | 任意（画面が DB を読むようになる段から必要。今は不要） | 実行時の接続（プール経由）。Neon の接続文字列。未設定ならローカルの PGlite（`.pglite/`）に繋ぎます。下の「データベース」 |
-| `DATABASE_URL_UNPOOLED` | 任意 | マイグレーション用の直結（プールを通さない）。未設定なら `DATABASE_URL` を使います |
+| 変数                    | 必須 / 任意                                            | 用途                                                                                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`     | **必須**（決済を使う場合）                             | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください                                                                   |
+| `NEXT_PUBLIC_BASE_URL`  | 任意（**本番では設定してください**）                   | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります |
+| `DATABASE_URL`          | 任意（画面が DB を読むようになる段から必要。今は不要） | 実行時の接続（プール経由）。Neon の接続文字列。未設定ならローカルの PGlite（`.pglite/`）に繋ぎます。下の「データベース」                                                                                         |
+| `DATABASE_URL_UNPOOLED` | 任意                                                   | マイグレーション用の直結（プールを通さない）。未設定なら `DATABASE_URL` を使います                                                                                                                               |
 
 ```
 STRIPE_SECRET_KEY=sk_test_xxxx
@@ -100,25 +106,27 @@ STRIPE_SECRET_KEY=sk_test_xxxx
 ```
 
 ## 公開（Vercel）
+
 Vercel の GitHub 連携でデプロイします。`vercel.json` は置いていません（Next.js は Vercel が自動で認識し、画像の許可ドメインは `next.config.ts` にあるため、追加の設定が要りません）。
 
 1. Vercel にログインし、**Add New… → Project** でこの GitHub リポジトリを **Import** します（Framework Preset は Next.js のまま、Build Command・Output Directory も既定のまま）。
 2. **Environment Variables** に次を設定します（名前は上の「環境変数」の表と同じです）。
 
-   | 変数 | 設定する環境 | 値 |
-   | --- | --- | --- |
-   | `STRIPE_SECRET_KEY` | Production・Preview | Stripe のテストモードのキー `sk_test_...` |
-   | `NEXT_PUBLIC_BASE_URL` | Production だけ | 本番の URL（例: `https://<プロジェクト名>.vercel.app`） |
-
+   | 変数                   | 設定する環境        | 値                                                      |
+   | ---------------------- | ------------------- | ------------------------------------------------------- |
+   | `STRIPE_SECRET_KEY`    | Production・Preview | Stripe のテストモードのキー `sk_test_...`               |
+   | `NEXT_PUBLIC_BASE_URL` | Production だけ     | 本番の URL（例: `https://<プロジェクト名>.vercel.app`） |
    - `NEXT_PUBLIC_BASE_URL` を Preview にも入れると、プレビューで決済したときの戻り先が本番になります。Preview では未設定にしておけば、戻り先はそのプレビューの URL になります。
    - `NEXT_PUBLIC_` で始まる値はビルド時に埋め込まれるので、変えたら再デプロイしてください。
    - データベースの `DATABASE_URL` は、画面や API が DB を読むようになる段から必要です。今は設定しなくても動きます（置き場所は「データベース」の環境変数の表）。
+
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
 4. **Deploy** を押します。以後は `main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。
 
 `main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。別の job `e2e` が、ブラウザ（Playwright の Chromium）で画面を操作する E2E も回します（Stripe には通信せず、secrets も使いません）。
 
 ## 決済の流れ
+
 1. カートの「購入手続きへ」で、商品の **id と数量だけ** を GraphQL の `createCheckoutSession`（`POST /api/graphql`）に送ります。`POST /checkout` も同じ本体（`lib/checkout-session.ts`）を使う REST の入口として残しています。どちらも `Content-Type: application/json` 以外の本文は 415 で受け付けません。
 2. サーバは価格と商品名を `lib/catalog.ts`（クライアントのストアと共有するカタログ）から引いて Checkout Session を作り、購入する id と数量を Session の metadata に持たせます。
    - 知らない id、1〜99 の整数でない数量（同じ id は合算してから判定）、大きすぎる本文（GraphQL は 4KB、`/checkout` は 16KB を超えるもの）は Stripe に送る前に弾きます（GraphQL では `errors` の UserError / HTTP 413、`/checkout` では 400 / 413）。カートに表示する理由は UserError の文言（`CHECKOUT_ERRORS`）と 413 の文言に限り、GraphQL 層の型エラーや隠された例外のときは既定の文言（「決済処理に失敗しました…」）を出します。ブラウザで価格を書き換えても請求額は変わりません。
@@ -156,8 +164,22 @@ query {
 ```graphql
 query Quote($items: [CartItemInput!]!) {
   cartQuote(items: $items) {
-    quote { total totalQuantity items { product { name price } quantity subtotal } }
-    errors { code message }
+    quote {
+      total
+      totalQuantity
+      items {
+        product {
+          name
+          price
+        }
+        quantity
+        subtotal
+      }
+    }
+    errors {
+      code
+      message
+    }
   }
 }
 # variables: { "items": [{ "id": "1", "quantity": 2 }, { "id": "5", "quantity": 1 }] }
@@ -169,7 +191,10 @@ Stripe Checkout Session を作る（カートの「購入手続きへ」が使�
 mutation Create($items: [CartItemInput!]!) {
   createCheckoutSession(items: $items) {
     url
-    errors { code message }
+    errors {
+      code
+      message
+    }
   }
 }
 ```
@@ -185,6 +210,7 @@ curl -s http://localhost:3000/api/graphql \
 `npm run codegen` が `lib/graphql/sdl.ts` の SDL から、スキーマの型と resolver の型（`Resolvers`）を `lib/graphql/__generated__/types.ts` に出します（設定は `codegen.ts`）。生成物はコミットし、CI は `npm run codegen` のあとに差分が無いことを確かめます。SDL を変えたら `npm run codegen` を実行して、生成物も一緒にコミットしてください。
 
 ### 設計の要点
+
 - **無状態**: サーバはカートも注文も保存しません（Vercel のサーバレスでは関数のメモリに状態を置けないため）。カートと注文履歴はこれまでどおりブラウザの localStorage にあり、API は送られた id と数量から毎回計算します。
 - **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.ts` から引きます（`/checkout` と同じ関数を共有）。
 - **決済の確認は REST のまま**: 成功ページは `GET /api/checkout/session` の HTTP ステータスで「支払い済み / 未払い / 確認できなかった」を分けて二重購入を防いでいるので、GraphQL には置き換えていません。GraphQL の `orderBySession` は読み取り用に足したものです。
@@ -215,6 +241,7 @@ npx playwright show-report               # 直近の HTML レポート
   ```bash
   E2E_STRIPE=1 STRIPE_SECRET_KEY=sk_test_xxxx npx playwright test --grep @stripe
   ```
+
 - 商品の画像（picsum）は 1×1 の PNG に差し替え、外には出ません
 - テストの出力に `Error: Internal: NoFallbackError` と出ることがあります。存在しない商品（`/product/999`）が 404 になるときに Next 16.0.8 が内部で出すログで、404 が返っていれば異常ではありません
 - 失敗したテストの調査用に、HTML レポート（`playwright-report/`）・スクリーンショット・retry 時の trace が `test-results/` に出ます（git には入れません）
@@ -244,21 +271,21 @@ Neon の開発用ブランチの接続文字列を、`.env.local` の `DATABASE_
 
 ### 表と制約
 
-| 表 | 主な列 | 制約 |
-| --- | --- | --- |
-| `products` | `id`（カタログの id）・`price`（税込の円）・`stock`（null = 在庫を管理しない）・`updated_at` | 主キー `id` / `price >= 0` / `stock >= 0` |
-| `orders` | `id`（uuid）・`order_no`（画面に出す番号）・`user_id`（null = ゲスト）・`stripe_session_id`・`status`・`total`・`paid_at`・`created_at` | 主キー `id` / `order_no` と `stripe_session_id` は一意 / `total >= 0` / `status` は `paid`・`pending`・`failed` のどれか |
-| `order_items` | `order_id`・`product_id`・`name` と `unit_price`（購入した時点の写し）・`quantity` | 主キー (`order_id`, `product_id`) / `quantity` は `lib/cart.ts` の `MIN_QUANTITY`〜`MAX_QUANTITY`（1〜99）/ `unit_price >= 0` / `order_id` → `orders`（注文を消すと明細も消える）/ `product_id` → `products`（売れた商品は消せない） |
-| `stripe_events` | `id`（`evt_...`）・`processed_at` | 主キー `id`（同じ Webhook イベントを 2 回処理しないための一意制約） |
+| 表              | 主な列                                                                                                                                  | 制約                                                                                                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `products`      | `id`（カタログの id）・`price`（税込の円）・`stock`（null = 在庫を管理しない）・`updated_at`                                            | 主キー `id` / `price >= 0` / `stock >= 0`                                                                                                                                                                                            |
+| `orders`        | `id`（uuid）・`order_no`（画面に出す番号）・`user_id`（null = ゲスト）・`stripe_session_id`・`status`・`total`・`paid_at`・`created_at` | 主キー `id` / `order_no` と `stripe_session_id` は一意 / `total >= 0` / `status` は `paid`・`pending`・`failed` のどれか                                                                                                             |
+| `order_items`   | `order_id`・`product_id`・`name` と `unit_price`（購入した時点の写し）・`quantity`                                                      | 主キー (`order_id`, `product_id`) / `quantity` は `lib/cart.ts` の `MIN_QUANTITY`〜`MAX_QUANTITY`（1〜99）/ `unit_price >= 0` / `order_id` → `orders`（注文を消すと明細も消える）/ `product_id` → `products`（売れた商品は消せない） |
+| `stripe_events` | `id`（`evt_...`）・`processed_at`                                                                                                       | 主キー `id`（同じ Webhook イベントを 2 回処理しないための一意制約）                                                                                                                                                                  |
 
 `orders.user_id` の外部キーは、user 表を作る認証の段で張ります。
 
 ### 環境変数（データベース）
 
-| 変数 | 用途 | Production | Preview | Development（.env.local） | CI |
-| --- | --- | --- | --- | --- | --- |
-| `DATABASE_URL` | 実行時の接続（プール経由） | Neon の本番ブランチ | Neon のプレビューブランチ（既存アカウント連携の方式で自動）か開発ブランチ | Neon の開発ブランチ | テストは PGlite なので不要。移行ジョブだけ Secrets |
-| `DATABASE_URL_UNPOOLED` | マイグレーション用の直結 | 同上 | 同上 | 同上 | 移行ジョブの Secrets |
+| 変数                    | 用途                       | Production          | Preview                                                                   | Development（.env.local） | CI                                                 |
+| ----------------------- | -------------------------- | ------------------- | ------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------- |
+| `DATABASE_URL`          | 実行時の接続（プール経由） | Neon の本番ブランチ | Neon のプレビューブランチ（既存アカウント連携の方式で自動）か開発ブランチ | Neon の開発ブランチ       | テストは PGlite なので不要。移行ジョブだけ Secrets |
+| `DATABASE_URL_UNPOOLED` | マイグレーション用の直結   | 同上                | 同上                                                                      | 同上                      | 移行ジョブの Secrets                               |
 
 - どちらも未設定ならローカルの PGlite です。Vercel の Neon 連携が実際に入れる変数名は、連携したあとの Vercel の画面で確かめて、違えばこの表を直してください。
 - CI の列の「移行ジョブ」は、本番の DB へ自動で当てるジョブです（まだありません。Neon を用意したら足します）。今の CI は Secrets を使わず、`services: postgres` の Postgres に当てて確かめるだけです。
@@ -270,6 +297,7 @@ Neon の開発用ブランチの接続文字列を、`.env.local` の `DATABASE_
 - 本番の DB への適用は、`main` で CI が通ったあとに走るジョブとして足す予定です。Vercel のビルドコマンドには入れません（プレビューのビルドが本番の DB に当たる事故を避けるため）。それまでは `DATABASE_URL_UNPOOLED` を指定して手元で `npm run db:migrate` を打ちます。
 
 ## ディレクトリ構成
+
 ```
 app/
   page.tsx              トップ（ランディング）
@@ -315,11 +343,13 @@ DESIGN.md               設計の決まりごと（共通化の線引き・ト�
 ```
 
 ## デザインの書き方
+
 - **見た目は共通部品に寄せる**: ページの `className` には配置と大きさのユーティリティ（`flex` `grid` `gap-*` `mt-*` `max-w-*` など）だけを書き、色・文字・枠・角丸・影・動きは `components/ui/` の部品か `app/styles/components/` の部品クラス（`.btn` `.card` `.heading` `.lead` …）で表す。ページ間で h1 の大きさ・上下余白・見出し下の線・カードの余白がそろうのはこのため
 - **平坦な CSS**: 1 クラス 1 役割の足し算（`.btn` + `.btn-outline` + `.btn-sm`）。子孫・子・兄弟の結合子、セレクタの入れ子、`:deep()`、`@apply`、`!important`、ID セレクタは使わない。ページ側も Tailwind の `!` 接尾辞・`group-hover:`・`space-y-*`・`divide-*`・任意値 `[…]` は使わない。状態は要素自身の `data-*` / `aria-current` で表す（例: 商品カードの画像の拡大は画像の `data-active`）。部品 CSS の `:hover` は `@media (hover: hover)` の中に書く（タッチ端末でタップ後に hover の色が残らないように）。これらの書き方は `npm run check:css`（CI でも実行）が検査する。検査の対象と見つけられない書き方（クラス名を変数で組み立てる書き方、ページに書いた色・文字の見た目のユーティリティそのもの）は `scripts/check-flat-css.ts` の冒頭に書いてあり、検査が違反を見落とさないことは `tests/flat-css.test.ts`（`tests/fixtures/flat-css/` の見本）で確かめている
 - **層**: 部品クラスはすべて `@layer components`（ページのユーティリティが部品より勝つ）。body・スキップリンク・アニメーション・動きを減らす設定は層の外に置き、`!important` を使わずに効かせている（`app/styles/motion.css` の冒頭のコメント）
 
 ## 補足
+
 - 認証は現状バックエンドを持たないデモ実装です（パスワード検証なし・localStorage 保持）。
 - 商品カタログはモックデータです（`lib/catalog.ts`）。
 - 注文履歴はブラウザの localStorage に保存するデモ実装です（Webhook による注文確定は今後の拡張候補）。

@@ -12,7 +12,11 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <Section spacing="md">
-      <PageHeader eyebrow="Contact" title="お問い合わせ" dividerClassName="mt-8 mb-10" />
+      <PageHeader
+        eyebrow="Contact"
+        title="お問い合わせ"
+        dividerClassName="mt-8 mb-10"
+      />
       <div className="max-w-2xl">
         <ContactForm />
       </div>

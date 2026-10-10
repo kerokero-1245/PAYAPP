@@ -12,7 +12,8 @@
 
   /* サムネイルの選択（状態はボタン自身の data-active） */
   .thumb-option {
-    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+    transition-property:
+      color, background-color, border-color, opacity, box-shadow, transform;
     transition-duration: var(--duration-quick);
     transition-timing-function: var(--ease-standard);
   }

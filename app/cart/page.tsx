@@ -32,18 +32,21 @@ export default function CartPage() {
     try {
       // 価格と商品名はサーバがカタログから引くので、id と数量だけを送る
       const result = await createCheckoutSession(
-        items.map(({ id, quantity }) => ({ id, quantity }))
+        items.map(({ id, quantity }) => ({ id, quantity })),
       );
       if (!("url" in result)) {
         setCheckoutError(
-          result.error ?? "決済処理に失敗しました。時間をおいてもう一度お試しください"
+          result.error ??
+            "決済処理に失敗しました。時間をおいてもう一度お試しください",
         );
         setLoading(false);
         return;
       }
       window.location.href = result.url;
     } catch {
-      setCheckoutError("通信に失敗しました。時間をおいてもう一度お試しください");
+      setCheckoutError(
+        "通信に失敗しました。時間をおいてもう一度お試しください",
+      );
       setLoading(false);
     }
   };
@@ -95,7 +98,11 @@ export default function CartPage() {
           titleClassName="mt-3"
           description="まだ商品が追加されていません。コレクションから、あなたにふさわしい一品をお選びください。"
           descriptionClassName="mt-4"
-          action={{ href: "/product", label: "コレクションを見る", variant: "outline" }}
+          action={{
+            href: "/product",
+            label: "コレクションを見る",
+            variant: "outline",
+          }}
         />
       </Section>
     );
@@ -146,10 +153,21 @@ export default function CartPage() {
 
             <div className="flex items-baseline justify-between">
               <span className="summary-total-label">合計</span>
-              <Price amount={totalPrice} display size="xl" tone="gold" tabular />
+              <Price
+                amount={totalPrice}
+                display
+                size="xl"
+                tone="gold"
+                tabular
+              />
             </div>
 
-            <Button block onClick={handleCheckout} disabled={loading} className="mt-6">
+            <Button
+              block
+              onClick={handleCheckout}
+              disabled={loading}
+              className="mt-6"
+            >
               {loading ? "Stripeへ移動中…" : "購入手続きへ"}
             </Button>
 
@@ -159,7 +177,10 @@ export default function CartPage() {
               </p>
             )}
 
-            <Link href="/product" className="link-quiet link-quiet-sm block text-center mt-4">
+            <Link
+              href="/product"
+              className="link-quiet link-quiet-sm block text-center mt-4"
+            >
               買い物を続ける
             </Link>
 

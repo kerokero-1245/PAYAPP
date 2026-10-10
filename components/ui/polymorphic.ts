@@ -7,4 +7,6 @@ import type { ComponentPropsWithRef, ElementType } from "react";
  *
  * 例: type CardProps = PolymorphicProps<T, { variant?: "card" | "panel" }>
  */
-export type PolymorphicProps<T extends ElementType, P = object> = P & { as?: T } & Omit<ComponentPropsWithRef<T>, keyof P | "as">;
+export type PolymorphicProps<T extends ElementType, P = object> = P & {
+  as?: T;
+} & Omit<ComponentPropsWithRef<T>, keyof P | "as">;

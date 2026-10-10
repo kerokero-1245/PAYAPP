@@ -24,7 +24,10 @@ type ProductCardProps = {
 /**
  * 商品カード（一覧・トップ・関連商品で共通利用）
  */
-export default function ProductCard({ product, eager = false }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  eager = false,
+}: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const [added, setAdded] = useState(false);
   // カード全体に乗っているか（画像の拡大は画像自身の data-active で表す。親の :hover から子を変えない）
@@ -58,7 +61,9 @@ export default function ProductCard({ product, eager = false }: ProductCardProps
               data-active={hover}
             />
           )}
-          {product.badge && <Badge className="absolute top-3 left-3">{product.badge}</Badge>}
+          {product.badge && (
+            <Badge className="absolute top-3 left-3">{product.badge}</Badge>
+          )}
         </MediaFrame>
       </Link>
 
@@ -73,7 +78,9 @@ export default function ProductCard({ product, eager = false }: ProductCardProps
             {product.name}
           </Heading>
         </Link>
-        {product.tagline && <p className="fine fine-muted line-clamp-1">{product.tagline}</p>}
+        {product.tagline && (
+          <p className="fine fine-muted line-clamp-1">{product.tagline}</p>
+        )}
 
         {/* 狭いカード（スマホの 2 列）では価格の下にボタンを全幅で置き、はみ出しを防ぐ */}
         <div className="mt-auto pt-3 flex flex-wrap items-center justify-between gap-2">

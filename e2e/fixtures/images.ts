@@ -10,14 +10,18 @@ import type { BrowserContext } from "@playwright/test";
 /** 1×1 の PNG */
 const PIXEL_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64"
+  "base64",
 );
 
 /** 差し替える URL: next/image の最適化（/_next/image）と、カタログの元画像（picsum） */
 const IMAGE_ROUTES = ["**/_next/image**", "https://picsum.photos/**"];
 
-export async function stubExternalImages(context: BrowserContext): Promise<void> {
+export async function stubExternalImages(
+  context: BrowserContext,
+): Promise<void> {
   for (const pattern of IMAGE_ROUTES) {
-    await context.route(pattern, (route) => route.fulfill({ contentType: "image/png", body: PIXEL_PNG }));
+    await context.route(pattern, (route) =>
+      route.fulfill({ contentType: "image/png", body: PIXEL_PNG }),
+    );
   }
 }

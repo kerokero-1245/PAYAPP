@@ -29,7 +29,13 @@ export default function CartItem({ item }: CartItemProps) {
       {/* サムネイル */}
       <MediaFrame as={Link} href={`/product/${item.id}`} thumb="md">
         {item.image && (
-          <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
+          <Image
+            src={item.image}
+            alt={item.name}
+            fill
+            sizes="80px"
+            className="object-cover"
+          />
         )}
       </MediaFrame>
 
@@ -37,7 +43,12 @@ export default function CartItem({ item }: CartItemProps) {
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex justify-between gap-3">
           <div className="min-w-0">
-            <Heading as={Link} href={`/product/${item.id}`} size="item" className="heading-link block truncate">
+            <Heading
+              as={Link}
+              href={`/product/${item.id}`}
+              size="item"
+              className="heading-link block truncate"
+            >
               {item.name}
             </Heading>
             {item.category && (
@@ -68,9 +79,20 @@ export default function CartItem({ item }: CartItemProps) {
 
           {/* 小計 */}
           <div className="text-right">
-            <Price as="p" amount={item.price * item.quantity} tone="cream" wide />
+            <Price
+              as="p"
+              amount={item.price * item.quantity}
+              tone="cream"
+              wide
+            />
             {item.quantity > 1 && (
-              <Price as="p" amount={item.price} size="xs" tone="faint" suffix={<> × {item.quantity}</>} />
+              <Price
+                as="p"
+                amount={item.price}
+                size="xs"
+                tone="faint"
+                suffix={<> × {item.quantity}</>}
+              />
             )}
           </div>
         </div>

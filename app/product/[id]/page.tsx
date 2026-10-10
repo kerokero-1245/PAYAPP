@@ -17,7 +17,9 @@ export function generateStaticParams() {
 }
 
 /** タイトルと OGP は商品ごと（「Éclat Automatic 41 | MAISON」） */
-export async function generateMetadata({ params }: PageProps<"/product/[id]">): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps<"/product/[id]">): Promise<Metadata> {
   const { id } = await params;
   const product = getProductById(id);
   if (!product) return { title: "ページが見つかりません" };
@@ -38,7 +40,9 @@ export async function generateMetadata({ params }: PageProps<"/product/[id]">): 
  * 存在しない id は上の dynamicParams = false で 404 になる。notFound() は念のための保険
  * （開発サーバでは dynamicParams に関わらずここを通る）。
  */
-export default async function ProductDetailPage({ params }: PageProps<"/product/[id]">) {
+export default async function ProductDetailPage({
+  params,
+}: PageProps<"/product/[id]">) {
   const { id } = await params;
   if (!getProductById(id)) notFound();
   return <ProductDetail id={id} />;

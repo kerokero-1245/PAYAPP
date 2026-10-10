@@ -5,19 +5,36 @@
  */
 import { test, expect } from "./fixtures/index.ts";
 import { PATHS, SESSION_IDS } from "./constants.ts";
-import { orderFor, quantitiesOf, readCart, readOrders, seedStorage } from "./fixtures/storage.ts";
+import {
+  orderFor,
+  quantitiesOf,
+  readCart,
+  readOrders,
+  seedStorage,
+} from "./fixtures/storage.ts";
 import { mockVerify } from "./fixtures/stripe-mock.ts";
 import { CART_ITEMS } from "./support/catalog.ts";
 import { mainRegion, open } from "./support/page.ts";
 
-test("success: 支払いを確認できないときは何も記録せず、通信の失敗なら再確認できる", async ({ page, context }) => {
+test("success: 支払いを確認できないときは何も記録せず、通信の失敗なら再確認できる", async ({
+  page,
+  context,
+}) => {
   // 記録済みの注文が 1 件ある状態から始め、最後まで増えも減りもしないことを確かめる
-  const previous = orderFor([{ id: "3", quantity: 1 }], { sessionId: "cs_test_e2e_previous" });
+  const previous = orderFor([{ id: "3", quantity: 1 }], {
+    sessionId: "cs_test_e2e_previous",
+  });
   await seedStorage(context, { orders: [previous], cart: CART_ITEMS });
   const verify = await mockVerify(page, { kind: "unpaid" });
   const main = mainRegion(page);
-  const unpaid = main.getByRole("heading", { level: 1, name: "決済を確認できませんでした" });
-  const unverified = main.getByRole("heading", { level: 1, name: "決済の確認が取れていません" });
+  const unpaid = main.getByRole("heading", {
+    level: 1,
+    name: "決済を確認できませんでした",
+  });
+  const unverified = main.getByRole("heading", {
+    level: 1,
+    name: "決済の確認が取れていません",
+  });
 
   await test.step("session_id が無い: 確認ルートに問い合わせず、未払いとして扱う", async () => {
     await open(page, PATHS.success);
@@ -29,7 +46,9 @@ test("success: 支払いを確認できないときは何も記録せず、通�
     verify.reply({ kind: "real-server" });
     await open(page, `${PATHS.success}?session_id=${SESSION_IDS.malformed}`);
     await expect(unpaid).toBeVisible();
-    expect(verify.calls).toEqual([{ sessionId: SESSION_IDS.malformed, realStatus: 400 }]);
+    expect(verify.calls).toEqual([
+      { sessionId: SESSION_IDS.malformed, realStatus: 400 },
+    ]);
   });
 
   await test.step("未払い { paid: false }", async () => {

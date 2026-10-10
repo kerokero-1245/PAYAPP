@@ -16,7 +16,9 @@ const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
 
 /** 確認ルートへの GET（session_id が無いときは null を渡す） */
 function url(sessionId: string | null): string {
-  return sessionId === null ? BASE_URL : `${BASE_URL}?session_id=${encodeURIComponent(sessionId)}`;
+  return sessionId === null
+    ? BASE_URL
+    : `${BASE_URL}?session_id=${encodeURIComponent(sessionId)}`;
 }
 
 /** retrieve に渡された id を記録し、session id ごとに用意した応答を返す偽の Stripe（create は呼ばれない） */
@@ -33,7 +35,10 @@ function fakeStripe(sessions: Record<string, unknown>) {
           async retrieve(id: string) {
             retrieved.push(id);
             if (id in sessions) return sessions[id];
-            if (id === "cs_test_missing") throw Object.assign(new Error("No such session"), { statusCode: 404 });
+            if (id === "cs_test_missing")
+              throw Object.assign(new Error("No such session"), {
+                statusCode: 404,
+              });
             throw Object.assign(new Error(SECRET), { statusCode: 500 });
           },
         },
@@ -47,7 +52,11 @@ async function read(response: Response) {
   return {
     status: response.status,
     cacheControl: response.headers.get("cache-control"),
-    body: (await response.json()) as { paid?: boolean; order?: unknown; error?: string },
+    body: (await response.json()) as {
+      paid?: boolean;
+      order?: unknown;
+      error?: string;
+    },
   };
 }
 
@@ -57,10 +66,19 @@ test("決済確認: 支払い済みの session は、metadata とカタログか
     { id: "5", quantity: 1 },
   ];
   const stripe = fakeStripe({
-    cs_test_paid: { id: "cs_test_paid", payment_status: "paid", metadata: encodeOrderMetadata(bought) },
+    cs_test_paid: {
+      id: "cs_test_paid",
+      payment_status: "paid",
+      metadata: encodeOrderMetadata(bought),
+    },
   });
 
-  const res = await read(await verifyCheckoutSession({ requestUrl: url("cs_test_paid"), getStripe: stripe.getStripe }));
+  const res = await read(
+    await verifyCheckoutSession({
+      requestUrl: url("cs_test_paid"),
+      getStripe: stripe.getStripe,
+    }),
+  );
 
   // 単価・商品名・画像・カテゴリは session ではなくカタログの値（金額をテストに直書きしない）
   const items = bought.map(({ id, quantity }) => {
@@ -77,7 +95,10 @@ test("決済確認: 支払い済みの session は、metadata とカタログか
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   assert.equal(res.status, 200);
   assert.equal(res.cacheControl, "no-store");
-  assert.deepEqual(res.body, { paid: true, order: { sessionId: "cs_test_paid", items, total } });
+  assert.deepEqual(res.body, {
+    paid: true,
+    order: { sessionId: "cs_test_paid", items, total },
+  });
   assert.deepEqual(stripe.retrieved, ["cs_test_paid"]);
 });
 
@@ -89,13 +110,22 @@ test("決済確認: 支払い済みでなければ注文を返さない（未払
       // 未払いでも metadata は付いている。これを見て注文を作ってはいけない
       metadata: encodeOrderMetadata([{ id: "1", quantity: 1 }]),
     },
-    cs_test_broken: { id: "cs_test_broken", payment_status: "paid", metadata: {} },
+    cs_test_broken: {
+      id: "cs_test_broken",
+      payment_status: "paid",
+      metadata: {},
+    },
   });
   const savedError = console.error;
   console.error = () => {};
   try {
     const ask = async (sessionId: string | null) =>
-      read(await verifyCheckoutSession({ requestUrl: url(sessionId), getStripe: stripe.getStripe }));
+      read(
+        await verifyCheckoutSession({
+          requestUrl: url(sessionId),
+          getStripe: stripe.getStripe,
+        }),
+      );
 
     // 未払い・存在しない session: 200 { paid: false }（買い直してよい）
     for (const sessionId of ["cs_test_unpaid", "cs_test_missing"]) {
@@ -113,14 +143,21 @@ test("決済確認: 支払い済みでなければ注文を返さない（未払
       assert.equal(res.body.paid, false, String(sessionId));
       assert.ok(!("order" in res.body), String(sessionId));
     }
-    assert.equal(stripe.retrieved.length, calledBefore, "形が不正な session_id で Stripe を呼んだ");
+    assert.equal(
+      stripe.retrieved.length,
+      calledBefore,
+      "形が不正な session_id で Stripe を呼んだ",
+    );
 
     // Stripe の失敗: 502 で、例外の中身（秘密を含みうる）を返さない
     const failed = await ask("cs_test_boom");
     assert.equal(failed.status, 502);
     assert.equal(failed.body.paid, false);
     assert.ok(!("order" in failed.body));
-    assert.ok(!JSON.stringify(failed.body).includes(SECRET), JSON.stringify(failed.body));
+    assert.ok(
+      !JSON.stringify(failed.body).includes(SECRET),
+      JSON.stringify(failed.body),
+    );
 
     // 支払い済みでも metadata から注文を作れない: 500 で、注文を返さない
     const broken = await ask("cs_test_broken");

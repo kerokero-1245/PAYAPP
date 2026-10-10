@@ -41,9 +41,13 @@ export const MAX_SELECTED_FIELDS = 200;
 /** 解析・検証結果をキャッシュするクエリ文の件数（既定の 1024 から絞る） */
 export const PARSE_CACHE_MAX = 100;
 /** Stripe に要求を出すフィールド */
-export const STRIPE_FIELDS = new Set(["createCheckoutSession", "orderBySession"]);
+export const STRIPE_FIELDS = new Set([
+  "createCheckoutSession",
+  "orderBySession",
+]);
 
-export const TOO_MANY_MUTATIONS = "1 回のリクエストで実行できる Mutation は 1 つまでです";
+export const TOO_MANY_MUTATIONS =
+  "1 回のリクエストで実行できる Mutation は 1 つまでです";
 export const TOO_MANY_STRIPE_FIELDS =
   "1 回のリクエストで実行できる決済の操作（createCheckoutSession・orderBySession）は 1 つまでです";
 export const TOO_MANY_FIELDS = `1 回のリクエストで選択できるフィールドは ${MAX_SELECTED_FIELDS} までです`;
@@ -58,7 +62,7 @@ function countRootFields(
   selectionSet: SelectionSetNode,
   context: ValidationContext,
   match: (name: string) => boolean,
-  seen: Set<string>
+  seen: Set<string>,
 ): number {
   let count = 0;
   for (const selection of selectionSet.selections) {
@@ -71,7 +75,8 @@ function countRootFields(
       if (seen.has(name)) continue;
       seen.add(name);
       const fragment = context.getFragment(name);
-      if (fragment) count += countRootFields(fragment.selectionSet, context, match, seen);
+      if (fragment)
+        count += countRootFields(fragment.selectionSet, context, match, seen);
     }
   }
   return count;
@@ -81,9 +86,16 @@ function countRootFields(
 export const singleMutationRule: ValidationRule = (context) => ({
   OperationDefinition(node) {
     if (node.operation !== "mutation") return;
-    const n = countRootFields(node.selectionSet, context, (f) => f !== "__typename", new Set());
+    const n = countRootFields(
+      node.selectionSet,
+      context,
+      (f) => f !== "__typename",
+      new Set(),
+    );
     if (n > MAX_MUTATION_FIELDS) {
-      context.reportError(new GraphQLError(TOO_MANY_MUTATIONS, { nodes: [node] }));
+      context.reportError(
+        new GraphQLError(TOO_MANY_MUTATIONS, { nodes: [node] }),
+      );
     }
   },
 });
@@ -113,7 +125,9 @@ export const singleStripeFieldRule: ValidationRule = (context) => ({
       return n;
     };
     if (count(node.selectionSet, new Set()) > MAX_STRIPE_FIELDS) {
-      context.reportError(new GraphQLError(TOO_MANY_STRIPE_FIELDS, { nodes: [node] }));
+      context.reportError(
+        new GraphQLError(TOO_MANY_STRIPE_FIELDS, { nodes: [node] }),
+      );
     }
   },
 });
@@ -141,7 +155,7 @@ export const maxSelectedFieldsRule: ValidationRule = (context) => {
   };
   const countFragment = (
     fragment: FragmentDefinitionNode | null | undefined,
-    stack: Set<string>
+    stack: Set<string>,
   ): number => {
     if (!fragment) return 0;
     const name = fragment.name.value;
@@ -155,7 +169,9 @@ export const maxSelectedFieldsRule: ValidationRule = (context) => {
   return {
     OperationDefinition(node) {
       if (countSet(node.selectionSet, new Set()) > MAX_SELECTED_FIELDS) {
-        context.reportError(new GraphQLError(TOO_MANY_FIELDS, { nodes: [node] }));
+        context.reportError(
+          new GraphQLError(TOO_MANY_FIELDS, { nodes: [node] }),
+        );
       }
     },
   };
@@ -208,7 +224,11 @@ function jsonError(message: string, status: number): Response {
 function noStore(res: Response): Response {
   const headers = new Headers(res.headers);
   headers.set("Cache-Control", "no-store");
-  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
 }
 
 export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
@@ -245,7 +265,12 @@ export function createGraphqlHandler({ getStripe, baseUrl }: HandlerOptions) {
     const headers = new Headers(request.headers);
     headers.delete("content-length");
     return yoga.fetch(
-      new Request(request.url, { method: "POST", headers, body: text, signal: request.signal })
+      new Request(request.url, {
+        method: "POST",
+        headers,
+        body: text,
+        signal: request.signal,
+      }),
     );
   }
 

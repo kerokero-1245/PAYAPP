@@ -43,10 +43,23 @@ export default function StatusMessage({
   className,
 }: StatusMessageProps) {
   return (
-    <div role={role} className={cx(contained && "container-lux container-narrow section-lg", "text-center animate-fade-up", className)}>
+    <div
+      role={role}
+      className={cx(
+        contained && "container-lux container-narrow section-lg",
+        "text-center animate-fade-up",
+        className,
+      )}
+    >
       {icon && <StatusIcon kind={icon} />}
       <Eyebrow className={icon ? "mt-8" : undefined}>{eyebrow}</Eyebrow>
-      <Heading as={Title} ref={titleRef} tabIndex={titleRef ? -1 : undefined} size="page" className="mt-4">
+      <Heading
+        as={Title}
+        ref={titleRef}
+        tabIndex={titleRef ? -1 : undefined}
+        size="page"
+        className="mt-4"
+      >
         {title}
       </Heading>
       <Divider variant="rule" className="mt-6" />

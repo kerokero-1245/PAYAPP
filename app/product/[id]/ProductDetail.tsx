@@ -88,9 +88,7 @@ export default function ProductDetail({ id }: ProductDetailProps) {
               />
             )}
             {product.badge && (
-              <Badge className="absolute top-4 left-4">
-                {product.badge}
-              </Badge>
+              <Badge className="absolute top-4 left-4">{product.badge}</Badge>
             )}
           </MediaFrame>
 
@@ -128,7 +126,14 @@ export default function ProductDetail({ id }: ProductDetailProps) {
           </Heading>
           {product.tagline && <p className="subtle mt-3">{product.tagline}</p>}
 
-          <Price as="p" amount={product.price} size="hero" tone="gold-soft" wide className="mt-6" />
+          <Price
+            as="p"
+            amount={product.price}
+            size="hero"
+            tone="gold-soft"
+            wide
+            className="mt-6"
+          />
 
           <Divider className="my-7" />
 
@@ -149,7 +154,10 @@ export default function ProductDetail({ id }: ProductDetailProps) {
           </Button>
 
           {added && (
-            <Card variant="panel" className="mt-4 px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
+            <Card
+              variant="panel"
+              className="mt-4 px-4 py-3 flex items-center justify-between gap-3 animate-fade-in"
+            >
               <span className="notice-text">
                 <span className="notice-mark">✓</span> カートに追加しました
               </span>
@@ -174,7 +182,11 @@ export default function ProductDetail({ id }: ProductDetailProps) {
       {/* 関連商品（同カテゴリ・最大4件） */}
       {related.length > 0 && (
         <section className="mt-20 md:mt-28">
-          <SectionHeading align="start" eyebrow="RELATED" title="同じカテゴリの商品" />
+          <SectionHeading
+            align="start"
+            eyebrow="RELATED"
+            title="同じカテゴリの商品"
+          />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mt-8">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />

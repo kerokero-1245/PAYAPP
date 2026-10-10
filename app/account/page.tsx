@@ -39,7 +39,12 @@ export default function AccountPage() {
 
   return (
     <Section spacing="md" as="div">
-      <PageHeader eyebrow="MAISON — MY ACCOUNT" title="アカウント" dividerClassName="mt-8 mb-10" dividerOutside />
+      <PageHeader
+        eyebrow="MAISON — MY ACCOUNT"
+        title="アカウント"
+        dividerClassName="mt-8 mb-10"
+        dividerOutside
+      />
 
       {!mounted ? (
         /* mounted 前はプレースホルダ（hydration 対策） */
@@ -56,7 +61,11 @@ export default function AccountPage() {
         />
       ) : (
         /* ログイン時: プロフィール + 導線 */
-        <Card variant="panel" padding="md" className="max-w-md mx-auto animate-fade-in">
+        <Card
+          variant="panel"
+          padding="md"
+          className="max-w-md mx-auto animate-fade-in"
+        >
           {/* アバター（頭文字の丸）+ name + email */}
           <div className="flex items-center gap-5">
             <div className="circle-icon avatar type-display">{initial}</div>
@@ -76,7 +85,12 @@ export default function AccountPage() {
               注文履歴を見る
             </Link>
 
-            <Button variant="outline" block onClick={handleLogout} className="mt-2">
+            <Button
+              variant="outline"
+              block
+              onClick={handleLogout}
+              className="mt-2"
+            >
               ログアウト
             </Button>
           </div>

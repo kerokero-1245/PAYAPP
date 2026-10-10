@@ -25,7 +25,8 @@
   /* ---- Fonts (layout.tsx の next/font が変数を供給) ---- */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   /* 日本語の見出しは明朝で出す（Playfair の読み込み状態に関わらず、同じ書体になるよう明示する） */
-  --font-display: var(--font-playfair), "Hiragino Mincho ProN", "Hiragino Mincho Pro",
+  --font-display:
+    var(--font-playfair), "Hiragino Mincho ProN", "Hiragino Mincho Pro",
     "Yu Mincho", YuMincho, "Noto Serif JP", Georgia, "Times New Roman", serif;
 
   /* ---- Radius ---- */
@@ -49,8 +50,12 @@
   --color-on-gold: #1a1408;
 
   /* 影 */
-  --shadow-gold: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 24px -12px rgba(198, 166, 100, 0.7);
-  --shadow-gold-hover: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 12px 30px -12px rgba(198, 166, 100, 0.85);
+  --shadow-gold:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 8px 24px -12px rgba(198, 166, 100, 0.7);
+  --shadow-gold-hover:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 12px 30px -12px rgba(198, 166, 100, 0.85);
   --shadow-lift: 0 24px 60px -30px rgba(0, 0, 0, 0.8);
 
   /* 角丸 */

@@ -19,7 +19,10 @@ import type { PaidOrder, VerifyInput } from "@/lib/checkout";
 /**
  * 確認ルートに問い合わせる。応答が無ければ VERIFY_TIMEOUT_MS で打ち切る。
  */
-async function fetchVerifyResult(sessionId: string, signal: AbortSignal): Promise<VerifyInput> {
+async function fetchVerifyResult(
+  sessionId: string,
+  signal: AbortSignal,
+): Promise<VerifyInput> {
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), VERIFY_TIMEOUT_MS);
   const onAbort = () => timeout.abort();
@@ -27,7 +30,7 @@ async function fetchVerifyResult(sessionId: string, signal: AbortSignal): Promis
   try {
     const res = await fetch(
       `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`,
-      { cache: "no-store", signal: timeout.signal }
+      { cache: "no-store", signal: timeout.signal },
     );
     let body: unknown = null;
     try {
@@ -37,7 +40,10 @@ async function fetchVerifyResult(sessionId: string, signal: AbortSignal): Promis
     }
     return { kind: "response", status: res.status, body };
   } catch {
-    return { kind: timeout.signal.aborted && !signal.aborted ? "timeout" : "network-error" };
+    return {
+      kind:
+        timeout.signal.aborted && !signal.aborted ? "timeout" : "network-error",
+    };
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", onAbort);
@@ -50,7 +56,10 @@ async function fetchVerifyResult(sessionId: string, signal: AbortSignal): Promis
  * カートからは購入した品目と数量だけを取り除く（決済後に足した品は残す）。
  */
 function recordPaidOrder(sessionId: string, order: PaidOrder): string {
-  const existing = findOrderBySession(useOrderStore.getState().orders, sessionId);
+  const existing = findOrderBySession(
+    useOrderStore.getState().orders,
+    sessionId,
+  );
   if (existing) return existing.id;
 
   const id = `ORD-${Date.now().toString(36).toUpperCase()}`;
@@ -65,7 +74,11 @@ function recordPaidOrder(sessionId: string, order: PaidOrder): string {
 }
 
 /** 確認の結果（確認中は含まない） */
-type Result = { key: string; state: "paid" | "unpaid" | "unverified"; orderId: string | null };
+type Result = {
+  key: string;
+  state: "paid" | "unpaid" | "unverified";
+  orderId: string | null;
+};
 
 /** 読み上げ用の文言（role="status" の要素に入れる） */
 const STATUS_MESSAGES = {
@@ -140,9 +153,18 @@ function SuccessInner() {
 /** 確認中（読み上げは上の role="status" が担うので、ここでは announce しない） */
 function SuccessChecking() {
   return (
-    <Section spacing="lg" width="narrow" className="text-center animate-fade-in" as="div">
+    <Section
+      spacing="lg"
+      width="narrow"
+      className="text-center animate-fade-in"
+      as="div"
+    >
       <Eyebrow>MAISON</Eyebrow>
-      <Loading label="決済を確認しています…" announce={false} className="mt-6" />
+      <Loading
+        label="決済を確認しています…"
+        announce={false}
+        className="mt-6"
+      />
     </Section>
   );
 }

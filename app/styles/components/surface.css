@@ -5,7 +5,10 @@
     background: var(--color-surface);
     border: 1px solid var(--color-line);
     border-radius: var(--radius-lux);
-    transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    transition:
+      border-color 0.3s ease,
+      transform 0.3s ease,
+      box-shadow 0.3s ease;
   }
   @media (hover: hover) {
     .card-hover:hover {
@@ -16,7 +19,11 @@
   }
 
   .panel {
-    background: linear-gradient(180deg, var(--color-surface), var(--color-ink-2));
+    background: linear-gradient(
+      180deg,
+      var(--color-surface),
+      var(--color-ink-2)
+    );
     border: 1px solid var(--color-line);
     border-radius: var(--radius-lux);
   }

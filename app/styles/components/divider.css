@@ -4,7 +4,12 @@
   .hairline {
     height: 1px;
     width: 100%;
-    background: linear-gradient(90deg, transparent, var(--color-line-strong), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-line-strong),
+      transparent
+    );
   }
   /* 見出し下などに置く短いゴールド線 */
   .rule-gold {

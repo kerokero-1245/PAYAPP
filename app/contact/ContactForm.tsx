@@ -40,13 +40,20 @@ export default function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   const [sent, setSent] = useState<ContactValues | null>(null);
   /** フォーカスを移す欄（送信のたびに新しいオブジェクトにして、同じ欄でも effect を走らせる） */
-  const [focusField, setFocusField] = useState<{ name: ContactField } | null>(null);
+  const [focusField, setFocusField] = useState<{ name: ContactField } | null>(
+    null,
+  );
   const formRef = useRef<HTMLFormElement>(null);
   const sentTitleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     // 欄の名前は FormField の id（= name）。どれも input / textarea / select なので focus できる
-    if (focusField) (formRef.current?.elements.namedItem(focusField.name) as HTMLElement | null)?.focus();
+    if (focusField)
+      (
+        formRef.current?.elements.namedItem(
+          focusField.name,
+        ) as HTMLElement | null
+      )?.focus();
   }, [focusField]);
 
   useEffect(() => {
@@ -54,11 +61,19 @@ export default function ContactForm() {
   }, [sent]);
 
   const change =
-    (field: ContactField) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (field: ContactField) =>
+    (
+      e: ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >,
+    ) =>
       setValues((v) => ({ ...v, [field]: e.target.value }));
   const blur = (field: ContactField) => () => {
     if (!submitted) return;
-    setErrors((prev) => ({ ...prev, [field]: validateContactField(field, values) }));
+    setErrors((prev) => ({
+      ...prev,
+      [field]: validateContactField(field, values),
+    }));
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -108,7 +123,9 @@ export default function ContactForm() {
             { term: "お名前", desc: sent.name.trim() },
             { term: "メールアドレス", desc: sent.email.trim() },
             { term: "種別", desc: topic },
-            ...(sent.orderId.trim() ? [{ term: "注文番号", desc: sent.orderId.trim().toUpperCase() }] : []),
+            ...(sent.orderId.trim()
+              ? [{ term: "注文番号", desc: sent.orderId.trim().toUpperCase() }]
+              : []),
             { term: "お問い合わせ内容", desc: sent.message.trim() },
           ]}
         />
@@ -120,7 +137,12 @@ export default function ContactForm() {
     <>
       <DemoNote className="animate-fade-in">{DEMO_NOTE}</DemoNote>
 
-      <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-6">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="mt-8 flex flex-col gap-6"
+      >
         <FormField
           id="name"
           label="お名前"

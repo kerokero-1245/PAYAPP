@@ -41,7 +41,10 @@ export function categoryOf(slug: string): Category {
 
 /** 品目の合計金額（カタログの単価 × 数量） */
 export function totalPrice(items: ItemQuantity[]): number {
-  return items.reduce((sum, { id, quantity }) => sum + product(id).price * quantity, 0);
+  return items.reduce(
+    (sum, { id, quantity }) => sum + product(id).price * quantity,
+    0,
+  );
 }
 
 /** 品目の合計点数 */
