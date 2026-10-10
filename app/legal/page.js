@@ -1,8 +1,8 @@
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import InfoList from "@/components/ui/InfoList";
-import Card from "@/components/ui/Card";
-import { POLICIES } from "@/lib/policies.mjs";
+import DemoNote from "@/components/ui/DemoNote";
+import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies.mjs";
 
 export const metadata = {
   title: "特定商取引法に基づく表記",
@@ -19,10 +19,10 @@ const ITEMS = [
   { term: "連絡先", desc: `${NOT_LISTED}。ご質問はお問い合わせページ（デモ）からどうぞ。` },
   { term: "販売価格", desc: "各商品ページに表示した価格（税込）" },
   { term: "商品代金以外の費用", desc: `送料はかかりません（${POLICIES.shippingFee}）` },
-  { term: "支払方法", desc: "クレジットカード（Stripe の決済ページ。このサイトではテストモードのため実際の請求は発生しません）" },
+  { term: "支払方法", desc: `クレジットカード（Stripe の決済ページ。${TEST_MODE_NOTE}）` },
   { term: "支払時期", desc: "ご注文の確定時" },
   { term: "引渡時期", desc: `ご注文の確定から${POLICIES.deliveryDays}` },
-  { term: "返品・交換", desc: `${POLICIES.returns}（お届けから 30 日以内、未使用のものに限ります）` },
+  { term: "返品・交換", desc: `${POLICIES.returns}（${POLICIES.returnWindow}、${POLICIES.returnCondition}）` },
 ];
 
 /** 特定商取引法に基づく表記（/legal） */
@@ -31,11 +31,7 @@ export default function LegalPage() {
     <Section spacing="md">
       <PageHeader eyebrow="Legal Notice" title="特定商取引法に基づく表記" dividerClassName="mt-8 mb-10" />
       <div className="max-w-3xl">
-        <Card variant="panel" padding="sm">
-          <p className="fine fine-relaxed">
-            ※ このサイトはポートフォリオ用のデモで、実際の販売は行っていません。事業者の情報は記載していません。
-          </p>
-        </Card>
+        <DemoNote>このサイトはポートフォリオ用のデモで、実際の販売は行っていません。事業者の情報は記載していません。</DemoNote>
         <InfoList items={ITEMS} className="mt-8" />
       </div>
     </Section>

@@ -7,6 +7,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
 import Eyebrow from "@/components/ui/Eyebrow";
+import { ANNOUNCEMENT } from "@/lib/policies.mjs";
 
 const NAV_LINKS = [
   { href: "/", label: "ホーム" },
@@ -127,7 +128,7 @@ export default function Header() {
       {/* アナウンスバー */}
       <div className="announce text-center py-2">
         <Eyebrow size="sm" tone="soft" tracking="lg">
-          全国送料無料 — 選び抜かれた逸品を、あなたのもとへ
+          {ANNOUNCEMENT}
         </Eyebrow>
       </div>
 

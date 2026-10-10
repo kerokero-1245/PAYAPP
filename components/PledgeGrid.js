@@ -1,4 +1,5 @@
 import Card from "@/components/ui/Card";
+import { PLEDGE_TEXT } from "@/lib/policies.mjs";
 
 /** ブランドの約束（上品なラインアイコン）。トップとブランドストーリーで共有する */
 export const PLEDGES = [
@@ -14,7 +15,7 @@ export const PLEDGES = [
   },
   {
     title: "無料配送",
-    desc: "全国どこでも送料無料でお届け。",
+    desc: PLEDGE_TEXT.shipping,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="pledge-svg" aria-hidden="true">
         <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
@@ -25,7 +26,7 @@ export const PLEDGES = [
   },
   {
     title: "正規保証",
-    desc: "全品に国際保証と真正性を保証。",
+    desc: PLEDGE_TEXT.warranty,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="pledge-svg" aria-hidden="true">
         <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" />
@@ -35,7 +36,7 @@ export const PLEDGES = [
   },
   {
     title: "ギフト包装",
-    desc: "上質な化粧箱で丁寧にお包みします。",
+    desc: PLEDGE_TEXT.giftBox,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="pledge-svg" aria-hidden="true">
         <path d="M4 9h16v11H4zM4 9V7h16v2M12 9v11" />

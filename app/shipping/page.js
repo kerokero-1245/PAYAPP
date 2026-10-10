@@ -14,12 +14,12 @@ export const metadata = {
 const DELIVERY = [
   { term: "送料", desc: `${POLICIES.shippingFee}。ご注文の金額・点数にかかわらず送料はいただきません。` },
   { term: "お届け日数", desc: `ご注文の確定から${POLICIES.deliveryDays}します（土日祝を除く）。` },
-  { term: "ギフト包装", desc: `${POLICIES.giftWrap}。上質な化粧箱で丁寧にお包みします。` },
+  { term: "ギフト包装", desc: `${POLICIES.giftWrap}。${POLICIES.giftBox}。` },
 ];
 
 const AFTER = [
-  { term: "保証", desc: `時計・ジュエリーは${POLICIES.warranty}です。` },
-  { term: "返品", desc: `${POLICIES.returns}。お届けから 30 日以内で、未使用のものに限ります。` },
+  { term: "保証", desc: `${POLICIES.warrantyScope}が${POLICIES.warranty}です。` },
+  { term: "返品", desc: `${POLICIES.returns}。${POLICIES.returnWindow}で、${POLICIES.returnCondition}。` },
   { term: "お問い合わせ", desc: "配送・返品についてのご質問は、お問い合わせページからご連絡ください（デモ）。" },
 ];
 

@@ -4,7 +4,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import FaqItem from "@/components/ui/FaqItem";
 import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
-import { POLICIES } from "@/lib/policies.mjs";
+import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies.mjs";
 
 export const metadata = {
   title: "よくある質問",
@@ -32,7 +32,7 @@ const GROUPS = [
     items: [
       {
         q: "どの支払い方法が使えますか？",
-        a: "Stripe の決済ページでのクレジットカード払いです。このサイトはテストモードのため、実際の請求は発生しません。",
+        a: `Stripe の決済ページでのクレジットカード払いです。${TEST_MODE_NOTE}。`,
       },
       {
         q: "テスト用のカード番号はありますか？",
@@ -50,7 +50,7 @@ const GROUPS = [
     items: [
       { q: "送料はかかりますか？", a: `${POLICIES.shippingFee}です。` },
       { q: "どのくらいで届きますか？", a: `ご注文の確定から${POLICIES.deliveryDays}します。` },
-      { q: "返品はできますか？", a: `${POLICIES.returns}があります。お届けから 30 日以内で、未使用のものに限ります。` },
+      { q: "返品はできますか？", a: `${POLICIES.returns}があります。${POLICIES.returnWindow}で、${POLICIES.returnCondition}。` },
     ],
   },
 ];

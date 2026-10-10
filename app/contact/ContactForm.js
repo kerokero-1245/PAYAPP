@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Card from "@/components/ui/Card";
+import DemoNote from "@/components/ui/DemoNote";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
 import StatusMessage from "@/components/ui/StatusMessage";
@@ -108,9 +108,7 @@ export default function ContactForm() {
 
   return (
     <>
-      <Card variant="panel" padding="sm" className="animate-fade-in">
-        <p className="fine fine-relaxed">※ {DEMO_NOTE}</p>
-      </Card>
+      <DemoNote className="animate-fade-in">{DEMO_NOTE}</DemoNote>
 
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-6">
         <FormField

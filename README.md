@@ -57,7 +57,7 @@ npm run dev            # http://localhost:3000
 npm run build
 npm run start
 
-# テスト（決済まわりの純粋な関数と GraphQL API。Stripe には通信しません）
+# テスト（決済まわりの純粋な関数・GraphQL API・お問い合わせの検証・平坦な CSS の検査。Stripe には通信しません）
 npm test               # node --test tests/*.test.mjs（Node 22 / 24 で確認）
 
 # GraphQL の型を SDL から作り直す（lib/graphql/sdl.ts を変えたら実行してコミット）
@@ -110,7 +110,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
    - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・記録時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
    - 同じ `session_id` で注文を二重に記録しません（再読み込みしても 1 件のまま）。
 
-価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.mjs` `lib/cart.mjs` `lib/site.mjs` の純粋な関数に分けてあり、`tests/` で検証しています。
+価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方・二重記録の防止は `lib/checkout.mjs` `lib/cart.mjs` `lib/site.mjs` の純粋な関数に分けてあり、`tests/` で検証しています。お問い合わせの検証（`lib/contact.mjs`。文字数は見た目の 1 文字で数える）は `tests/contact.test.mjs`、平坦な CSS の検査（`scripts/check-flat-css.mjs`）が違反を見落とさないことは `tests/flat-css.test.mjs` で検証しています。
 
 > **注文履歴はブラウザごとです。** このデモにはサーバ側の保存先（DB）が無く、注文履歴は決済を確認したブラウザの localStorage にだけ記録されます。別のブラウザで同じ決済の戻り URL を開くと、そのブラウザにも記録されます。本番運用では Stripe Webhook と DB で注文を確定させる構成にしてください。
 
@@ -206,9 +206,9 @@ lib/site.mjs            サイト設定・戻り先 URL / metadataBase の決め
 lib/stripe.js           Stripe クライアント（サーバ専用）
 lib/format.js           金額・日付の整形ユーティリティ
 lib/contact.mjs         お問い合わせの検証（純粋な関数）
-lib/policies.mjs        配送・保証・返品の文面（商品詳細・案内ページで共有）
+lib/policies.mjs        配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
 scripts/check-flat-css.mjs  平坦な CSS の検査（npm run check:css）
-tests/                  node --test のテスト
+tests/                  node --test のテスト（決済・カート・GraphQL・サイト設定・お問い合わせ・平坦な CSS の検査）
 ```
 
 ## デザインの書き方
