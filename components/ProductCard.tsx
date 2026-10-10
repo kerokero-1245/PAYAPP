@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import type { MouseEvent } from "react";
 import { useCartStore } from "@/store/cartStore";
 import Card from "@/components/ui/Card";
 import MediaFrame from "@/components/ui/MediaFrame";
@@ -11,21 +12,26 @@ import Eyebrow from "@/components/ui/Eyebrow";
 import Heading from "@/components/ui/Heading";
 import Price from "@/components/ui/Price";
 import Button from "@/components/ui/Button";
+import type { Product } from "@/lib/types";
+
+type ProductCardProps = {
+  /** 旧データの単数の image も読むため、Product に image? を足した型で受ける（いまの呼び出し元は Product だけ） */
+  product: Product & { image?: string };
+  /** 最初の画面に入るカードは true（画像を遅延読み込みしない） */
+  eager?: boolean;
+};
 
 /**
  * 商品カード（一覧・トップ・関連商品で共通利用）
- *
- * @param {{ product: object, eager?: boolean }} props
- *   eager: 最初の画面に入るカードは true（画像を遅延読み込みしない）
  */
-export default function ProductCard({ product, eager = false }) {
+export default function ProductCard({ product, eager = false }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const [added, setAdded] = useState(false);
   // カード全体に乗っているか（画像の拡大は画像自身の data-active で表す。親の :hover から子を変えない）
   const [hover, setHover] = useState(false);
   const image = product.images?.[0] ?? product.image;
 
-  const handleAdd = (e) => {
+  const handleAdd = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     addItem(product);
     setAdded(true);

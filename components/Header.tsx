@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import type { FormEvent } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
@@ -14,7 +15,8 @@ import { CATEGORY_LINKS } from "@/lib/links";
  * ナビに個別のリンクを出すカテゴリ（リンクの URL と名前は lib/links.ts の CATEGORY_LINKS から作る）。
  * このカテゴリの一覧では、ショップではなくそのリンクを光らせる
  */
-const NAV_CATEGORY_SLUGS = ["watches", "jewelry"];
+// category は URL に ?category= が無いと null になる。includes にそのまま渡して false にするので、null も許す型にしてある
+const NAV_CATEGORY_SLUGS: readonly (string | null)[] = ["watches", "jewelry"];
 
 const NAV_LINKS = [
   { href: "/", label: "ホーム" },
@@ -29,7 +31,7 @@ const NAV_LINKS = [
  * - "/product?category=watches" は /product かつ category=watches のときだけ
  * - "/product"（ショップ）は /product 配下のうち、上のカテゴリリンクに当たらないとき
  */
-function isActiveHref(href, pathname, category) {
+function isActiveHref(href: string, pathname: string, category: string | null): boolean {
   const [base, query] = href.split("?");
   if (base === "/") return pathname === "/";
   if (query) {
@@ -47,18 +49,33 @@ function isActiveHref(href, pathname, category) {
  * aria-current の値。開いているページそのもの（パスとクエリが一致）なら "page"、
  * その配下（商品詳細のショップなど）なら "true"。
  */
-function ariaCurrentFor(href, pathname, search, active) {
+function ariaCurrentFor(href: string, pathname: string, search: string, active: boolean): "page" | "true" | undefined {
   if (!active) return undefined;
   const [base, query = ""] = href.split("?");
   return pathname === base && search === query ? "page" : "true";
 }
+
+type NavItemsProps = {
+  pathname: string;
+  /** URL の ?category=（無ければ null） */
+  category: string | null;
+  /** URL のクエリ文字列（aria-current の判定用） */
+  search: string;
+  /** false: URL のクエリがまだ分からない Suspense の fallback */
+  known: boolean;
+  linkClass: string;
+  onNavigate?: () => void;
+};
+
+/** Nav が受ける props（クエリに関する値は Nav の中で決める） */
+type NavProps = Omit<NavItemsProps, "category" | "search" | "known">;
 
 /**
  * ナビのリンク列。category（URL の ?category=）で現在地を判定する。
  * known=false（URL のクエリがまだ分からない Suspense の fallback）では、どの項目も光らせない。
  * 現在地の見た目は linkClass のクラスが aria-current で付ける（.nav-link[aria-current] など）。
  */
-function NavItems({ pathname, category, search, known, linkClass, onNavigate }) {
+function NavItems({ pathname, category, search, known, linkClass, onNavigate }: NavItemsProps) {
   return NAV_LINKS.map((l) => {
     const active = known && isActiveHref(l.href, pathname, category);
     return (
@@ -76,7 +93,7 @@ function NavItems({ pathname, category, search, known, linkClass, onNavigate }) 
 }
 
 /** useSearchParams は Suspense の内側で使う（静的生成でページ全体がクライアント描画に落ちるのを防ぐ） */
-function NavItemsWithParams(props) {
+function NavItemsWithParams(props: NavProps) {
   const params = useSearchParams();
   return (
     <NavItems
@@ -88,7 +105,7 @@ function NavItemsWithParams(props) {
   );
 }
 
-function Nav(props) {
+function Nav(props: NavProps) {
   return (
     <Suspense fallback={<NavItems {...props} category={null} search="" known={false} />}>
       <NavItemsWithParams {...props} />
@@ -120,7 +137,7 @@ export default function Header() {
     setMenuOpen(false);
   }
 
-  const submitSearch = (e) => {
+  const submitSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const q = query.trim();
     router.push(q ? `/product?q=${encodeURIComponent(q)}` : "/product");
@@ -265,7 +282,7 @@ function SearchIcon() {
     </svg>
   );
 }
-function MenuIcon({ open }) {
+function MenuIcon({ open }: { open: boolean }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       {open ? (

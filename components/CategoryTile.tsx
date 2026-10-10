@@ -6,14 +6,17 @@ import Image from "next/image";
 import Eyebrow from "@/components/ui/Eyebrow";
 import Heading from "@/components/ui/Heading";
 import { categoryHref } from "@/lib/links";
+import type { Category } from "@/lib/types";
+
+type CategoryTileProps = {
+  category: Category & { image?: string };
+};
 
 /**
  * トップのカテゴリのタイル（画像 + 下からの影 + カテゴリ名）。
  * タイル全体に乗ったときの画像の拡大は、画像自身の data-active で表す（親の :hover から子を変えない）。
- *
- * @param {{ category: { slug: string, label: string, jp: string, image?: string } }} props
  */
-export default function CategoryTile({ category }) {
+export default function CategoryTile({ category }: CategoryTileProps) {
   const [hover, setHover] = useState(false);
   return (
     <Link

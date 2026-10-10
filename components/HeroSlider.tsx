@@ -24,7 +24,7 @@ const slides = [
 
 /** OS の「視差効果を減らす」設定（prefers-reduced-motion: reduce）を購読する */
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
-function subscribeReducedMotion(onChange) {
+function subscribeReducedMotion(onChange: () => void) {
   const mq = window.matchMedia(REDUCED_MOTION);
   mq.addEventListener("change", onChange);
   return () => mq.removeEventListener("change", onChange);

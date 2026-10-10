@@ -19,8 +19,6 @@ import Divider from "@/components/ui/Divider";
  * @remarks
  * usePathname / useSearchParams を使用するため、呼び出し側（shop ページ）の
  * <Suspense> 境界内に配置される前提。default export・props なし。
- *
- * @returns {JSX.Element} サイドメニューUI
  */
 export default function SideMenu() {
   const pathname = usePathname();

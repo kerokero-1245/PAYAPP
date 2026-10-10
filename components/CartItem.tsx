@@ -8,13 +8,16 @@ import Eyebrow from "@/components/ui/Eyebrow";
 import Heading from "@/components/ui/Heading";
 import Price from "@/components/ui/Price";
 import QuantityStepper from "@/components/ui/QuantityStepper";
+import type { CartLine } from "@/lib/types";
+
+type CartItemProps = {
+  item: CartLine;
+};
 
 /**
  * カート内の1商品を表す行コンポーネント
- *
- * @param {{ item: object }} props
  */
-export default function CartItem({ item }) {
+export default function CartItem({ item }: CartItemProps) {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
 

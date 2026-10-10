@@ -33,7 +33,7 @@ export const PRODUCT_DETAIL_POINTS = [
   POLICIES.returns,
 ];
 
-/** 約束の帯（components/PledgeGrid.js）の説明文のうち、配送・保証・包装の約束 */
+/** 約束の帯（components/PledgeGrid.tsx）の説明文のうち、配送・保証・包装の約束 */
 export const PLEDGE_TEXT = {
   shipping: "全国どこでも送料無料でお届け。",
   warranty: "全品に国際保証と真正性を保証。",
