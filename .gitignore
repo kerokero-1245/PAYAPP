@@ -43,6 +43,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local database (PGlite。DATABASE_URL が無いときの保存先。親ディレクトリを作らない PGlite のために 1 階層)
+/.pglite/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
