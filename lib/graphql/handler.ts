@@ -26,7 +26,7 @@ import {
   UNSUPPORTED_MEDIA_TYPE,
   isJsonContentType,
   readBodyWithLimit,
-} from "../checkout-session.mjs";
+} from "../checkout-session.ts";
 import { schema } from "./schema.ts";
 import type { GraphqlContext } from "./schema.ts";
 

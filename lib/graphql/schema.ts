@@ -1,12 +1,12 @@
 /**
  * GraphQL の resolver（無状態）
  * ---------------------------------------------------
- * 既存の純粋な関数（lib/catalog.mjs・lib/checkout.mjs）と、/checkout と共有する
- * createCheckoutSessionCore（lib/checkout-session.mjs）を呼ぶだけで、サーバに状態を持たない。
+ * 既存の純粋な関数（lib/catalog.ts・lib/checkout.ts）と、/checkout と共有する
+ * createCheckoutSessionCore（lib/checkout-session.ts）を呼ぶだけで、サーバに状態を持たない。
  * Stripe は context.getStripe() 経由でだけ触る（server-only の Stripe クライアントのモジュールは import しない）。
  */
 import { createSchema } from "graphql-yoga";
-import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.mjs";
+import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.ts";
 import {
   CHECKOUT_ERRORS,
   isSessionPaid,
@@ -14,9 +14,11 @@ import {
   isValidSessionId,
   normalizeOrderItems,
   orderFromSession,
-} from "../checkout.mjs";
-import { createCheckoutSessionCore } from "../checkout-session.mjs";
+} from "../checkout.ts";
+import { createCheckoutSessionCore } from "../checkout-session.ts";
+import type { StripeLike } from "../checkout-session.ts";
 import { typeDefs } from "./sdl.ts";
+import type { ItemQuantity } from "../types.ts";
 import type {
   CartItem,
   CheckoutErrorCode,
@@ -28,7 +30,7 @@ import type {
 /** resolver が受け取る context（handler.ts が組み立てる） */
 export type GraphqlContext = {
   request: Request;
-  getStripe: () => any; // eslint-disable-line @typescript-eslint/no-explicit-any -- stripe の型に依存させない（偽の Stripe を差し込むため）
+  getStripe: () => StripeLike;
   baseUrl?: string;
 };
 
@@ -55,7 +57,7 @@ function findProduct(id: string): Product {
 }
 
 /** 検査済みの { id, quantity } からカートの行を作る（価格はカタログ） */
-function toCartItems(items: { id: string; quantity: number }[]): CartItem[] {
+function toCartItems(items: ItemQuantity[]): CartItem[] {
   return items.map(({ id, quantity }) => {
     const product = findProduct(id);
     return { product, quantity, subtotal: product.price * quantity };
@@ -69,8 +71,7 @@ function filterProducts(category?: string | null, q?: string | null): Product[] 
   return PRODUCTS.filter((p) => {
     if (slug !== "all" && p.category !== slug) return false;
     if (!query) return true;
-    const p2: { tagline?: string; description?: string } = p;
-    const haystack = `${p.name} ${p2.tagline ?? ""} ${p2.description ?? ""}`.toLowerCase();
+    const haystack = `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase();
     return haystack.includes(query);
   });
 }
@@ -108,8 +109,7 @@ export const resolvers: Resolvers<GraphqlContext> = {
       const result = orderFromSession(session);
       if (!result.ok) throw new Error(result.error);
       const { order } = result;
-      // orderFromSession は JSDoc で items を object[] と書いているので、形をここで明示する
-      const items = toCartItems(order.items as { id: string; quantity: number }[]);
+      const items = toCartItems(order.items);
       return {
         state: "PAID",
         order: { sessionId: order.sessionId, items, total: order.total },

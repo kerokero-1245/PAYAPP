@@ -8,7 +8,7 @@ import {
   SITE_OPEN_GRAPH,
   SITE_TITLE,
   resolveMetadataBase,
-} from "@/lib/site.mjs";
+} from "@/lib/site";
 
 /** 見出し用のセリフ（ラグジュアリー感） */
 const playfair = Playfair_Display({

@@ -4,7 +4,7 @@ import {
   isStripeNotFound,
   isValidSessionId,
   orderFromSession,
-} from "@/lib/checkout.mjs";
+} from "@/lib/checkout";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 

@@ -1,10 +1,10 @@
 import { create } from "zustand";
-import { CATEGORIES, PRODUCTS, getProductById } from "@/lib/catalog.mjs";
+import { CATEGORIES, PRODUCTS, getProductById } from "@/lib/catalog";
 
 /**
  * 商品カタログを管理する Zustand ストア
  *
- * - カタログの正本は lib/catalog.mjs（サーバの /checkout と共有する素のモジュール）
+ * - カタログの正本は lib/catalog.ts（サーバの /checkout と共有する素のモジュール）
  * - 商品は「ソースデータ」であってユーザー状態ではないため persist しない
  *   （persist すると旧 localStorage の古いカタログで上書きされてしまう）
  */

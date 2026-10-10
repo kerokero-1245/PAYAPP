@@ -76,5 +76,14 @@ export type ItemQuantity = {
   quantity: number;
 };
 
+/**
+ * 検査前の品目と数量（localStorage・リクエスト本文・確認ルートの応答から来た値）。
+ * 形は未検査なので、読んだ項目は unknown。使う側が typeof などで絞ってから使う。
+ */
+export type RawItem = {
+  id?: unknown;
+  quantity?: unknown;
+};
+
 /** id から商品を引く関数（カタログに無ければ undefined。テストから差し替えられる） */
 export type ProductLookup = (id: string) => Product | undefined;

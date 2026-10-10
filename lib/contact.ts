@@ -4,6 +4,7 @@
  * フォーム（app/contact/ContactForm.js）とテスト（tests/contact.test.mjs）の両方から使う。
  * このサイトはデモなので、検証が通っても送信・保存はしない（フォーム側で「送信済み」表示に切り替えるだけ）。
  */
+import type { ContactValues } from "./types.ts";
 
 /** 種別の選択肢 */
 export const CONTACT_TOPICS = [
@@ -22,10 +23,13 @@ export const CONTACT_LIMITS = {
 };
 
 /** 入力欄の並び（先頭のエラー欄へフォーカスを移すときの順番） */
-export const CONTACT_FIELDS = ["name", "email", "topic", "orderId", "message"];
+export const CONTACT_FIELDS = ["name", "email", "topic", "orderId", "message"] as const satisfies readonly (keyof ContactValues)[];
+
+/** 入力欄の名前 */
+export type ContactField = (typeof CONTACT_FIELDS)[number];
 
 /** フォームの初期値 */
-export const EMPTY_CONTACT = { name: "", email: "", topic: "product", orderId: "", message: "" };
+export const EMPTY_CONTACT: ContactValues = { name: "", email: "", topic: "product", orderId: "", message: "" };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** 注文番号（決済成功ページが作る ORD-<英大文字と数字>） */
@@ -34,20 +38,17 @@ const ORDER_ID_RE = /^ORD-[0-9A-Z]+$/;
 /**
  * 文字数（見た目の 1 文字 = 書記素で数える。👨‍👩‍👧 のような結合した絵文字も 1 文字）。
  * フォームの「いま N 文字」もこの関数で数える。
- * @param {string} s
  */
 const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-export function countChars(s) {
+export function countChars(s: string): number {
   return [...segmenter.segment(String(s ?? ""))].length;
 }
 const length = countChars;
 
 /**
  * 1 項目を検証する。問題が無ければ undefined、あればエラー文言。
- * @param {"name" | "email" | "topic" | "orderId" | "message"} field
- * @param {Partial<typeof EMPTY_CONTACT>} values
  */
-export function validateContactField(field, values) {
+export function validateContactField(field: ContactField, values: Partial<ContactValues>): string | undefined {
   const v = String(values?.[field] ?? "").trim();
   switch (field) {
     case "name":
@@ -78,11 +79,12 @@ export function validateContactField(field, values) {
 
 /**
  * 全項目を検証する。
- * @param {Partial<typeof EMPTY_CONTACT>} values
- * @returns {{ ok: boolean, errors: Partial<Record<string, string>> }}
  */
-export function validateContact(values) {
-  const errors = {};
+export function validateContact(values: Partial<ContactValues>): {
+  ok: boolean;
+  errors: Partial<Record<ContactField, string>>;
+} {
+  const errors: Partial<Record<ContactField, string>> = {};
   for (const field of CONTACT_FIELDS) {
     const error = validateContactField(field, values);
     if (error) errors[field] = error;

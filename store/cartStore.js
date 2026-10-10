@@ -4,7 +4,7 @@ import {
   clampQuantity,
   reconcileCart,
   removePurchasedFromCart,
-} from "@/lib/cart.mjs";
+} from "@/lib/cart";
 
 /**
  * カート状態管理用の Zustand ストア

@@ -14,7 +14,7 @@ export const SITE_DESCRIPTION =
 export const SITE_OPEN_GRAPH = {
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  type: "website",
+  type: "website" as const,
   locale: "ja_JP",
   siteName: SITE_NAME,
   images: [
@@ -31,7 +31,7 @@ export const SITE_OPEN_GRAPH = {
  * NEXT_PUBLIC_BASE_URL のような値を URL にする。
  * 未設定・空・URL として読めない・http(s) 以外のときは null（例外にしない）。
  */
-export function parseBaseUrl(value) {
+export function parseBaseUrl(value: unknown): URL | null {
   if (typeof value !== "string" || value.trim() === "") return null;
   try {
     const url = new URL(value.trim());
@@ -43,7 +43,7 @@ export function parseBaseUrl(value) {
 }
 
 /** metadataBase に渡す値。使えない値なら undefined（Next.js の既定に任せる） */
-export function resolveMetadataBase(value) {
+export function resolveMetadataBase(value: unknown): URL | undefined {
   return parseBaseUrl(value) ?? undefined;
 }
 
@@ -52,10 +52,8 @@ export function resolveMetadataBase(value) {
  * NEXT_PUBLIC_BASE_URL があればそれ、無ければリクエスト URL 自体の origin。
  * リクエストの Origin ヘッダーは利用者が自由に書き換えられるので使わない
  * （引数で headers を受け取っても見ない）。
- *
- * @param {{ requestUrl: string, baseUrl?: string, headers?: unknown }} input
  */
-export function resolveReturnOrigin(input) {
+export function resolveReturnOrigin(input: { requestUrl: string; baseUrl?: string; headers?: unknown }): string {
   const base = parseBaseUrl(input.baseUrl);
   if (base) return base.origin;
   return new URL(input.requestUrl).origin;

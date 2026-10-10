@@ -4,7 +4,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import FaqItem from "@/components/ui/FaqItem";
 import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
-import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies.mjs";
+import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies";
 
 export const metadata = {
   title: "よくある質問",

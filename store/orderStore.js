@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { appendOrder } from "@/lib/checkout.mjs";
+import { appendOrder } from "@/lib/checkout";
 
 /**
  * 注文履歴を管理する Zustand ストア

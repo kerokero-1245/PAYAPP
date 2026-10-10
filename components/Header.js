@@ -7,7 +7,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useMounted } from "@/lib/useMounted";
 import Eyebrow from "@/components/ui/Eyebrow";
-import { ANNOUNCEMENT } from "@/lib/policies.mjs";
+import { ANNOUNCEMENT } from "@/lib/policies";
 import { CATEGORY_LINKS } from "@/lib/links";
 
 /**

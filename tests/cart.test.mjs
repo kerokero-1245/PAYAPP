@@ -5,13 +5,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { getProductById } from "../lib/catalog.mjs";
+import { getProductById } from "../lib/catalog.ts";
 import {
   MAX_QUANTITY,
   clampQuantity,
   reconcileCart,
   removePurchasedFromCart,
-} from "../lib/cart.mjs";
+} from "../lib/cart.ts";
 
 test("価格・商品名は保存した値ではなくカタログから引く", () => {
   const cart = reconcileCart([{ id: "1", name: "偽物", price: 1, image: "x", category: "y", quantity: 2 }]);

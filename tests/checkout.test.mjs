@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { PRODUCTS, getProductById } from "../lib/catalog.mjs";
+import { PRODUCTS, getProductById } from "../lib/catalog.ts";
 import {
   CHECKOUT_ERRORS,
   MAX_LINE_ITEMS,
@@ -25,7 +25,7 @@ import {
   isValidSessionId,
   normalizeOrderItems,
   orderFromSession,
-} from "../lib/checkout.mjs";
+} from "../lib/checkout.ts";
 
 const watch = getProductById("1");
 const perfume = getProductById("5");

@@ -2,7 +2,7 @@ import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import InfoList from "@/components/ui/InfoList";
 import DemoNote from "@/components/ui/DemoNote";
-import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies.mjs";
+import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies";
 
 export const metadata = {
   title: "特定商取引法に基づく表記",

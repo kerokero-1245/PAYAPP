@@ -4,7 +4,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import InfoList from "@/components/ui/InfoList";
 import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
-import { POLICIES } from "@/lib/policies.mjs";
+import { POLICIES } from "@/lib/policies";
 
 export const metadata = {
   title: "配送について",
@@ -23,7 +23,7 @@ const AFTER = [
   { term: "お問い合わせ", desc: "配送・返品についてのご質問は、お問い合わせページからご連絡ください（デモ）。" },
 ];
 
-/** 配送について（/shipping）。文面は lib/policies.mjs の約束と同じものを使う */
+/** 配送について（/shipping）。文面は lib/policies.ts の約束と同じものを使う */
 export default function ShippingPage() {
   return (
     <Section spacing="md">

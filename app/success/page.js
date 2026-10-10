@@ -13,7 +13,7 @@ import {
   VERIFY_TIMEOUT_MS,
   decideVerifyOutcome,
   findOrderBySession,
-} from "@/lib/checkout.mjs";
+} from "@/lib/checkout";
 
 /**
  * 確認ルートに問い合わせる。応答が無ければ VERIFY_TIMEOUT_MS で打ち切る。

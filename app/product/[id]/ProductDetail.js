@@ -9,8 +9,8 @@ import {
   CATEGORIES,
 } from "@/store/productStore";
 import { useCartStore } from "@/store/cartStore";
-import { clampQuantity } from "@/lib/cart.mjs";
-import { PRODUCT_DETAIL_POINTS } from "@/lib/policies.mjs";
+import { clampQuantity } from "@/lib/cart";
+import { PRODUCT_DETAIL_POINTS } from "@/lib/policies";
 import ProductCard from "@/components/ProductCard";
 import Section from "@/components/ui/Section";
 import Card from "@/components/ui/Card";
@@ -157,7 +157,7 @@ export default function ProductDetail({ id }) {
             </Card>
           )}
 
-          {/* 配送・素材などの小さな箇条書き（文面は lib/policies.mjs と共有） */}
+          {/* 配送・素材などの小さな箇条書き（文面は lib/policies.ts と共有） */}
           <div className="mt-10">
             <Eyebrow>DETAILS</Eyebrow>
             <ul className="meta mt-3 flex flex-col gap-2">

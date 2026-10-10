@@ -12,7 +12,7 @@ import {
   EMPTY_CONTACT,
   validateContact,
   validateContactField,
-} from "../lib/contact.mjs";
+} from "../lib/contact.ts";
 
 const valid = {
   name: "山田 花子",

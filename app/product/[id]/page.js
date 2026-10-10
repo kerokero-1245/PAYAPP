@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { PRODUCTS, getProductById } from "@/lib/catalog.mjs";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_OPEN_GRAPH } from "@/lib/site.mjs";
+import { PRODUCTS, getProductById } from "@/lib/catalog";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_OPEN_GRAPH } from "@/lib/site";
 import ProductDetail from "./ProductDetail";
 
 /**

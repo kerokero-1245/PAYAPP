@@ -1,6 +1,6 @@
 import Card from "@/components/ui/Card";
 import Heading from "@/components/ui/Heading";
-import { PLEDGE_TEXT } from "@/lib/policies.mjs";
+import { PLEDGE_TEXT } from "@/lib/policies";
 
 /** ブランドの約束（上品なラインアイコン）。トップとブランドストーリーで共有する */
 const PLEDGES = [

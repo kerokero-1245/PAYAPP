@@ -1,11 +1,11 @@
 import { getStripe } from "@/lib/stripe";
-import { MAX_BODY_BYTES } from "@/lib/checkout.mjs";
+import { MAX_BODY_BYTES } from "@/lib/checkout";
 import {
   UNSUPPORTED_MEDIA_TYPE,
   createCheckoutSessionCore,
   isJsonContentType,
   readBodyWithLimit,
-} from "@/lib/checkout-session.mjs";
+} from "@/lib/checkout-session";
 
 const TOO_LARGE = "リクエストが大きすぎます";
 const BAD_REQUEST = "リクエストの形式が不正です";
@@ -13,9 +13,9 @@ const BAD_REQUEST = "リクエストの形式が不正です";
 /**
  * Stripe Checkout Session を作成する。
  * クライアントからは { items: [{ id, quantity }] } だけを受け取り、
- * 価格と商品名はサーバ側のカタログ（lib/catalog.mjs）から引く。
+ * 価格と商品名はサーバ側のカタログ（lib/catalog.ts）から引く。
  * 購入した id と数量は session の metadata に持たせ、成功ページの確認で注文を作るのに使う。
- * 本体は lib/checkout-session.mjs（GraphQL の createCheckoutSession と共有）。
+ * 本体は lib/checkout-session.ts（GraphQL の createCheckoutSession と共有）。
  */
 export async function POST(request) {
   // フォーム送信など JSON 以外は受け付けない（GraphQL の入口と同じ判定）

@@ -6,8 +6,10 @@
  * React や zustand に依存しないので、`node --test` からもそのまま import できる。
  */
 
+import type { Category, Product } from "./types.ts";
+
 /** カテゴリ定義（サイドメニュー・絞り込みで共有） */
-export const CATEGORIES = [
+export const CATEGORIES: Category[] = [
   { slug: "all", label: "すべて", jp: "All" },
   { slug: "watches", label: "時計", jp: "Watches" },
   { slug: "leather", label: "レザー", jp: "Leather" },
@@ -15,10 +17,10 @@ export const CATEGORIES = [
   { slug: "jewelry", label: "ジュエリー", jp: "Jewelry" },
 ];
 
-const img = (seed) => `https://picsum.photos/seed/${seed}/900/1100`;
+const img = (seed: string) => `https://picsum.photos/seed/${seed}/900/1100`;
 
 /** ラグジュアリー・カタログ（モック） */
-export const PRODUCTS = [
+export const PRODUCTS: Product[] = [
   {
     id: "1",
     name: "Éclat Automatic 41",
@@ -129,5 +131,5 @@ export const PRODUCTS = [
  * id から商品を取得する（見つからなければ undefined）。
  * クライアント・サーバ・テストのすべてがこの 1 つを使う。
  */
-export const getProductById = (id) =>
+export const getProductById = (id: unknown): Product | undefined =>
   typeof id === "string" ? PRODUCTS.find((p) => p.id === id) : undefined;

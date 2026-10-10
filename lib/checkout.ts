@@ -10,8 +10,9 @@
  *
  * tests/*.test.mjs で `node --test` から検証する。
  */
-import { getProductById } from "./catalog.mjs";
-import { MAX_QUANTITY } from "./cart.mjs";
+import { getProductById } from "./catalog.ts";
+import { MAX_QUANTITY } from "./cart.ts";
+import type { ItemQuantity, Order, OrderItem, ProductLookup, RawItem } from "./types.ts";
 
 export { MAX_QUANTITY };
 
@@ -32,25 +33,70 @@ export const CHECKOUT_ERRORS = {
   badQuantity: `数量は 1〜${MAX_QUANTITY} の整数で指定してください`,
 };
 
+/** normalizeOrderItems の結果 */
+export type NormalizeResult = { ok: true; items: ItemQuantity[] } | { ok: false; error: string };
+
+/** Stripe Checkout の line_items の 1 行（価格と名前はカタログから引いた値） */
+export type StripeLineItem = {
+  price_data: {
+    currency: string;
+    product_data: { name: string };
+    unit_amount: number;
+  };
+  quantity: number;
+};
+
+/** buildLineItems の結果 */
+export type LineItemsResult =
+  | { ok: true; items: ItemQuantity[]; lineItems: StripeLineItem[] }
+  | { ok: false; error: string };
+
+/** 支払い済みの session から作る注文（注文履歴の 1 件から、注文番号と日時を除いたもの） */
+export type PaidOrder = { sessionId: string; items: OrderItem[]; total: number };
+
+/** orderFromSession の結果 */
+export type OrderFromSessionResult = { ok: true; order: PaidOrder } | { ok: false; error: string };
+
+/** 支払い済みと確認できた Checkout Session のうち、ここで読む項目（本物は Stripe の Checkout Session） */
+export type PaidSession = { id: string; payment_status: "paid"; metadata: unknown };
+
+/** 成功ページが確認ルートへ問い合わせた結果 */
+export type VerifyInput =
+  | { kind: "missing-session" }
+  | { kind: "network-error" }
+  | { kind: "timeout" }
+  | { kind: "response"; status: number; body: unknown };
+
+/** decideVerifyOutcome の結果 */
+export type VerifyOutcome = { state: "paid"; order: PaidOrder } | { state: "unpaid" } | { state: "unverified" };
+
+/** appendOrder に渡す注文（id・date は無ければ生成する） */
+export type NewOrder = {
+  id?: string;
+  date?: string;
+  items?: OrderItem[];
+  total?: number;
+  sessionId?: string;
+};
+
 /**
  * 届いた items を検査し、同じ id の行を合算する（数量の上限は合算後に当てる）。
- * @returns {{ ok: true, items: { id: string, quantity: number }[] } | { ok: false, error: string }}
  */
-export function normalizeOrderItems(items, lookup = getProductById) {
+export function normalizeOrderItems(items: unknown, lookup: ProductLookup = getProductById): NormalizeResult {
   if (!Array.isArray(items) || items.length === 0) {
     return { ok: false, error: CHECKOUT_ERRORS.empty };
   }
   if (items.length > MAX_LINE_ITEMS) {
     return { ok: false, error: CHECKOUT_ERRORS.tooMany };
   }
-  const merged = new Map();
-  for (const item of items) {
+  const merged = new Map<string, number>();
+  for (const item of items as RawItem[]) {
     const id = item?.id;
     const quantity = item?.quantity;
     if (typeof id !== "string" || id === "" || id.length > MAX_ID_LENGTH || !lookup(id)) {
       return { ok: false, error: CHECKOUT_ERRORS.unknownItem };
     }
-    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+    if (typeof quantity !== "number" || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
       return { ok: false, error: CHECKOUT_ERRORS.badQuantity };
     }
     merged.set(id, (merged.get(id) ?? 0) + quantity);
@@ -64,13 +110,13 @@ export function normalizeOrderItems(items, lookup = getProductById) {
 /**
  * カートの内容から Stripe Checkout の line_items を作る。
  * 送られてきた price や name は一切使わない。
- * @returns {{ ok: true, items: object[], lineItems: object[] } | { ok: false, error: string }}
  */
-export function buildLineItems(items, lookup = getProductById) {
+export function buildLineItems(items: unknown, lookup: ProductLookup = getProductById): LineItemsResult {
   const normalized = normalizeOrderItems(items, lookup);
   if (!normalized.ok) return normalized;
   const lineItems = normalized.items.map(({ id, quantity }) => {
-    const product = lookup(id);
+    // normalizeOrderItems が lookup(id) の引けた id だけを通している
+    const product = lookup(id)!;
     return {
       price_data: {
         currency: "jpy",
@@ -90,9 +136,9 @@ const META_KEY = "order_items_";
 const META_CHUNK = 500;
 
 /** [{ id, quantity }] → { order_items_0: "1:2,5:1", ... } */
-export function encodeOrderMetadata(items) {
+export function encodeOrderMetadata(items: ItemQuantity[]): Record<string, string> {
   const text = items.map(({ id, quantity }) => `${id}:${quantity}`).join(",");
-  const metadata = {};
+  const metadata: Record<string, string> = {};
   for (let i = 0, n = 0; i < text.length; i += META_CHUNK, n += 1) {
     metadata[`${META_KEY}${n}`] = text.slice(i, i + META_CHUNK);
   }
@@ -100,15 +146,16 @@ export function encodeOrderMetadata(items) {
 }
 
 /** encodeOrderMetadata の逆。読めなければ null */
-export function decodeOrderMetadata(metadata) {
+export function decodeOrderMetadata(metadata: unknown): ItemQuantity[] | null {
   if (!metadata || typeof metadata !== "object") return null;
-  const parts = [];
-  for (let n = 0; typeof metadata[`${META_KEY}${n}`] === "string"; n += 1) {
-    parts.push(metadata[`${META_KEY}${n}`]);
+  const entries = metadata as Record<string, unknown>;
+  const parts: string[] = [];
+  for (let n = 0; typeof entries[`${META_KEY}${n}`] === "string"; n += 1) {
+    parts.push(entries[`${META_KEY}${n}`] as string);
   }
   const text = parts.join("");
   if (text === "") return null;
-  const items = [];
+  const items: ItemQuantity[] = [];
   for (const pair of text.split(",")) {
     const m = /^([^:,]+):(\d{1,3})$/.exec(pair);
     if (!m) return null;
@@ -120,16 +167,16 @@ export function decodeOrderMetadata(metadata) {
 /**
  * 支払い済みの session から注文を作る。品目と数量は session の metadata、
  * 単価・商品名はカタログから引く（ブラウザのカートは使わない）。
- * @returns {{ ok: true, order: { sessionId: string, items: object[], total: number } } | { ok: false, error: string }}
  */
-export function orderFromSession(session, lookup = getProductById) {
+export function orderFromSession(session: unknown, lookup: ProductLookup = getProductById): OrderFromSessionResult {
   if (!isSessionPaid(session)) return { ok: false, error: "未払いの決済です" };
   const decoded = decodeOrderMetadata(session.metadata);
   const normalized = decoded ? normalizeOrderItems(decoded, lookup) : null;
   if (!normalized?.ok) return { ok: false, error: "注文の内容を読み取れませんでした" };
 
   const items = normalized.items.map(({ id, quantity }) => {
-    const product = lookup(id);
+    // normalizeOrderItems が lookup(id) の引けた id だけを通している
+    const product = lookup(id)!;
     return {
       id,
       name: product.name,
@@ -143,17 +190,24 @@ export function orderFromSession(session, lookup = getProductById) {
   return { ok: true, order: { sessionId: session.id, items, total } };
 }
 
-/** 確認ルートが返した注文の形が正しいか */
-export function isValidOrder(order) {
-  if (!order || !Array.isArray(order.items) || order.items.length === 0) return false;
+/**
+ * 確認ルートが返した注文の形が正しいか。
+ * 検査するのは品目の id・name・price・quantity と合計。image・category・sessionId は検査しない
+ * （サーバの orderFromSession が作る形を信用する）ので、型ガードは PaidOrder と宣言するが実行時の保証ではない。
+ */
+export function isValidOrder(order: unknown): order is PaidOrder {
+  const probe = order as { items?: unknown; total?: unknown } | null | undefined;
+  if (!probe || !Array.isArray(probe.items) || probe.items.length === 0) return false;
   let sum = 0;
-  for (const i of order.items) {
+  for (const i of probe.items as Partial<Record<keyof OrderItem, unknown>>[]) {
     if (typeof i?.id !== "string" || typeof i.name !== "string") return false;
-    if (!Number.isSafeInteger(i.price) || i.price < 0) return false;
-    if (!Number.isInteger(i.quantity) || i.quantity < 1 || i.quantity > MAX_QUANTITY) return false;
+    if (typeof i.price !== "number" || !Number.isSafeInteger(i.price) || i.price < 0) return false;
+    if (typeof i.quantity !== "number" || !Number.isInteger(i.quantity) || i.quantity < 1 || i.quantity > MAX_QUANTITY) {
+      return false;
+    }
     sum += i.price * i.quantity;
   }
-  return order.total === sum;
+  return probe.total === sum;
 }
 
 /**
@@ -161,15 +215,12 @@ export function isValidOrder(order) {
  *  - "paid": 支払い済みと確認できた（order を記録してよい）
  *  - "unpaid": 未払い・決済の参照が無いと確認できた（買い直してよい）
  *  - "unverified": 確認できなかった（通信失敗・サーバエラー・時間切れ・形の崩れた応答）
- *
- * @param {{ kind: "missing-session" } | { kind: "network-error" } | { kind: "timeout" }
- *   | { kind: "response", status: number, body: unknown }} result
- * @returns {{ state: "paid", order: object } | { state: "unpaid" } | { state: "unverified" }}
  */
-export function decideVerifyOutcome(result) {
+export function decideVerifyOutcome(result: VerifyInput | null | undefined): VerifyOutcome {
   if (result?.kind === "missing-session") return { state: "unpaid" };
   if (result?.kind !== "response") return { state: "unverified" };
-  const { status, body } = result;
+  // 応答の本文は形が未検査（isValidOrder が注文の形を確かめる）
+  const { status, body } = result as { status: number; body: { paid?: unknown; order?: unknown } | null | undefined };
   if (status === 200 && body?.paid === true && isValidOrder(body.order)) {
     return { state: "paid", order: body.order };
   }
@@ -180,7 +231,7 @@ export function decideVerifyOutcome(result) {
 }
 
 /** Stripe Checkout Session の id の形か（cs_ で始まり、英数字とアンダースコア、200 文字以下） */
-export function isValidSessionId(sessionId) {
+export function isValidSessionId(sessionId: unknown): boolean {
   return (
     typeof sessionId === "string" &&
     sessionId.length <= 200 &&
@@ -189,32 +240,30 @@ export function isValidSessionId(sessionId) {
 }
 
 /** Stripe から取得した Checkout Session が支払い済みか（payment_status が paid のときだけ true） */
-export function isSessionPaid(session) {
-  return session?.payment_status === "paid";
+export function isSessionPaid(session: unknown): session is PaidSession {
+  return (session as { payment_status?: unknown } | null | undefined)?.payment_status === "paid";
 }
 
 /** Stripe の「その session は存在しない」エラーか（それ以外は一時的な失敗として扱う） */
-export function isStripeNotFound(err) {
-  return err?.statusCode === 404;
+export function isStripeNotFound(err: unknown): boolean {
+  return (err as { statusCode?: unknown } | null | undefined)?.statusCode === 404;
 }
 
 /** 注文履歴から、指定の session_id で記録済みの注文を探す */
-export function findOrderBySession(orders, sessionId) {
+export function findOrderBySession(orders: unknown, sessionId: unknown): Order | undefined {
   if (!sessionId || !Array.isArray(orders)) return undefined;
-  return orders.find((o) => o?.sessionId === sessionId);
+  return (orders as Order[]).find((o) => o?.sessionId === sessionId);
 }
 
 /**
  * 注文履歴の先頭に注文を足した新しい配列を返す。
  * sessionId 付きの注文は、同じ sessionId が記録済みなら足さない（元の配列をそのまま返す）。
- * @param {object[]} orders 新しい順の注文履歴
- * @param {{ id?: string, date?: string, items?: object[], total?: number, sessionId?: string }} order
- * @param {Date} [now]
+ * orders は新しい順の注文履歴。
  */
-export function appendOrder(orders, order, now = new Date()) {
+export function appendOrder(orders: Order[], order: NewOrder, now: Date = new Date()): Order[] {
   const list = Array.isArray(orders) ? orders : [];
   if (order.sessionId && findOrderBySession(list, order.sessionId)) return list;
-  const record = {
+  const record: Order = {
     id: order.id ?? `ORD-${now.getTime().toString(36).toUpperCase()}`,
     date: order.date ?? now.toISOString(),
     items: order.items ?? [],

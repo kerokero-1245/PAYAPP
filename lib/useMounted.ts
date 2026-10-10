@@ -10,7 +10,7 @@ const subscribe = () => () => {};
  * 以前の `useEffect(() => setMounted(true), [])` と同じ役割を、effect 内の
  * setState なしで実現する。
  */
-export function useMounted() {
+export function useMounted(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => true,

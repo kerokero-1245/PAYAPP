@@ -2,7 +2,7 @@ import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionHeading from "@/components/ui/SectionHeading";
 import InfoList from "@/components/ui/InfoList";
-import { TEST_MODE_NOTE } from "@/lib/policies.mjs";
+import { TEST_MODE_NOTE } from "@/lib/policies";
 
 export const metadata = {
   title: "プライバシーポリシー",
@@ -11,7 +11,7 @@ export const metadata = {
 
 /**
  * ブラウザに保存するもの（store/*.js の persist の name と同じ）。
- * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.mjs の行、注文は app/success の記録）
+ * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行、注文は app/success の記録）
  */
 const STORAGE = [
   {

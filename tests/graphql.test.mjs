@@ -8,13 +8,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { PRODUCTS, getProductById } from "../lib/catalog.mjs";
-import { CHECKOUT_ERRORS, buildLineItems, encodeOrderMetadata } from "../lib/checkout.mjs";
+import { PRODUCTS, getProductById } from "../lib/catalog.ts";
+import { CHECKOUT_ERRORS, buildLineItems, encodeOrderMetadata } from "../lib/checkout.ts";
 import {
   UNSUPPORTED_MEDIA_TYPE,
   createCheckoutSessionCore,
   isJsonContentType,
-} from "../lib/checkout-session.mjs";
+} from "../lib/checkout-session.ts";
 import {
   MAX_GRAPHQL_BODY_BYTES,
   TOO_MANY_FIELDS,

@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { parseBaseUrl, resolveMetadataBase, resolveReturnOrigin } from "../lib/site.mjs";
+import { parseBaseUrl, resolveMetadataBase, resolveReturnOrigin } from "../lib/site.ts";
 
 const evilHeaders = new Headers({ origin: "https://evil.example", host: "evil.example" });
 

@@ -4,11 +4,40 @@
  * - readBodyWithLimit: リクエスト本文を上限つきで読む（超えたら null）
  * - createCheckoutSessionCore: 検査・価格決定・戻り先の決定・sessions.create をまとめて行う
  *
- * Stripe クライアントは引数の getStripe() から受け取る（lib/stripe.js は server-only なので
+ * Stripe クライアントは引数の getStripe() から受け取る（lib/stripe.ts は server-only なので
  * ここでは import しない。node --test から偽の Stripe を差し込めるようにするため）。
  */
-import { buildLineItems, encodeOrderMetadata } from "./checkout.mjs";
-import { resolveReturnOrigin } from "./site.mjs";
+import type Stripe from "stripe";
+import { buildLineItems, encodeOrderMetadata } from "./checkout.ts";
+import { resolveReturnOrigin } from "./site.ts";
+
+/**
+ * getStripe() が返す Stripe クライアントのうち、決済で使うメソッドだけの最小の型。
+ * 本物の Stripe はこの型に代入でき（構造的部分型）、テストの偽の Stripe も同じ型で書ける。
+ * retrieve の戻り値は unknown で受け、読む側（isSessionPaid・orderFromSession）が絞る。
+ */
+export type StripeLike = {
+  checkout: {
+    sessions: {
+      create(params: Stripe.Checkout.SessionCreateParams): Promise<{ url: string | null }>;
+      retrieve(id: string): Promise<unknown>;
+    };
+  };
+};
+
+/** createCheckoutSessionCore の引数 */
+export type CheckoutSessionInput = {
+  items: unknown;
+  requestUrl: string;
+  baseUrl?: string;
+  getStripe: () => StripeLike;
+};
+
+/** createCheckoutSessionCore の結果（url は Stripe の型どおり null がありうる） */
+export type CheckoutSessionResult =
+  | { ok: true; url: string | null }
+  | { ok: false; kind: "invalid"; error: string }
+  | { ok: false; kind: "stripe"; cause: unknown };
 
 /** Content-Type が application/json でないときの文言（/checkout と GraphQL で共通） */
 export const UNSUPPORTED_MEDIA_TYPE = "Content-Type は application/json にしてください";
@@ -17,17 +46,17 @@ export const UNSUPPORTED_MEDIA_TYPE = "Content-Type は application/json にし�
  * Content-Type が application/json か（大文字小文字は問わない。; charset=... などの引数は可）。
  * application/graphql-response+json や application/json-seq は受け付けない。
  */
-export function isJsonContentType(value) {
+export function isJsonContentType(value: unknown): boolean {
   return typeof value === "string" && /^application\/json\s*(;|$)/i.test(value);
 }
 
 /** 本文を上限つきで読む。上限を超えたら null */
-export async function readBodyWithLimit(request, limit) {
+export async function readBodyWithLimit(request: Request, limit: number): Promise<string | null> {
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > limit) return null;
   if (!request.body) return "";
   const reader = request.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {
     const { done, value } = await reader.read();
@@ -45,15 +74,13 @@ export async function readBodyWithLimit(request, limit) {
 /**
  * Checkout Session を作る。価格と商品名はカタログから引き、送られた price / name は使わない。
  * 購入した id と数量は session の metadata に持たせる。
- *
- * @param {{ items: unknown, requestUrl: string, baseUrl?: string, getStripe: () => any }} input
- * @returns {Promise<
- *   | { ok: true, url: string }
- *   | { ok: false, kind: "invalid", error: string }
- *   | { ok: false, kind: "stripe", cause: unknown }
- * >}
  */
-export async function createCheckoutSessionCore({ items, requestUrl, baseUrl, getStripe }) {
+export async function createCheckoutSessionCore({
+  items,
+  requestUrl,
+  baseUrl,
+  getStripe,
+}: CheckoutSessionInput): Promise<CheckoutSessionResult> {
   const result = buildLineItems(items);
   if (!result.ok) return { ok: false, kind: "invalid", error: result.error };
 
