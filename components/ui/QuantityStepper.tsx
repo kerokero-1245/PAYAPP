@@ -1,13 +1,19 @@
 import { MIN_QUANTITY, MAX_QUANTITY } from "@/lib/cart";
 import { cx } from "./cx";
 
+type QuantityStepperProps = {
+  value: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  size?: "md" | "sm";
+  /** aria-label の主語（「Éclat Automatic 41 の」）。省略時は「数量を減らす」 */
+  label?: string;
+};
+
 /**
  * 数量の増減（− 数 +）。下限・上限は lib/cart.ts の MIN_QUANTITY / MAX_QUANTITY。
- * @param {{ value: number, onDecrement: () => void, onIncrement: () => void,
- *   size?: "md" | "sm", label?: string }} props
- *   label: aria-label の主語（「Éclat Automatic 41 の」）。省略時は「数量を減らす」
  */
-export default function QuantityStepper({ value, onDecrement, onIncrement, size = "md", label = "" }) {
+export default function QuantityStepper({ value, onDecrement, onIncrement, size = "md", label = "" }: QuantityStepperProps) {
   const sm = size === "sm";
   const btn = cx("stepper-btn", sm && "stepper-btn-sm");
   return (

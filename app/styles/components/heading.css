@@ -1,6 +1,6 @@
 /*
  * 見出し。.type-display（表示書体）+ .heading（色）+ 大きさのクラス 1 つ（.heading-page など）の足し算で使う
- * （components/ui/Heading.js が組み立てる）。
+ * （components/ui/Heading.tsx が組み立てる）。
  * 値は Tailwind の text-* と同じ（font-size と line-height の組）。
  */
 @layer components {

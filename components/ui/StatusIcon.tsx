@@ -1,8 +1,11 @@
+type StatusIconProps = {
+  kind: "check" | "notice" | "cancel";
+};
+
 /**
  * 結果画面のマーク（円 + 記号）。大きさ・色は .status-icon（96px・金）で全種類そろえる。
- * @param {{ kind: "check" | "notice" | "cancel" }} props
  */
-export default function StatusIcon({ kind }) {
+export default function StatusIcon({ kind }: StatusIconProps) {
   if (kind === "cancel") {
     return (
       <svg viewBox="0 0 88 88" className="status-icon" fill="none" aria-hidden="true">

@@ -1,5 +1,5 @@
 /*
- * 金額。大きさ・色の修飾を 1 つずつ足す（見出しの書体は .type-display を足す。components/ui/Price.js の display）。
+ * 金額。大きさ・色の修飾を 1 つずつ足す（見出しの書体は .type-display を足す。components/ui/Price.tsx の display）。
  * 大きさを付けないときは親の文字の大きさを受け継ぐ。
  */
 @layer components {

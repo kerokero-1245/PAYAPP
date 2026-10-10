@@ -1,21 +1,33 @@
+import type { ElementType, ReactNode } from "react";
 import Eyebrow from "./Eyebrow";
 import Button from "./Button";
 import Heading from "./Heading";
+import type { HeadingSize } from "./Heading";
 import { cx } from "./cx";
+
+type EmptyStateProps = {
+  /** 枠の面（余白は padding） */
+  framed?: "none" | "card" | "panel";
+  padding?: "sm" | "md" | "lg";
+  /** flow: 余白で並べる / stack: 等間隔に詰める */
+  layout?: "flow" | "stack";
+  icon?: ReactNode;
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  /** 見出しの要素（既定は h2） */
+  titleAs?: ElementType;
+  titleSize?: HeadingSize;
+  description: ReactNode;
+  action?: { href: string; label: string; variant?: "gold" | "outline" };
+  /** 配置だけ */
+  className?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
+  actionClassName?: string;
+};
 
 /**
  * 空の表示（該当なし・注文なし・未ログイン・カートが空）。
- *
- * @param {{
- *   framed?: "none" | "card" | "panel",  枠の面（余白は padding）
- *   padding?: "sm" | "md" | "lg",
- *   layout?: "flow" | "stack",           flow: 余白で並べる / stack: 等間隔に詰める
- *   icon?: React.ReactNode, eyebrow?: React.ReactNode,
- *   title: React.ReactNode, titleAs?: string, titleSize?: "page" | "section" | "block",
- *   description: React.ReactNode,
- *   action?: { href: string, label: string, variant?: "gold" | "outline" },
- *   className?: string, titleClassName?: string, descriptionClassName?: string, actionClassName?: string,  配置だけ
- * }} props
  */
 export default function EmptyState({
   framed = "none",
@@ -32,7 +44,7 @@ export default function EmptyState({
   titleClassName,
   descriptionClassName = "mt-3",
   actionClassName = "mt-8",
-}) {
+}: EmptyStateProps) {
   const stack = layout === "stack";
   return (
     <div

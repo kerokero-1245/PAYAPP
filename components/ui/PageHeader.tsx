@@ -1,20 +1,29 @@
 import Eyebrow from "./Eyebrow";
 import Divider from "./Divider";
 import Heading from "./Heading";
+import type { ReactNode } from "react";
 import { cx } from "./cx";
+
+type PageHeaderProps = {
+  eyebrow: ReactNode;
+  title: ReactNode;
+  /** h1 の横に並べる補足（「10 件」） */
+  meta?: ReactNode;
+  /** h1 の下の補足 */
+  note?: ReactNode;
+  divider?: "hairline" | "none";
+  /** fade-up で出す（読み込み中の仮表示などでは false） */
+  animate?: boolean;
+  /** 線を <header> の外（後ろ）に置く。header の fade-up の外に出したいとき */
+  dividerOutside?: boolean;
+  /** 配置だけ */
+  titleClassName?: string;
+  dividerClassName?: string;
+  className?: string;
+};
 
 /**
  * ページ先頭の見出し（eyebrow + h1 + 下の hairline）。h1 の大きさは全ページ共通（.heading-page）。
- *
- * @param {{
- *   eyebrow: React.ReactNode, title: React.ReactNode,
- *   meta?: React.ReactNode,   h1 の横に並べる補足（「10 件」）
- *   note?: React.ReactNode,   h1 の下の補足
- *   divider?: "hairline" | "none",
- *   animate?: boolean,         fade-up で出す（読み込み中の仮表示などでは false）
- *   dividerOutside?: boolean,  線を <header> の外（後ろ）に置く。header の fade-up の外に出したいとき
- *   titleClassName?: string, dividerClassName?: string, className?: string,  配置だけ
- * }} props
  */
 export default function PageHeader({
   eyebrow,
@@ -27,7 +36,7 @@ export default function PageHeader({
   titleClassName = "mt-3",
   dividerClassName = "mt-5",
   className,
-}) {
+}: PageHeaderProps) {
   const h1 = (
     <Heading as="h1" size="page" className={meta ? undefined : titleClassName}>
       {title}

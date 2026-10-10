@@ -1,14 +1,24 @@
 import Eyebrow from "./Eyebrow";
 import Divider from "./Divider";
 import Heading from "./Heading";
+import type { ReactNode } from "react";
 import { cx } from "./cx";
+
+type SectionHeadingProps = {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  lead?: ReactNode;
+  /** center: 中央寄せの縦並び（トップ）/ start: 左寄せ（関連商品・新ページの節） */
+  align?: "center" | "start";
+  size?: "page" | "section";
+  className?: string;
+};
 
 /**
  * 節の見出し（eyebrow + h2 + 金の短い線 + 導入文）。
  * center: 中央寄せの縦並び（トップ）/ start: 左寄せ（関連商品・新ページの節）
- * @param {{ eyebrow?: React.ReactNode, title: React.ReactNode, lead?: React.ReactNode, align?: "center" | "start", size?: "page" | "section", className?: string }} props
  */
-export default function SectionHeading({ eyebrow, title, lead, align = "center", size, className }) {
+export default function SectionHeading({ eyebrow, title, lead, align = "center", size, className }: SectionHeadingProps) {
   if (align === "center") {
     return (
       <div className={cx("flex flex-col items-center text-center gap-3", className)}>
