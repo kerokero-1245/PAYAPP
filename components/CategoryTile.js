@@ -30,7 +30,7 @@ export default function CategoryTile({ category }) {
           data-active={hover}
         />
       )}
-      <div className="tile-shade absolute inset-0" />
+      <div className="shade-up absolute inset-0" />
       <div className="absolute inset-0 flex flex-col items-center justify-end p-4 sm:p-6 text-center">
         <Eyebrow size="sm" tracking="lg">
           {category.jp}

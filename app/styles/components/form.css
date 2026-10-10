@@ -35,11 +35,6 @@
     text-transform: uppercase;
     color: var(--color-muted);
   }
-  .field-hint {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    color: var(--color-faint);
-  }
   .field-error {
     font-size: var(--text-xs);
     line-height: var(--text-xs--line-height);

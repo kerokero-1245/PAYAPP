@@ -1,4 +1,4 @@
-/* 項目と内容の一覧（配送について・特定商取引法に基づく表記） */
+/* 項目と内容の一覧（配送について・特定商取引法に基づく表記）。内容の文字は .lead */
 @layer components {
   .info-list {
     border-top: 1px solid var(--color-line);
@@ -20,9 +20,5 @@
     line-height: var(--text-sm--line-height);
     letter-spacing: var(--tracking-wide);
     color: var(--color-gold-soft);
-  }
-  .info-desc {
-    color: var(--color-muted);
-    line-height: 1.625;
   }
 }

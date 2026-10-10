@@ -1,11 +1,6 @@
 /* 商品詳細 */
 @layer components {
-  /* パンくず */
-  .breadcrumb {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    color: var(--color-muted);
-  }
+  /* パンくず（文字は .fine .fine-muted） */
   @media (hover: hover) {
     .breadcrumb-link:hover {
       color: var(--color-cream);
@@ -56,12 +51,5 @@
     .notice-link:hover {
       color: var(--color-gold-bright);
     }
-  }
-
-  /* DETAILS の箇条書き */
-  .detail-points {
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
-    color: var(--color-muted);
   }
 }

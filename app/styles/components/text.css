@@ -26,6 +26,10 @@
     line-height: var(--text-xs--line-height);
     color: var(--color-faint);
   }
+  /* 注記の大きさで補助の色（商品の一言説明・パンくず） */
+  .fine-muted {
+    color: var(--color-muted);
+  }
   .fine-relaxed {
     line-height: 1.625;
   }

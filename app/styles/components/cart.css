@@ -13,10 +13,8 @@
   .cart-row {
     border-bottom: 1px solid var(--color-line);
   }
+  /* 「削除」（文字は .fine に足す） */
   .remove-btn {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    color: var(--color-faint);
     transition: color var(--duration-quick) var(--ease-standard);
   }
   @media (hover: hover) {

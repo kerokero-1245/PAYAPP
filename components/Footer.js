@@ -74,7 +74,7 @@ export default function Footer() {
 
         <Divider className="my-10" />
 
-        <div className="footer-legal flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="fine flex flex-col sm:flex-row items-center justify-between gap-3">
           <p>© 2026 MAISON (PAYAPP). All rights reserved.</p>
           <nav aria-label="規約とご案内" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {legalLinks.map((l) => (

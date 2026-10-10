@@ -43,7 +43,7 @@ export default function EmptyState({
         className
       )}
     >
-      {icon && <div className="empty-icon mb-8">{icon}</div>}
+      {icon && <div className="circle-icon empty-icon mb-8">{icon}</div>}
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       <Title className={cx("type-display heading", `heading-${titleSize}`, titleClassName)}>{title}</Title>
       <p className={cx("lead", stack ? "max-w-md" : descriptionClassName)}>{description}</p>

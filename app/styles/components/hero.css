@@ -16,11 +16,9 @@
   }
 
   /* 暗さと奥行きのオーバーレイ（下から / 左から） */
+  /* 下から: .shade-up に足して、上端を少しだけ暗くする */
   .hero-shade-bottom {
-    --shade-from: var(--color-ink);
-    --shade-via: color-mix(in oklab, var(--color-ink) 40%, transparent);
     --shade-to: color-mix(in oklab, var(--color-ink) 10%, transparent);
-    background-image: linear-gradient(to top in oklab, var(--shade-from) 0%, var(--shade-via) 50%, var(--shade-to) 100%);
   }
   .hero-shade-side {
     --shade-from: color-mix(in oklab, var(--color-ink) 80%, transparent);

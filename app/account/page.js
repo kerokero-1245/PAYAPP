@@ -58,7 +58,7 @@ export default function AccountPage() {
         <Card variant="panel" padding="md" className="max-w-md mx-auto animate-fade-in">
           {/* アバター（頭文字の丸）+ name + email */}
           <div className="flex items-center gap-5">
-            <div className="avatar type-display">{initial}</div>
+            <div className="circle-icon avatar type-display">{initial}</div>
             <div className="min-w-0">
               <p className="type-display heading heading-block truncate">{user.name}</p>
               <p className="meta mt-1 truncate">{user.email}</p>

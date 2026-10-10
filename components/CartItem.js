@@ -49,7 +49,7 @@ export default function CartItem({ item }) {
           <button
             type="button"
             onClick={() => removeItem(item.id)}
-            className="remove-btn shrink-0"
+            className="fine remove-btn shrink-0"
             aria-label={`${item.name} を削除`}
           >
             削除

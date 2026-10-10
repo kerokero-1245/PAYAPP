@@ -5,5 +5,5 @@ import { cx } from "./cx";
  * @param {{ className?: string, children?: React.ReactNode }} props
  */
 export default function Badge({ className, children }) {
-  return <span className={cx("badge", className)}>{children}</span>;
+  return <span className={cx("pill badge", className)}>{children}</span>;
 }

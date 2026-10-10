@@ -64,7 +64,7 @@ export default function ProductCard({ product, eager = false }) {
         <Link href={`/product/${product.id}`}>
           <h3 className="type-display heading heading-item heading-snug heading-link">{product.name}</h3>
         </Link>
-        {product.tagline && <p className="tagline line-clamp-1">{product.tagline}</p>}
+        {product.tagline && <p className="fine fine-muted line-clamp-1">{product.tagline}</p>}
 
         {/* 狭いカード（スマホの 2 列）では価格の下にボタンを全幅で置き、はみ出しを防ぐ */}
         <div className="mt-auto pt-3 flex flex-wrap items-center justify-between gap-2">

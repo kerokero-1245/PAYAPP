@@ -54,7 +54,7 @@ export default function FormField({
         </p>
       )}
       {hint && (
-        <p id={hintId} className="field-hint">
+        <p id={hintId} className="fine">
           {hint}
         </p>
       )}

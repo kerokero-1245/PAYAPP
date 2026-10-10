@@ -16,16 +16,10 @@
     line-height: 1;
   }
 
+  /* 絞り込みのチップ（.pill に足す） */
   .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
     padding: 0.35rem 0.8rem;
     font-size: 0.72rem;
-    letter-spacing: var(--tracking-widest);
-    text-transform: uppercase;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--color-line);
     color: var(--color-muted);
     background: transparent;
     transition: all 0.2s ease;
@@ -45,20 +39,14 @@
   }
 }
 
-/* 商品画像の上の札（NEW・LIMITED）。chip-active の色で、小さい文字と余白を最初から持つ。
+/* 商品画像の上の札（NEW・LIMITED。.pill に足す）。chip-active の色で、小さい文字と余白を最初から持つ。
    大きさは一覧・詳細とも ⑤-0 の 0.6rem（--fs-micro）。詳細だけ 0.62rem だった .badge-lg は消した */
 @layer components {
   .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
     padding: 0.25rem 0.625rem;
     font-size: var(--fs-micro);
-    letter-spacing: var(--tracking-widest);
-    text-transform: uppercase;
     font-weight: 600;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--color-gold);
+    border-color: var(--color-gold);
     color: var(--color-on-gold);
     background: var(--color-gold);
   }

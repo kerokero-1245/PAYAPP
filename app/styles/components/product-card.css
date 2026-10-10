@@ -18,21 +18,8 @@
     }
   }
 
-  /* 商品の一言説明 */
-  .tagline {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    color: var(--color-muted);
-  }
-
-  /* カテゴリのタイル: 画像を少し沈め、下から暗くする */
+  /* カテゴリのタイル: 画像を少し沈める（下からの影は .shade-up） */
   .tile-img {
     opacity: 0.7;
-  }
-  .tile-shade {
-    --shade-from: var(--color-ink);
-    --shade-via: color-mix(in oklab, var(--color-ink) 40%, transparent);
-    --shade-to: transparent;
-    background-image: linear-gradient(to top in oklab, var(--shade-from) 0%, var(--shade-via) 50%, var(--shade-to) 100%);
   }
 }

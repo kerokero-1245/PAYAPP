@@ -16,12 +16,7 @@
       color: var(--color-gold);
     }
   }
-  /* 下段（著作権・規約のリンク・タグライン） */
-  .footer-legal {
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    color: var(--color-faint);
-  }
+  /* 下段（著作権・規約のリンク・タグライン。文字は .fine） */
   .footer-legal-link {
     transition: color var(--duration-quick) var(--ease-standard);
   }

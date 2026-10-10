@@ -10,16 +10,8 @@
     align-items: center;
     gap: 1.25rem;
   }
-  /* 円の中のアイコン（カートが空） */
+  /* 円の中のアイコン（カートが空。.circle-icon に足す） */
   .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 5rem;
-    height: 5rem;
     margin-inline: auto;
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-pill);
-    color: var(--color-gold);
   }
 }

@@ -7,7 +7,7 @@
  * このファイルは入口。中身は app/styles/ に分けている:
  *  - tokens.css            @theme（bg-ink / text-gold / border-line などの元）と追加の :root 変数
  *  - base.css              body・選択色・フォーカス・スキップリンク・スクロールバー（層の外）
- *  - components/*.css      部品のクラス（すべて @layer components。1 部品 1 ファイル）
+ *  - components/*.css      部品のクラス（すべて @layer components。1 部品 1 ファイル。形の土台は shape.css）
  *  - motion.css            アニメーションと動きを減らす設定（層の外）
  * 書き方の規約（結合子・入れ子・!important・@apply を使わない）は scripts/check-flat-css.mjs が検査する。
  */
@@ -18,6 +18,7 @@
 @import "./styles/components/text.css";
 @import "./styles/components/layout.css";
 @import "./styles/components/divider.css";
+@import "./styles/components/shape.css";
 @import "./styles/components/button.css";
 @import "./styles/components/surface.css";
 @import "./styles/components/form.css";

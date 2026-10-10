@@ -1,16 +1,9 @@
-/* アカウントの頭文字の丸（書体は .type-display を足す） */
+/* アカウントの頭文字の丸（.circle-icon に足す。書体は .type-display） */
 @layer components {
   .avatar {
-    display: flex;
     flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 5rem;
-    height: 5rem;
-    border: 1px solid var(--color-gold-deep);
-    border-radius: var(--radius-pill);
+    border-color: var(--color-gold-deep);
     background: var(--color-surface-2);
-    color: var(--color-gold);
     font-size: var(--text-3xl);
     line-height: var(--text-3xl--line-height);
   }

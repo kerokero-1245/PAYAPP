@@ -77,7 +77,7 @@ function ShopInner() {
                 key={c.slug}
                 type="button"
                 onClick={() => router.push(buildHref(c.slug))}
-                className={c.slug === activeCategory.slug ? "chip chip-active" : "chip"}
+                className={c.slug === activeCategory.slug ? "pill chip chip-active" : "pill chip"}
               >
                 {c.label}
               </button>

@@ -62,7 +62,7 @@ export default function ProductDetail({ id }) {
   return (
     <Section spacing="sm" as="div" className="animate-fade-up">
       {/* パンくず */}
-      <nav className="breadcrumb mb-8">
+      <nav className="fine fine-muted mb-8">
         <Link href="/product" className="link-underline breadcrumb-link">
           商品一覧
         </Link>
@@ -158,7 +158,7 @@ export default function ProductDetail({ id }) {
           {/* 配送・素材などの小さな箇条書き（文面は lib/policies.mjs と共有） */}
           <div className="mt-10">
             <Eyebrow>DETAILS</Eyebrow>
-            <ul className="detail-points mt-3 flex flex-col gap-2">
+            <ul className="meta mt-3 flex flex-col gap-2">
               {PRODUCT_DETAIL_POINTS.map((point) => (
                 <li key={point}>{point}</li>
               ))}

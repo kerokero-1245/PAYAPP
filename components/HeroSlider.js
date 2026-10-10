@@ -67,7 +67,7 @@ export default function HeroSlider() {
       ))}
 
       {/* 暗さと奥行きを与えるオーバーレイ */}
-      <div className="hero-shade-bottom absolute inset-0" />
+      <div className="shade-up hero-shade-bottom absolute inset-0" />
       <div className="hero-shade-side absolute inset-0" />
 
       {/* コピー（中央左寄せ） */}

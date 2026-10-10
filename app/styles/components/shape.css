@@ -1,0 +1,33 @@
+/* 形の土台（円・ピル・下からの影）。色や大きさの違いは部品のクラス（後ろのファイル）で足す */
+@layer components {
+  /* 中央にアイコンや文字を置く円（アカウントの頭文字・カートが空のアイコン） */
+  .circle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5rem;
+    height: 5rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    color: var(--color-gold);
+  }
+
+  /* 丸い札（絞り込みのチップ・商品画像の上の札） */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    letter-spacing: var(--tracking-widest);
+    text-transform: uppercase;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-pill);
+  }
+
+  /* 下から暗くする影（ヒーロー・カテゴリのタイル）。上端の濃さは --shade-to で変える */
+  .shade-up {
+    --shade-from: var(--color-ink);
+    --shade-via: color-mix(in oklab, var(--color-ink) 40%, transparent);
+    --shade-to: transparent;
+    background-image: linear-gradient(to top in oklab, var(--shade-from) 0%, var(--shade-via) 50%, var(--shade-to) 100%);
+  }
+}

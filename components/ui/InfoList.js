@@ -10,7 +10,7 @@ export default function InfoList({ items, className }) {
       {items.map((item, i) => (
         <div key={i} className="info-row">
           <dt className="info-term">{item.term}</dt>
-          <dd className="info-desc">{item.desc}</dd>
+          <dd className="lead">{item.desc}</dd>
         </div>
       ))}
     </dl>
