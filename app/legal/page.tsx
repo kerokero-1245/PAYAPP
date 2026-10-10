@@ -1,10 +1,11 @@
+import type { Metadata } from "next";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import InfoList from "@/components/ui/InfoList";
 import DemoNote from "@/components/ui/DemoNote";
 import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "特定商取引法に基づく表記",
   description: "販売事業者・支払方法・返品などの表記（デモ）。",
 };

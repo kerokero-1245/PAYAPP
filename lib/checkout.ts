@@ -231,7 +231,7 @@ export function decideVerifyOutcome(result: VerifyInput | null | undefined): Ver
 }
 
 /** Stripe Checkout Session の id の形か（cs_ で始まり、英数字とアンダースコア、200 文字以下） */
-export function isValidSessionId(sessionId: unknown): boolean {
+export function isValidSessionId(sessionId: unknown): sessionId is string {
   return (
     typeof sessionId === "string" &&
     sessionId.length <= 200 &&

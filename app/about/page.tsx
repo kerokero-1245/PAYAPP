@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -5,7 +6,7 @@ import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
 import PledgeGrid from "@/components/PledgeGrid";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "ブランドストーリー",
   description: "MAISON が選ぶ品と、その基準について。",
 };

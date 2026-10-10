@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -6,7 +7,7 @@ import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
 import { POLICIES, TEST_MODE_NOTE } from "@/lib/policies";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "よくある質問",
   description: "ご注文・お支払い・配送についてのよくある質問。",
 };

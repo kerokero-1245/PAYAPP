@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import StatusMessage from "@/components/ui/StatusMessage";
 import Button from "@/components/ui/Button";
 
-export const metadata = { title: "ページが見つかりません" };
+export const metadata: Metadata = { title: "ページが見つかりません" };
 
 /** 存在しない URL・存在しない商品（/product/999 など）用の 404 ページ（サイトの配色・書体に合わせた日本語版） */
 export default function NotFound() {

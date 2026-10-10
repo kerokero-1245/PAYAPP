@@ -17,13 +17,13 @@ const BAD_REQUEST = "リクエストの形式が不正です";
  * 購入した id と数量は session の metadata に持たせ、成功ページの確認で注文を作るのに使う。
  * 本体は lib/checkout-session.ts（GraphQL の createCheckoutSession と共有）。
  */
-export async function POST(request) {
+export async function POST(request: Request) {
   // フォーム送信など JSON 以外は受け付けない（GraphQL の入口と同じ判定）
   if (!isJsonContentType(request.headers.get("content-type"))) {
     return Response.json({ error: UNSUPPORTED_MEDIA_TYPE }, { status: 415 });
   }
 
-  let text;
+  let text: string | null;
   try {
     text = await readBodyWithLimit(request, MAX_BODY_BYTES);
   } catch {
@@ -31,7 +31,7 @@ export async function POST(request) {
   }
   if (text === null) return Response.json({ error: TOO_LARGE }, { status: 413 });
 
-  let body;
+  let body: unknown;
   try {
     body = JSON.parse(text);
   } catch {
@@ -39,7 +39,7 @@ export async function POST(request) {
   }
 
   const result = await createCheckoutSessionCore({
-    items: body?.items,
+    items: (body as { items?: unknown } | null | undefined)?.items,
     requestUrl: request.url,
     baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
     getStripe,

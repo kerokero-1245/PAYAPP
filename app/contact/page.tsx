@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import ContactForm from "./ContactForm";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "お問い合わせ",
   description: "ご注文・商品・配送についてのお問い合わせ（デモ）。",
 };

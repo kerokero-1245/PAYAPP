@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import StatusMessage from "@/components/ui/StatusMessage";
 import Button from "@/components/ui/Button";
 
-export const metadata = { title: "決済のキャンセル" };
+export const metadata: Metadata = { title: "決済のキャンセル" };
 
 export default function CancelPage() {
   return (

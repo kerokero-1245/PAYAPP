@@ -1,10 +1,11 @@
+import type { Metadata } from "next";
 import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionHeading from "@/components/ui/SectionHeading";
 import InfoList from "@/components/ui/InfoList";
 import { TEST_MODE_NOTE } from "@/lib/policies";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "プライバシーポリシー",
   description: "このデモが保存する情報と、その扱い。",
 };

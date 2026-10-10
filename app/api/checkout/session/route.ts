@@ -18,7 +18,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
  *  - 400                   session_id の形が不正
  *  - 500 / 502             確認できなかった（成功ページは「確認が取れていません」を出す）
  */
-export async function GET(request) {
+export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get("session_id");
   if (!isValidSessionId(sessionId)) {
     return Response.json(
