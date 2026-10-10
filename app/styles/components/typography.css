@@ -1,6 +1,10 @@
 /* 文字の部品 */
 @layer components {
-  .font-display {
+  /*
+   * 表示書体（見出し・金額・アバター・ブランド名で共有）。Tailwind が @theme の --font-display から作る
+   * ユーティリティと名前が衝突しないよう type- を付ける。字間を変える部品（.brand）は後ろのファイルで上書きする
+   */
+  .type-display {
     font-family: var(--font-display);
     font-weight: 500;
     letter-spacing: 0.01em;

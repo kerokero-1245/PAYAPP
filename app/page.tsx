@@ -71,7 +71,7 @@ export default function Home() {
       <Section spacing="top">
         <div className="flex flex-col items-center text-center gap-6">
           <Eyebrow>Maison — New Season</Eyebrow>
-          <h2 className="heading heading-display max-w-2xl">
+          <h2 className="type-display heading heading-display max-w-2xl">
             <span className="inline-block">
               <span className="text-gradient-gold">時を超える</span>、
             </span>

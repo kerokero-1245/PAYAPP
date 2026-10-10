@@ -49,7 +49,7 @@ export default function OrdersPage() {
                     <Eyebrow size="sm" tone="faint" tracking="sm">
                       ORDER
                     </Eyebrow>
-                    <p className="heading heading-card mt-1">{order.id}</p>
+                    <p className="type-display heading heading-card mt-1">{order.id}</p>
                   </div>
                   <div className="text-right">
                     <p className="meta">{formatDate(order.date)}</p>

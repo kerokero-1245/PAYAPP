@@ -76,7 +76,7 @@ export default function HeroSlider() {
           <div className="animate-fade-up max-w-2xl">
             <Eyebrow>MAISON — NEW SEASON</Eyebrow>
             <Divider variant="rule" className="mt-4" />
-            <h1 className="heading heading-hero mt-5">
+            <h1 className="type-display heading heading-hero mt-5">
               {/* 句の途中で改行しないよう、句ごとに折り返し単位をまとめる */}
               <span className="inline-block">時を超える、</span>
               <br className="hidden sm:block" />

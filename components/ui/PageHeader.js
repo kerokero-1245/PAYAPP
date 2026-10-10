@@ -27,7 +27,7 @@ export default function PageHeader({
   dividerClassName = "mt-5",
   className,
 }) {
-  const h1 = <h1 className={cx("heading heading-page", !meta && titleClassName)}>{title}</h1>;
+  const h1 = <h1 className={cx("type-display heading heading-page", !meta && titleClassName)}>{title}</h1>;
   const line = divider === "hairline" && <Divider className={dividerClassName} />;
   const header = (
     <header className={cx(animate && "animate-fade-up", className)}>

@@ -62,7 +62,7 @@ export default function ProductCard({ product, eager = false }) {
           </Eyebrow>
         )}
         <Link href={`/product/${product.id}`}>
-          <h3 className="heading heading-item heading-snug heading-link">{product.name}</h3>
+          <h3 className="type-display heading heading-item heading-snug heading-link">{product.name}</h3>
         </Link>
         {product.tagline && <p className="tagline line-clamp-1">{product.tagline}</p>}
 

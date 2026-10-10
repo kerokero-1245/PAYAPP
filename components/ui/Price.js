@@ -17,7 +17,7 @@ export default function Price({ amount, as: Tag = "span", size, tone, display, w
   return (
     <Tag
       className={cx(
-        display && "price-display",
+        display && "type-display",
         size && `price-${size}`,
         tone && `price-${tone}`,
         wide && "price-wide",

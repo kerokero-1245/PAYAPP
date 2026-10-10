@@ -45,7 +45,7 @@ export default function EmptyState({
     >
       {icon && <div className="empty-icon mb-8">{icon}</div>}
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <Title className={cx("heading", `heading-${titleSize}`, titleClassName)}>{title}</Title>
+      <Title className={cx("type-display heading", `heading-${titleSize}`, titleClassName)}>{title}</Title>
       <p className={cx("lead", stack ? "max-w-md" : descriptionClassName)}>{description}</p>
       {action && (
         <Button href={action.href} variant={action.variant ?? "gold"} className={actionClassName}>

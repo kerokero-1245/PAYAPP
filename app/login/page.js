@@ -38,7 +38,7 @@ export default function LoginPage() {
           // ── 既にログイン済み ──
           <Card variant="panel" padding="md" className="text-center">
             <Eyebrow>ACCOUNT</Eyebrow>
-            <h1 className="heading heading-page mt-3">ログイン中です</h1>
+            <h1 className="type-display heading heading-page mt-3">ログイン中です</h1>
             <Divider variant="rule" className="mt-4" />
             <p className="lead mt-4">
               <span className="accent">{user.name}</span> 様としてサインインしています。
@@ -57,7 +57,7 @@ export default function LoginPage() {
           <Card variant="panel" padding="md">
             <div className="text-center">
               <Eyebrow>MAISON</Eyebrow>
-              <h1 className="heading heading-page mt-3">サインイン</h1>
+              <h1 className="type-display heading heading-page mt-3">サインイン</h1>
               <Divider variant="rule" className="mt-4" />
             </div>
 

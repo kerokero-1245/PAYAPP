@@ -1,5 +1,5 @@
 /*
- * 金額。.price に、大きさ・色・書体の修飾を 1 つずつ足す。
+ * 金額。大きさ・色の修飾を 1 つずつ足す（見出しの書体は .type-display を足す。components/ui/Price.js の display）。
  * 大きさを付けないときは親の文字の大きさを受け継ぐ。
  */
 @layer components {
@@ -8,11 +8,6 @@
   }
   .price-tabular {
     font-variant-numeric: tabular-nums;
-  }
-  .price-display {
-    font-family: var(--font-display);
-    font-weight: 500;
-    letter-spacing: 0.01em;
   }
 
   .price-xs {

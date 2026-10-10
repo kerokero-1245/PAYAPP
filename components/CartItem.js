@@ -36,7 +36,7 @@ export default function CartItem({ item }) {
           <div className="min-w-0">
             <Link
               href={`/product/${item.id}`}
-              className="heading heading-item heading-link block truncate"
+              className="type-display heading heading-item heading-link block truncate"
             >
               {item.name}
             </Link>

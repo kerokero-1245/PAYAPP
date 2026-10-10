@@ -1,4 +1,4 @@
-/* アカウントの頭文字の丸 */
+/* アカウントの頭文字の丸（書体は .type-display を足す） */
 @layer components {
   .avatar {
     display: flex;
@@ -11,9 +11,6 @@
     border-radius: var(--radius-pill);
     background: var(--color-surface-2);
     color: var(--color-gold);
-    font-family: var(--font-display);
-    font-weight: 500;
-    letter-spacing: 0.01em;
     font-size: 1.875rem;
     line-height: var(--lh-3xl);
   }

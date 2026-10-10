@@ -127,7 +127,7 @@ export default function CartPage() {
         {/* 右: 注文サマリー（合計は map 外・1回だけ） */}
         <aside className="lg:col-span-1">
           <Card variant="panel" padding="sm" className="sticky top-24">
-            <h2 className="heading heading-card">注文サマリー</h2>
+            <h2 className="type-display heading heading-card">注文サマリー</h2>
             <Divider className="my-5" />
 
             <dl className="summary-list flex flex-col gap-3">

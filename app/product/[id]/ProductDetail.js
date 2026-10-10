@@ -120,7 +120,7 @@ export default function ProductDetail({ id }) {
         {/* 右: 商品情報 */}
         <div className="flex flex-col">
           <Eyebrow>{categoryLabel}</Eyebrow>
-          <h1 className="heading heading-page heading-tight mt-3">{product.name}</h1>
+          <h1 className="type-display heading heading-page heading-tight mt-3">{product.name}</h1>
           {product.tagline && <p className="subtle mt-3">{product.tagline}</p>}
 
           <Price as="p" amount={product.price} size="hero" tone="gold-soft" wide className="mt-6" />

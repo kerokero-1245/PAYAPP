@@ -46,7 +46,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* ブランド */}
           <div>
-            <p className="brand mb-3">MAISON</p>
+            <p className="type-display brand mb-3">MAISON</p>
             <p className="lead lead-sm max-w-xs">
               選び抜かれた逸品だけを集めた、ラグジュアリー・オンラインストア。
             </p>

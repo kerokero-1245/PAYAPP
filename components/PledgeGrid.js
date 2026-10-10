@@ -54,7 +54,7 @@ export default function PledgeGrid() {
         {PLEDGES.map((item) => (
           <div key={item.title} className="flex flex-col items-center text-center gap-3">
             <span className="pledge-icon">{item.icon}</span>
-            <h3 className="heading heading-item">{item.title}</h3>
+            <h3 className="type-display heading heading-item">{item.title}</h3>
             <p className="lead lead-sm pledge-text">{item.desc}</p>
           </div>
         ))}

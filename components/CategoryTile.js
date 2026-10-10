@@ -36,7 +36,7 @@ export default function CategoryTile({ category }) {
           {category.jp}
         </Eyebrow>
         {/* 狭い 2 列でも「フレグランス」を語の途中で折り返さない */}
-        <h3 className="heading heading-tile mt-1">{category.label}</h3>
+        <h3 className="type-display heading heading-tile mt-1">{category.label}</h3>
       </div>
     </Link>
   );
