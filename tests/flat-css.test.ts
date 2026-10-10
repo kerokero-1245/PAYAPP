@@ -1,4 +1,4 @@
-// 平坦な CSS の検査（scripts/check-flat-css.mjs）が、合格の見本を通し、違反の見本を 1 本ずつ落とすことを確かめる。
+// 平坦な CSS の検査（scripts/check-flat-css.ts）が、合格の見本を通し、違反の見本を 1 本ずつ落とすことを確かめる。
 // なぜあるか: 検査が穴だらけでも green になっていた（:is() の中の結合子・規則の中の @media・ハイフンの無い
 // uppercase! など 10 種を通していた）。さらに @media (hover: hover) の外の :hover でタッチ端末に色が残った。
 // 見本: tests/fixtures/flat-css/ok/（合格）と bad/（1 ファイル 1 違反。先頭のコメント「expect: …」が出るはずの文言）
@@ -11,15 +11,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SCRIPT = path.join(ROOT, "scripts/check-flat-css.mjs");
+const SCRIPT = path.join(ROOT, "scripts/check-flat-css.ts");
 const FIX = path.join(ROOT, "tests/fixtures/flat-css");
 const OK_DIR = path.join(FIX, "ok");
 const BAD_DIR = path.join(FIX, "bad");
 
-const run = (...dirs) => spawnSync(process.execPath, [SCRIPT, ...dirs], { encoding: "utf8" });
+const run = (...dirs: string[]) => spawnSync(process.execPath, [SCRIPT, ...dirs], { encoding: "utf8" });
 
 /** 合格の見本 + 違反の見本 1 本を一時ディレクトリに並べる（検査は .css と JS の両方が無いと失敗するため） */
-function withBad(file) {
+function withBad(file: string) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flat-css-"));
   for (const f of fs.readdirSync(OK_DIR)) fs.copyFileSync(path.join(OK_DIR, f), path.join(dir, f));
   fs.copyFileSync(path.join(BAD_DIR, file), path.join(dir, file));

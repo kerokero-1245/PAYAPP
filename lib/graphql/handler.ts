@@ -2,7 +2,7 @@
  * GraphQL の handler（graphql-yoga）
  * ---------------------------------------------------
  * createGraphqlHandler({ getStripe }) は fetch(Request) → Response の関数を返す。
- * app/api/graphql/route.ts が本物の getStripe を渡し、tests/graphql.test.mjs は偽の Stripe を渡す。
+ * app/api/graphql/route.ts が本物の getStripe を渡し、tests/graphql.test.ts は偽の Stripe を渡す。
  *
  * - 本文は 4KB 上限（超えたら 413）。yoga に渡す前に当てる（/checkout の 16KB とは別の値）
  * - POST は Content-Type が application/json のものだけ受け付ける（フォーム送信を通さない）

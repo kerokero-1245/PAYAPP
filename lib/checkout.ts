@@ -8,7 +8,7 @@
  * - decideVerifyOutcome: 成功ページの確認結果を「支払い済み / 未払い / 確認できなかった」に分ける
  * - isValidSessionId / isSessionPaid / isStripeNotFound / findOrderBySession
  *
- * tests/*.test.mjs で `node --test` から検証する。
+ * tests/*.test.ts で `node --test` から検証する。
  */
 import { getProductById } from "./catalog.ts";
 import { MAX_QUANTITY } from "./cart.ts";

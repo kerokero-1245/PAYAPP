@@ -33,7 +33,7 @@ test("初期値のままでは必須 3 項目（お名前・メール・内容�
 });
 
 test("必須: 空白だけのお名前・メール・内容はエラー", () => {
-  for (const field of ["name", "email", "message"]) {
+  for (const field of ["name", "email", "message"] as const) {
     const { ok, errors } = validateContact({ ...valid, [field]: "   " });
     assert.equal(ok, false, field);
     assert.ok(errors[field], field);
@@ -60,7 +60,7 @@ test("文字数: お名前は 50 文字まで", () => {
 });
 
 test("文字数: お問い合わせ内容は 10〜1000 文字（前後の空白は数えない）", () => {
-  const msg = (n) => ({ message: "あ".repeat(n) });
+  const msg = (n: number) => ({ message: "あ".repeat(n) });
   assert.match(validateContactField("message", msg(CONTACT_LIMITS.messageMin - 1)) ?? "", /10 文字以上/);
   assert.equal(validateContactField("message", msg(CONTACT_LIMITS.messageMin)), undefined);
   assert.equal(validateContactField("message", msg(CONTACT_LIMITS.messageMax)), undefined);

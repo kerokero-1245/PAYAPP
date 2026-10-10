@@ -39,6 +39,6 @@ test("metadataBase: 未設定・不正な値でも例外にせず undefined", ()
     assert.doesNotThrow(() => resolveMetadataBase(v));
     assert.equal(resolveMetadataBase(v), undefined, String(v));
   }
-  assert.equal(resolveMetadataBase("https://shop.example/x").href, "https://shop.example/");
-  assert.equal(parseBaseUrl("http://localhost:3000").origin, "http://localhost:3000");
+  assert.equal(resolveMetadataBase("https://shop.example/x")!.href, "https://shop.example/");
+  assert.equal(parseBaseUrl("http://localhost:3000")!.origin, "http://localhost:3000");
 });

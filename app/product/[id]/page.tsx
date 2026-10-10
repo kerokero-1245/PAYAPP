@@ -5,7 +5,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_OPEN_GRAPH } from "@/lib/site";
 import ProductDetail from "./ProductDetail";
 
 /**
- * カタログに無い id は page を描かずに 404（app/not-found.js）にする。
+ * カタログに無い id は page を描かずに 404（app/not-found.tsx）にする。
  * page の中で notFound() を投げる形だと、Next.js 16.0.8 では 404 の本文が
  * サーバの HTML に入らず、ブラウザ側でだけ描かれるため（本番ビルドで確認）。
  */

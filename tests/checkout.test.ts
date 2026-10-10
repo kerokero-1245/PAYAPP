@@ -26,9 +26,15 @@ import {
   normalizeOrderItems,
   orderFromSession,
 } from "../lib/checkout.ts";
+import type { OrderFromSessionResult, VerifyInput } from "../lib/checkout.ts";
+import type { ItemQuantity } from "../lib/types.ts";
 
-const watch = getProductById("1");
-const perfume = getProductById("5");
+/** orderFromSession が注文を作れた側の結果（作れたはずの場面で order を取り出すのに使う） */
+type PaidResult = Extract<OrderFromSessionResult, { ok: true }>;
+
+// 前提のテストで、この 2 商品がカタログにあることを確かめている
+const watch = getProductById("1")!;
+const perfume = getProductById("5")!;
 const allErrors = Object.values(CHECKOUT_ERRORS);
 
 test("前提: カタログに検証用の商品がある", () => {
@@ -56,7 +62,7 @@ test("価格と名前はカタログから引く（送られた price / name は
 test("price を送らなくてもカタログの価格になる", () => {
   const r = buildLineItems([{ id: "7", quantity: 1 }]);
   assert.equal(r.ok, true);
-  assert.equal(r.lineItems[0].price_data.unit_amount, getProductById("7").price);
+  assert.equal(r.lineItems[0].price_data.unit_amount, getProductById("7")!.price);
 });
 
 test("知らない id・長すぎる id・文字列でない id は弾く", () => {
@@ -104,7 +110,7 @@ test("エラー文に入力の値を入れない・200 字以下", () => {
 
 /* ---------- session から注文を作る（/api/checkout/session） ---------- */
 
-const paidSession = (items, extra = {}) => ({
+const paidSession = (items: ItemQuantity[], extra: Record<string, unknown> = {}) => ({
   id: "cs_test_abc",
   payment_status: "paid",
   metadata: encodeOrderMetadata(items),
@@ -146,7 +152,9 @@ test("書き換えたカート（価格 1・数量 99）を一緒に渡されて
     { id: "1", name: "偽物", price: 1, quantity: 99 },
     { id: "5", name: "後から足した品", price: 1, quantity: 1 },
   ];
-  const r = orderFromSession(session, getProductById, tamperedCart);
+  // orderFromSession の引数は 2 つまで。3 つ目はわざと渡して、無視されることを確かめる
+  const orderFromSessionWithExtra = orderFromSession as (...args: unknown[]) => OrderFromSessionResult;
+  const r = orderFromSessionWithExtra(session, getProductById, tamperedCart);
   assert.equal(r.ok, true);
   assert.deepEqual(
     r.order.items.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })),
@@ -163,7 +171,7 @@ test("未払い・metadata が無い・カタログに無い id の session か�
 });
 
 test("確認ルートの注文の形を確かめる（合計の食い違い・空の品目は不正）", () => {
-  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }]));
+  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }])) as PaidResult;
   assert.equal(isValidOrder(order), true);
   assert.equal(isValidOrder({ ...order, total: order.total - 1 }), false);
   assert.equal(isValidOrder({ ...order, items: [] }), false);
@@ -174,7 +182,7 @@ test("確認ルートの注文の形を確かめる（合計の食い違い・�
 /* ---------- 確認結果の判定（成功ページ） ---------- */
 
 test("支払い済み・未払い・確認できなかった を取り違えない", () => {
-  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }]));
+  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }])) as PaidResult;
   const paid = decideVerifyOutcome({ kind: "response", status: 200, body: { paid: true, order } });
   assert.equal(paid.state, "paid");
   assert.deepEqual(paid.order, order);
@@ -183,7 +191,7 @@ test("支払い済み・未払い・確認できなかった を取り違えな�
   assert.equal(decideVerifyOutcome({ kind: "response", status: 400, body: { paid: false } }).state, "unpaid");
   assert.equal(decideVerifyOutcome({ kind: "missing-session" }).state, "unpaid");
 
-  const unverified = [
+  const unverified: (VerifyInput | null | undefined)[] = [
     { kind: "network-error" },
     { kind: "timeout" },
     { kind: "response", status: 502, body: { paid: false } },
@@ -236,7 +244,7 @@ test("同じ session_id の注文を見つける", () => {
 
 test("同じ session_id の注文は 2 回記録しない", () => {
   const now = new Date("2026-10-05T00:00:00Z");
-  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }]));
+  const { order } = orderFromSession(paidSession([{ id: "1", quantity: 1 }])) as PaidResult;
   const once = appendOrder([], { id: "ORD-1", items: order.items, total: order.total, sessionId: "cs_test_abc" }, now);
   assert.equal(once.length, 1);
   assert.deepEqual(once[0], { id: "ORD-1", date: now.toISOString(), items: order.items, total: order.total, sessionId: "cs_test_abc" });

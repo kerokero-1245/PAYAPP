@@ -19,7 +19,7 @@ test("価格・商品名は保存した値ではなくカタログから引く",
     id: "1",
     name: "Éclat Automatic 41",
     price: 248000,
-    image: getProductById("1").images[0],
+    image: getProductById("1")!.images[0],
     category: "watches",
     quantity: 2,
   }]);

@@ -7,14 +7,17 @@
 // handler は lib/graphql/handler.ts を Node 22 の型消去でそのまま import する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type Stripe from "stripe";
 
 import { PRODUCTS, getProductById } from "../lib/catalog.ts";
 import { CHECKOUT_ERRORS, buildLineItems, encodeOrderMetadata } from "../lib/checkout.ts";
+import type { LineItemsResult } from "../lib/checkout.ts";
 import {
   UNSUPPORTED_MEDIA_TYPE,
   createCheckoutSessionCore,
   isJsonContentType,
 } from "../lib/checkout-session.ts";
+import type { StripeLike } from "../lib/checkout-session.ts";
 import {
   MAX_GRAPHQL_BODY_BYTES,
   TOO_MANY_FIELDS,
@@ -28,11 +31,28 @@ import { createCheckoutSession as clientCreateCheckoutSession } from "../lib/gra
 const URL_ = "http://localhost/api/graphql";
 const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
 
+/** 偽の Stripe が記録する create の引数のうち、テストが見る項目 */
+type CreatedArgs = {
+  mode?: string;
+  line_items: { price_data: { unit_amount: number; product_data: { name: string } } }[];
+  metadata: Record<string, string>;
+  success_url: string;
+  cancel_url: string;
+};
+
+/** buildLineItems が通した側の結果（期待する line_items を取り出すのに使う） */
+type LineItemsOk = Extract<LineItemsResult, { ok: true }>;
+
+/** GraphQL の応答の errors の 1 件 */
+type GqlError = { message: string };
+
+type Handler = ReturnType<typeof createGraphqlHandler>;
+
 /** 呼ばれた引数を記録する偽の Stripe。retrieve は session id で返し分ける */
 function fakeStripe() {
-  const created = [];
-  const retrieved = [];
-  const sessions = {
+  const created: CreatedArgs[] = [];
+  const retrieved: string[] = [];
+  const sessions: Record<string, unknown> = {
     cs_test_paid: {
       id: "cs_test_paid",
       payment_status: "paid",
@@ -45,11 +65,11 @@ function fakeStripe() {
     retrieved,
     checkout: {
       sessions: {
-        async create(args) {
-          created.push(args);
+        async create(args: Stripe.Checkout.SessionCreateParams) {
+          created.push(args as CreatedArgs);
           return { url: "https://checkout.stripe.test/x" };
         },
-        async retrieve(id) {
+        async retrieve(id: string) {
           retrieved.push(id);
           if (sessions[id]) return sessions[id];
           if (id === "cs_test_missing") throw Object.assign(new Error("No such session"), { statusCode: 404 });
@@ -60,13 +80,13 @@ function fakeStripe() {
   };
 }
 
-function setup({ getStripe, baseUrl } = {}) {
+function setup({ getStripe, baseUrl }: { getStripe?: () => StripeLike; baseUrl?: string } = {}) {
   const stripe = fakeStripe();
   const handler = createGraphqlHandler({ getStripe: getStripe ?? (() => stripe), baseUrl });
   return { stripe, handler };
 }
 
-async function post(handler, query, variables) {
+async function post(handler: Handler, query: string, variables?: unknown) {
   const res = await handler.fetch(
     new Request(URL_, {
       method: "POST",
@@ -91,7 +111,7 @@ test("GraphQL: products は全 10 件、category で絞り込める", async () =
 
   const watches = await post(handler, `{ products(category: "watches") { id category } }`);
   assert.equal(watches.body.data.products.length, 2);
-  assert.ok(watches.body.data.products.every((p) => p.category === "watches"));
+  assert.ok(watches.body.data.products.every((p: { category: string }) => p.category === "watches"));
 
   const categories = await post(handler, `{ categories { slug label jp } }`);
   assert.equal(categories.body.data.categories.length, 5);
@@ -99,13 +119,13 @@ test("GraphQL: products は全 10 件、category で絞り込める", async () =
 
 test("GraphQL: products(q:) は商品一覧ページと同じ規則（name / tagline / description の小文字部分一致）", async () => {
   const { handler } = setup();
-  // app/product/page.js の絞り込みをそのまま書き写した期待値
+  // app/product/page.tsx の絞り込みをそのまま書き写した期待値
   const expected = PRODUCTS.filter((p) =>
     `${p.name} ${p.tagline ?? ""} ${p.description ?? ""}`.toLowerCase().includes("gold")
   ).map((p) => p.id);
   assert.ok(expected.length > 0, "前提: gold に当たる商品がある");
   const r = await post(handler, `{ products(q: "  GOLD ") { id } }`);
-  assert.deepEqual(r.body.data.products.map((p) => p.id), expected);
+  assert.deepEqual(r.body.data.products.map((p: { id: string }) => p.id), expected);
 });
 
 /* ---------- ⑤-2 存在しない商品 ---------- */
@@ -113,8 +133,8 @@ test("GraphQL: products(q:) は商品一覧ページと同じ規則（name / tag
 test("GraphQL: product(id) は商品を返し、存在しない id は null", async () => {
   const { handler } = setup();
   const found = await post(handler, `{ product(id: "1") { id name price badge images } }`);
-  assert.equal(found.body.data.product.name, getProductById("1").name);
-  assert.equal(found.body.data.product.price, getProductById("1").price);
+  assert.equal(found.body.data.product.name, getProductById("1")!.name);
+  assert.equal(found.body.data.product.price, getProductById("1")!.price);
   const missing = await post(handler, `{ product(id: "999") { id } }`);
   assert.equal(missing.status, 200);
   assert.equal(missing.body.data.product, null);
@@ -139,7 +159,7 @@ test("GraphQL: cartQuote はカタログの価格で合計し、同じ id は合
   assert.deepEqual(errors, []);
   assert.equal(quote.total, 248000 * 2 + 26800);
   assert.equal(quote.totalQuantity, 3);
-  assert.deepEqual(quote.items.map((i) => [i.product.id, i.quantity, i.subtotal]), [
+  assert.deepEqual(quote.items.map((i: { product: { id: string }; quantity: number; subtotal: number }) => [i.product.id, i.quantity, i.subtotal]), [
     ["1", 2, 496000],
     ["5", 1, 26800],
   ]);
@@ -194,7 +214,7 @@ test("GraphQL: createCheckoutSession は buildLineItems と同じ line_items、m
   });
   assert.equal(stripe.created.length, 1);
   const args = stripe.created[0];
-  assert.deepEqual(args.line_items, buildLineItems(items).lineItems);
+  assert.deepEqual(args.line_items, (buildLineItems(items) as LineItemsOk).lineItems);
   // 期待値は encodeOrderMetadata で作らず、リテラルで固定する（エンコードの変更に気づくため）
   assert.deepEqual(args.metadata, { order_items_0: "1:2,5:1" });
   assert.deepEqual(args.line_items.map((l) => l.price_data.unit_amount), [248000, 26800]);
@@ -220,8 +240,8 @@ test("GraphQL: Stripe が失敗したら固定の文言だけを返す（例外�
 /* ---------- ⑤-6 本文の上限 ---------- */
 
 /** ちょうど size バイトの JSON 本文（query は categories。長さはクエリ内のコメントで合わせる） */
-function bodyOfSize(size) {
-  const make = (pad) => JSON.stringify({ query: `#${pad}\n{ categories { slug } }` });
+function bodyOfSize(size: number) {
+  const make = (pad: string) => JSON.stringify({ query: `#${pad}\n{ categories { slug } }` });
   const body = make("x".repeat(size - make("").length));
   assert.equal(Buffer.byteLength(body), size);
   return body;
@@ -229,7 +249,7 @@ function bodyOfSize(size) {
 
 test("GraphQL: 本文は 4KB まで（4,096 バイトは通り、4,097 バイトは 413。Stripe を呼ばない）", async () => {
   const { handler, stripe } = setup();
-  const send = (body) =>
+  const send = (body: string) =>
     handler.fetch(
       new Request(URL_, { method: "POST", headers: { "content-type": "application/json" }, body })
     );
@@ -252,7 +272,7 @@ test("GraphQL: 本文は 4KB まで（4,096 バイトは通り、4,097 バイト
       headers: { "content-type": "application/json" },
       body: stream,
       duplex: "half",
-    })
+    } as RequestInit) // duplex は Node の fetch の項目で、lib.dom の RequestInit には無い
   );
   assert.equal(res2.status, 413);
   assert.equal(stripe.created.length, 0);
@@ -332,7 +352,7 @@ test("GraphQL: 1 リクエストに Mutation を 2 つ以上並べると拒否�
   for (const query of [aliased, viaFragment]) {
     const r = await post(handler, query);
     assert.equal(r.body.data, undefined);
-    assert.ok(r.body.errors.some((e) => e.message === TOO_MANY_MUTATIONS), r.text);
+    assert.ok(r.body.errors.some((e: GqlError) => e.message === TOO_MANY_MUTATIONS), r.text);
   }
   assert.equal(stripe.created.length, 0);
 
@@ -357,7 +377,7 @@ test("GraphQL: orderBySession を 2 つ並べると拒否し、Stripe の retrie
   for (const query of queries) {
     const r = await post(handler, query);
     assert.equal(r.body.data, undefined, query);
-    assert.ok(r.body.errors.some((e) => e.message === TOO_MANY_STRIPE_FIELDS), r.text);
+    assert.ok(r.body.errors.some((e: GqlError) => e.message === TOO_MANY_STRIPE_FIELDS), r.text);
   }
   assert.equal(stripe.retrieved.length, 0);
 
@@ -372,7 +392,7 @@ test("GraphQL: 選択するフィールドは 200 まで（同名の重複・フ
   const many = `{${"products{id}".repeat(300)}}`;
   const r = await post(handler, many);
   assert.equal(r.body.data, undefined);
-  assert.ok(r.body.errors.some((e) => e.message === TOO_MANY_FIELDS), r.text.slice(0, 300));
+  assert.ok(r.body.errors.some((e: GqlError) => e.message === TOO_MANY_FIELDS), r.text.slice(0, 300));
 
   // フラグメントを入れ子で何度も展開して数を増やす形も弾く（2^8 = 256 回展開される）
   const nested = `{ ...A } fragment A on Query { ...B ...B } fragment B on Query { ...C ...C }
@@ -381,7 +401,7 @@ test("GraphQL: 選択するフィールドは 200 まで（同名の重複・フ
     fragment J on Query { categories { slug } }`;
   const r2 = await post(handler, nested);
   assert.equal(r2.body.data, undefined);
-  assert.ok(r2.body.errors.some((e) => e.message === TOO_MANY_FIELDS), r2.text.slice(0, 300));
+  assert.ok(r2.body.errors.some((e: GqlError) => e.message === TOO_MANY_FIELDS), r2.text.slice(0, 300));
 
   // 100 フィールドなら通る
   const ok = await post(handler, `{${"products{id}".repeat(50)}}`);
@@ -415,21 +435,23 @@ test("GraphQL: CORS ヘッダーを返さず、応答は no-store", async () => 
 
 test("GraphQL: GraphiQL は本番（NODE_ENV=production）では返さない", async () => {
   const saved = process.env.NODE_ENV;
-  const html = (h) =>
+  // NODE_ENV は Next の型で読み取り専用なので、書き換えるときは文字列の辞書として扱う
+  const env = process.env as Record<string, string | undefined>;
+  const html = (h: Handler) =>
     h.fetch(new Request(URL_, { headers: { accept: "text/html" } })).then(async (r) => ({
       status: r.status,
       text: await r.text(),
     }));
   try {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     const prod = await html(setup().handler);
     assert.ok(!prod.text.includes("GraphiQL"), prod.text.slice(0, 200));
-    process.env.NODE_ENV = "development";
+    env.NODE_ENV = "development";
     const dev = await html(setup().handler);
     assert.ok(dev.text.includes("GraphiQL"));
   } finally {
-    if (saved === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = saved;
+    if (saved === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = saved;
   }
 });
 
@@ -459,10 +481,10 @@ test("GraphQL: handler に渡した baseUrl が戻り先（success_url / cancel_
 
 test("client: createCheckoutSession は UserError と 413 の文言だけを見せ、それ以外は既定の文言にする", async () => {
   const saved = globalThis.fetch;
-  const respond = (status, body) => {
+  const respond = (status: number, body: unknown) => {
     globalThis.fetch = async (url, init) => {
       assert.equal(url, "/api/graphql");
-      assert.equal(init.method, "POST");
+      assert.equal(init!.method, "POST");
       return Response.json(body, { status });
     };
   };

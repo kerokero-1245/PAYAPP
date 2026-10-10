@@ -1,4 +1,4 @@
-// 平坦な CSS の検査。実行: npm run check:css（= node scripts/check-flat-css.mjs app components）
+// 平坦な CSS の検査。実行: npm run check:css（= node scripts/check-flat-css.ts app components）
 //
 // なぜあるか: ページごとに Tailwind の見た目クラスを直書きし、`!` 接尾辞（= !important）や
 // group-hover・space-y（子孫・子セレクタを生む）で上書きを重ねた結果、同じ部品の見た目が
@@ -32,13 +32,13 @@ const JS_EXT = /\.(js|jsx|ts|tsx|mjs)$/;
 
 const dirs = process.argv.slice(2);
 if (dirs.length === 0) {
-  console.error("usage: node scripts/check-flat-css.mjs <dir...>");
+  console.error("usage: node scripts/check-flat-css.ts <dir...>");
   process.exit(2);
 }
 
-const cssFiles = [];
-const jsFiles = [];
-function walk(d) {
+const cssFiles: string[] = [];
+const jsFiles: string[] = [];
+function walk(d: string): void {
   if (!fs.existsSync(d)) return;
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name);
@@ -56,14 +56,14 @@ if (cssFiles.length === 0 || jsFiles.length === 0) {
 }
 
 /** コメントを同じ長さの空白に置き換える（行番号を保つ） */
-const blank = (m) => m.replace(/[^\n]/g, " ");
+const blank = (m: string) => m.replace(/[^\n]/g, " ");
 
-const bad = [];
-const lineOf = (src, i) => src.slice(0, i).split("\n").length;
+const bad: string[] = [];
+const lineOf = (src: string, i: number) => src.slice(0, i).split("\n").length;
 
 /** 括弧の外にあるカンマで分ける */
-function splitTop(s) {
-  const parts = [];
+function splitTop(s: string): string[] {
+  const parts: string[] = [];
   let depth = 0;
   let cur = "";
   for (const c of s) {
@@ -79,11 +79,11 @@ function splitTop(s) {
 }
 
 /** 選択子 1 つ（カンマ区切りの 1 項）に結合子があるか。:is() :where() :has() :not() の中も見る */
-function hasCombinator(sel) {
+function hasCombinator(sel: string): boolean {
   const s = sel.trim().replace(/\[[^\]]*\]/g, "[]");
   // 論理の擬似クラスの中身を取り出して、項ごとに同じ検査をする
   const LOGICAL = /:(is|where|has|not|matches)\(/g;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = LOGICAL.exec(s))) {
     let depth = 1;
     let j = m.index + m[0].length;
@@ -110,15 +110,16 @@ for (const f of cssFiles) {
   for (const m of src.matchAll(/!important|@apply\b|:deep\b/g)) {
     bad.push(`${f}:${lineOf(src, m.index)} ${m[0]}`);
   }
-  const stack = []; // { kind: "style" | "group" | "keyframes" | "other", prelude }
+  const stack: { kind: "style" | "group" | "keyframes" | "other"; prelude: string }[] = [];
   const kinds = () => stack.map((e) => e.kind);
   let start = 0;
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     if (c === "{") {
-      const prelude = src.slice(start, i).split(";").pop().trim();
+      // split は必ず 1 つ以上の要素を返すので、pop() は undefined にならない
+      const prelude = src.slice(start, i).split(";").pop()!.trim();
       const at = `${f}:${lineOf(src, i)}`;
-      let kind;
+      let kind: "style" | "group" | "keyframes" | "other";
       if (kinds().includes("keyframes")) kind = "other";
       else if (/^@keyframes\b/.test(prelude)) kind = "keyframes";
       else if (GROUP_AT.test(prelude)) kind = "group";
@@ -150,7 +151,7 @@ for (const f of cssFiles) {
 // クラス名の区切り（空白・引用符・バッククォート・波括弧）の直後から始まる語だけを見る
 const D = "(?<=^|[\\s\"'`{}])";
 const V = "(?:[a-z0-9-]+:)*"; // 前に付く変種（md: hover: など）
-const JS_RULES = [
+const JS_RULES: [RegExp, string][] = [
   [/!important/g, "!important"],
   [/:deep\b/g, ":deep"],
   [new RegExp(`${D}[a-z][a-z0-9:./%\\[\\]-]*-[a-z0-9./%\\[\\]-]*!(?=$|[\\s"'\`])`, "gm"), "Tailwind の ! 接尾辞"],
@@ -168,7 +169,7 @@ const JS_RULES = [
 
 /** 文字列リテラルの中の語ごとの検査（コードの !x を ! 接頭辞と取らないよう、文字列の中だけを見る） */
 const STRING_RE = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
-const TOKEN_RULES = [
+const TOKEN_RULES: [RegExp, string][] = [
   [/^![a-z][a-z0-9-]*$/, "Tailwind の ! 接頭辞"],
   [/^(?:[a-z0-9-]+:)*-?[a-z][a-z0-9-]*!$/, "Tailwind の ! 接尾辞"],
 ];
