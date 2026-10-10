@@ -42,7 +42,7 @@ export type CartQuoteResult = {
   quote?: Maybe<CartQuote>;
 };
 
-/** 商品カテゴリ（lib/catalog.mjs の CATEGORIES） */
+/** 商品カテゴリ（lib/catalog.ts の CATEGORIES） */
 export type Category = {
   __typename?: 'Category';
   jp: Scalars['String']['output'];
@@ -94,7 +94,7 @@ export type PaymentState =
   | 'PAID'
   | 'UNPAID';
 
-/** 商品（lib/catalog.mjs の PRODUCTS の 1 件） */
+/** 商品（lib/catalog.ts の PRODUCTS の 1 件） */
 export type Product = {
   __typename?: 'Product';
   /** NEW / LIMITED など。無い商品もある */
@@ -118,7 +118,7 @@ export type Query = {
   /** Stripe に照会して注文を返す（保存しない）。照会失敗は GraphQL エラー（unverified 扱い） */
   orderBySession: OrderLookup;
   product?: Maybe<Product>;
-  /** category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.js と同じ規則） */
+  /** category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.tsx と同じ規則） */
   products: Array<Product>;
 };
 

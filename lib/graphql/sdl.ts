@@ -5,7 +5,7 @@
  */
 export const typeDefs = /* GraphQL */ `
   """
-  商品カテゴリ（lib/catalog.mjs の CATEGORIES）
+  商品カテゴリ（lib/catalog.ts の CATEGORIES）
   """
   type Category {
     "all / watches / leather / fragrance / jewelry"
@@ -15,7 +15,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
-  商品（lib/catalog.mjs の PRODUCTS の 1 件）
+  商品（lib/catalog.ts の PRODUCTS の 1 件）
   """
   type Product {
     id: ID!
@@ -104,7 +104,7 @@ export const typeDefs = /* GraphQL */ `
 
   type Query {
     categories: [Category!]!
-    "category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.js と同じ規則）"
+    "category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.tsx と同じ規則）"
     products(category: String, q: String): [Product!]!
     product(id: ID!): Product
     "localStorage のカートを送り、カタログの価格で見積もる（副作用なし）"
