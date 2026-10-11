@@ -9,16 +9,17 @@
 - **型の置き場**: 3 か所以上で使うドメインの型は `lib/types.ts`、1 ファイルだけで使う型はそのファイルに書く。`as` で要素を差し替える部品の props は `components/ui/polymorphic.ts` の `PolymorphicProps`。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は、引数を `unknown` で受けて中で絞る
 - **Node 側の import**: `lib/`・`tests/`・`scripts/` は Node が型を剥がして直接読むので、相対パスに拡張子 `.ts` を付け、型だけの import は `import type` で書く（`@/` は使わない）。`app/`・`components/`・`store/` は Next が読むので `@/…` で拡張子なし。enum・namespace・コンストラクタの引数プロパティは使えない（`erasableSyntaxOnly`）
 - **テスト**: 純粋な関数と API（`lib/`・`app/api/`）はテスト必須（`npm test` = `node --test tests/*.test.ts`。Stripe は `getStripe` で差し込める形にして、偽の Stripe を渡す）。UI の変更は前後のスクリーンショットを撮って比べる。画面の操作（導線）は `e2e/` の E2E（Playwright。`npm run test:e2e`）で確かめる。書き方は下の「E2E（Playwright）」
-- **整形**: Prettier を導入予定（導入までは周りのコードの書き方に合わせる）
+- **整形**: Prettier の既定の設定で整形する。コミットの前に `npm run format` を打つ（`npm run format:check` が CI の最初の検査で、lint より前に走る）。生成物（`lib/graphql/__generated__`・`drizzle/`）・ロックファイル・`tests/fixtures/`・`docs/screenshots` は `.prettierignore` で対象外（整形すると生成物の鮮度の検査が落ちる）。整形だけのコミットは `.git-blame-ignore-revs` に載せる
 - **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは README の「デザインの書き方」。`npm run check:css` が検査し、`tests/flat-css.test.ts` が検査そのものを確かめる
 
 ## E2E（Playwright）
 
 - **置き場**: `e2e/*.spec.ts`（1 ファイル 1 導線）、`e2e/fixtures/`（localStorage の形・Stripe のモック・外部画像・`test` の拡張）、`e2e/support/`（カタログから期待値を作る・画面を開く・ロケータ）、`e2e/constants.ts`（URL・ビューポート・session id）。`tests/` は `node --test` のグロブなので混ぜない。新規は TS で、`any` は使わない
 - **ロケータ**: `getByRole` / `getByLabel` / 文言で取り、クラス名と DOM の構造には頼らない（部品クラスを改名しても落ちないのが正しい）。取れない部品には、見た目を変えずに `aria-label` を足す（例: ヘッダーのカート点数バッジ）
-- **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart / order / auth）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる
+- **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart / order）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる
 - **Stripe には通信しない**: Stripe に向かう通信（`createCheckoutSession`・決済確認）は既定で閉じてあり、テストが `page.route` でモックする。モックし忘れるとテストが落ちる。実通信は `@stripe` タグの 1 本だけで、`STRIPE_SECRET_KEY` と `E2E_STRIPE=1` の両方があるときだけ動く。CI には Stripe のキーを置かない
 - **DB は専用の PGlite**: サーバ（`next start`）を立てる前に、`.pglite-e2e/` へ `db:migrate` と `db:seed` を順に当てる（`playwright.config.ts` の webServer。`PGLITE_DATA_DIR` で指定し、`DATABASE_URL` は空にして開発の Neon に繋がらないようにする）。決済の確認はモックするので画面の操作はサーバの DB まで届かない。注文の確定そのもの（冪等・競合）は単体テスト（PGlite）の仕事で、E2E ではブラウザ側の結果（注文番号の表示・購入分だけカートから外れる・二重に外さない）を見る
+- **認証は本物**: ログイン状態は localStorage ではなくサーバのセッションなので、seed せず、画面の操作（新規登録・ログイン）で作る。サーバは固定のダミーの `BETTER_AUTH_SECRET` と `BETTER_AUTH_URL` で起動し（`playwright.config.ts`。`.env.local` に左右されない）、利用者は E2E 専用の PGlite に残る（実行をまたぐので、メールアドレスは実行ごとに一意にする）。本番ビルドは試行回数の制限が有効で、IP が分からない要求を全員で 1 つの枠に入れるため、幅ごとに `x-forwarded-for` を変えて枠を分ける（`e2e/constants.ts` の `E2E_CLIENT_IPS`）。ログインの試行は 1 つのテストの中で 10 秒に 3 回以内に収める
 - **本番ビルドで回す**: `next start` に対して回す（404 の本文が HTML に入るかなど、dev とは挙動が違う）。hydration が終わる前にフォームを操作しない（`e2e/support/page.ts` の `open`）。待つときは `waitForTimeout` ではなく、`expect` の自動再試行と `expect.poll` を使う
 - **新しい導線を足したとき**: E2E を 1 本足し、アプリ側の 1 行を一時的に壊して red になることを確かめる（壊しても落ちないテストは守りにならない）
 - 見た目の差は E2E の仕事にしない（`toHaveScreenshot` は mac と CI の linux で字形が揺れる）。前後のスクリーンショットで見る
@@ -80,3 +81,15 @@
 - **Webhook**: 署名は `Stripe.webhooks.constructEvent` に、加工していない本文と `Stripe-Signature`、`STRIPE_WEBHOOK_SECRET` を渡して検証する（`constructEvent` は `this` を使うので、メソッドのまま呼ぶ）。通らなければ 400（秘密が未設定なら 503）で、DB にも Stripe にも触れない。2xx を返すのは「受け取って片付いた」ときだけで、失敗は非 2xx にして Stripe に再送させる。未払いは 2xx で片付けて何も記録しない（あとから入金される方法は `async_payment_succeeded` で来る）
 - **ブラウザに注文を記録しない**: 注文の正本は DB。ブラウザ（localStorage）に残すのは、購入分をカートから取り除き済みの決済の id（`cart-storage` の `settledSessions`。成功ページを開き直しても二重に取り除かないため）だけ。`orderStore` は `/orders` が読むだけで、もう書かない（段 4 で消す）
 - **同時実行のテストは競合を作って確かめる**: 偽の Stripe（`tests/support/stripe.ts` の `waitFor`）が全員の到着を待ってから応答を返し、そろって「DB にまだ注文が無い」と見たまま書き込みに進ませる。止めないと、先の呼び出しが書き終えてから後の呼び出しが DB を見て、競合に当たらないまま通ってしまう。PGlite は 1 接続でトランザクションを順に処理するので、本物の Postgres での並行性の差はこのテストでは拾えない（CI の `db-migrate-postgres` はマイグレーションを当てるだけ。注文の確定を本物の Postgres で回すのは今後の課題）
+
+## 認証
+
+- **登録・ログイン・ログアウトは GraphQL にしない**: Better Auth の `/api/auth/*`（`app/api/auth/[...all]/route.ts`）が、cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持つ。GraphQL は `viewer` を読むだけ。`/api/auth/*` を自前で包み直さない
+- **セッションを引く場所は 1 つ**: ページ（サーバコンポーネント）は `lib/auth/server.ts` の `getViewer()`、Route Handler と GraphQL は `getViewerFromHeaders(headers)`。どちらも `lib/auth/viewer.ts` の `viewerFromHeaders`（セッションの cookie が無ければ DB に触れない。期限は延ばさない）を通る。ほかの場所で `auth.api.getSession` を直接呼ばない。**ヘッダーだけは例外**で、クライアントの `authClient.useSession()` を使う（ヘッダーはすべてのページにあり、サーバで cookie を読むとすべてのページが動的になって、商品ページの静的生成が外れるため）
+- **ログインが要るページ**: サーバで `getViewer()` を引き、無ければ `redirect(loginPathFor(<そのページ>))`。localStorage を見て判定しない。`/login` と `/signup` が受ける `next` は、必ず `safeNextPath`（`lib/auth/next-path.ts`）を通してから使う（未検査の値で移動しない。オープンリダイレクトを防ぐ）
+- **注文の持ち主は 1 か所で決める**: `createCheckoutSessionCore` が `client_reference_id`（セッションから引いた利用者の id。リクエストの本文の値は使わない）を付け、`fulfillCheckout` だけが `orders.user_id` に入れる（実在する利用者のときだけ。それ以外はゲストとして、支払い済みの注文を失わない）。別の経路から `orders.user_id` を書かない。応答（確認 API・GraphQL の `Order`）には持ち主を出さない
+- **認証の表は Better Auth の CLI の出力が正本**: 手で列を足さない。プロパティ名（`emailVerified` など）は Better Auth のフィールド名で、アダプタがこの名前で列を引く。`role` などは管理画面の段で、Better Auth の機能（`additionalFields` か admin プラグイン）で足して、CLI の出力を取り込み直す。`tests/auth.test.ts` の「認証の表」が、Better Auth の要求との食い違い（列・型・必須・一意・外部キー・索引）を検出する
+- **既定値は、採否を決めてから使う**: Better Auth の既定のうち方針に関わるもの（パスワードの長さ・セッションの期限）は `lib/auth/constants.ts` に明示して固定し、採否と理由は README の「既定値の採否」に書く。Better Auth を上げるときは、公開から 14 日以上たった版を完全一致で固定し、その表と `tests/auth.test.ts` を読み直す
+- **本番の必須の環境変数**: `BETTER_AUTH_SECRET`（`resolveAuthSettings` が、無い・32 文字未満・開発用の固定の値なら例外にする）。`BETTER_AUTH_URL` は Production だけに置き、Preview には置かない（置くとプレビューの URL からのログインが 403 になる）
+- **文面**: 失敗の文は `lib/auth/messages.ts`（ログインは、メールの有無・パスワードの違いを言い分けない。英語の message や例外の中身は出さない）、パスワードの再設定が無い注記は `lib/policies.ts`。プライバシーポリシーの「ログイン状態」の行は、実際の cookie と DB の行（`tests/auth.test.ts`）と突き合わせる
+- **テストは本物の Better Auth**: `tests/auth.test.ts` と `tests/auth-viewer.test.ts` は、Better Auth を PGlite の DB でそのまま動かし、`auth.handler(new Request(...))` に `/api/auth/*` を送る（偽物に差し替えない。ブラウザの代わりに Set-Cookie を次の要求の Cookie に付ける）。`NODE_ENV=test` では Better Auth が Origin の検査を切るので、テストを `NODE_ENV=test` で動かさない（`node --test` は設定しない）
