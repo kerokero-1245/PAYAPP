@@ -8,6 +8,15 @@
 export const PORT = 3210;
 export const BASE_URL = `http://localhost:${PORT}`;
 
+/**
+ * DB が使えないサーバ（e2e/db-unavailable.spec.ts）のポートと URL。3210 のサーバとは別に、同じビルドで立てる。
+ * PGlite の保存先を作れないパスを渡すので、DB に触れる要求（セッションの cookie を持つ人の画面など）が必ず失敗する
+ */
+export const DB_DOWN_PORT = 3211;
+export const DB_DOWN_BASE_URL = `http://localhost:${DB_DOWN_PORT}`;
+/** 保存先を作れないパス（package.json はファイルなので、その下にディレクトリは作れない） */
+export const DB_DOWN_PGLITE_DIR = "package.json/pglite-unavailable";
+
 /** プロジェクトの幅（撮影の幅と同じ 390 / 1280）。高さは見た目の確認には使わない */
 export const VIEWPORTS = {
   mobile: { width: 390, height: 844 },
