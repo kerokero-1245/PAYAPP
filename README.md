@@ -94,16 +94,16 @@ npm run db:seed        # カタログの商品を products に入れる（何度
 
 `.env.example` を `.env.local` にコピーして設定してください。
 
-| 変数                    | 必須 / 任意                               | 用途                                                                                                                                                                                                                                                                                                                                                           |
-| ----------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `STRIPE_SECRET_KEY`     | **必須**（決済を使う場合）                | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください                                                                                                                                                                                                                 |
-| `NEXT_PUBLIC_BASE_URL`  | 任意（**本番では設定してください**）      | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります                                                                                                                                               |
-| `STRIPE_WEBHOOK_SECRET` | 本番では **必須**（Webhook を受ける場合） | `POST /api/stripe/webhook` が、Stripe から届いたことを検証する署名の秘密（`whsec_...`）。未設定のあいだ Webhook は 503 を返して何もしません（注文は成功ページの確認でも確定します）。登録の手順は下の「公開（Vercel）」                                                                                                                                        |
-| `DATABASE_URL`          | **本番では必須**。開発は任意              | 実行時の接続（プール経由）。Neon の接続文字列。未設定なら、開発・テストではローカルの PGlite（`.pglite/`）に繋ぎます。**本番（`NODE_ENV=production`）で未設定だと例外**です。下の「データベース」                                                                                                                                                              |
-| `DATABASE_URL_UNPOOLED` | 任意                                      | マイグレーション用の直結（プールを通さない）。未設定なら `DATABASE_URL` を使います                                                                                                                                                                                                                                                                             |
-| `PGLITE_DATA_DIR`       | 任意                                      | PGlite の保存先のディレクトリ（既定は `.pglite`）。`DATABASE_URL` が無いときだけ効きます。本番ビルド（`next start`・E2E）で PGlite を使うという明示にもなります                                                                                                                                                                                                |
-| `BETTER_AUTH_SECRET`    | 本番では **必須**。開発は任意             | 認証（Better Auth）のセッションの署名と暗号化の鍵。**本番（`NODE_ENV=production`。Vercel の Production と Preview を含む）では、32 文字以上のランダムな値が必須**で、無い・短い・開発用の固定の値だと認証 API は 500 で失敗します（黙って弱い鍵では動かしません）。作り方: `openssl rand -base64 32`。開発では未設定で構いません（開発用の固定の値を使います） |
-| `BETTER_AUTH_URL`       | 任意（**本番では設定してください**）      | 認証の基準の URL（オリジンだけ。パスは付けません）。ログイン・登録の送信元（Origin）の検査が信用するオリジン。**Production にだけ**本番の URL を置き、Preview には置きません（置くとプレビューの URL からのログインが 403 で断られます）。未設定なら、リクエストの URL のオリジンを使います                                                                    |
+| 変数                    | 必須 / 任意                               | 用途                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`     | **必須**（決済を使う場合）                | Checkout Session の作成（`/api/graphql`・`/checkout`）と決済確認（`/api/checkout/session`）。テストモードのキー `sk_test_...` を使ってください                                                                                                                                                                                                                                              |
+| `NEXT_PUBLIC_BASE_URL`  | 任意（**本番では設定してください**）      | 決済後の戻り先 URL と、OGP 画像を絶対 URL にする基準。未設定・不正な値のときは、戻り先はリクエスト URL の origin、OGP は Next.js の既定（ローカルでは `http://localhost:<port>`、Vercel では本番 URL）になります                                                                                                                                                                            |
+| `STRIPE_WEBHOOK_SECRET` | 本番では **必須**（Webhook を受ける場合） | `POST /api/stripe/webhook` が、Stripe から届いたことを検証する署名の秘密（`whsec_...`）。未設定のあいだ Webhook は 503 を返して何もしません（注文は成功ページの確認でも確定します）。登録の手順は下の「公開（Vercel）」                                                                                                                                                                     |
+| `DATABASE_URL`          | **本番では必須**。開発は任意              | 実行時の接続（プール経由）。Neon の接続文字列。未設定なら、開発・テストではローカルの PGlite（`.pglite/`）に繋ぎます。**本番（`NODE_ENV=production`）で未設定だと例外**です。下の「データベース」                                                                                                                                                                                           |
+| `DATABASE_URL_UNPOOLED` | 任意                                      | マイグレーション用の直結（プールを通さない）。未設定なら `DATABASE_URL` を使います                                                                                                                                                                                                                                                                                                          |
+| `PGLITE_DATA_DIR`       | 任意                                      | PGlite の保存先のディレクトリ（既定は `.pglite`）。`DATABASE_URL` が無いときだけ効きます。本番ビルド（`next start`・E2E）で PGlite を使うという明示にもなります。**E2E とローカルの `next start` のための明示**で、Vercel（`VERCEL=1`）では無視します（置いても使われず、`DATABASE_URL` が無ければ例外です。関数の実体ごとに消える DB に注文を書かないため）。Vercel には置かないでください |
+| `BETTER_AUTH_SECRET`    | 本番では **必須**。開発は任意             | 認証（Better Auth）のセッションの署名と暗号化の鍵。**本番（`NODE_ENV=production`。Vercel の Production と Preview を含む）では、32 文字以上のランダムな値が必須**で、無い・短い・開発用の固定の値だと認証 API は 500 で失敗します（黙って弱い鍵では動かしません）。作り方: `openssl rand -base64 32`。開発では未設定で構いません（開発用の固定の値を使います）                              |
+| `BETTER_AUTH_URL`       | 任意（**本番では設定してください**）      | 認証の基準の URL（オリジンだけ。パスは付けません）。ログイン・登録の送信元（Origin）の検査が信用するオリジン。**Production にだけ**本番の URL を置き、Preview には置きません（置くとプレビューの URL からのログインが 403 で断られます）。未設定なら、リクエストの URL のオリジンを使います                                                                                                 |
 
 ```
 STRIPE_SECRET_KEY=sk_test_xxxx
@@ -121,23 +121,25 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 1. Vercel にログインし、**Add New… → Project** でこの GitHub リポジトリを **Import** します（Framework Preset は Next.js のまま、Build Command・Output Directory も既定のまま）。
 2. **Environment Variables** に次を設定します（名前は上の「環境変数」の表と同じです）。
 
-   | 変数                    | 設定する環境        | 値                                                                                                           |
-   | ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------ |
-   | `STRIPE_SECRET_KEY`     | Production・Preview | Stripe のテストモードのキー `sk_test_...`                                                                    |
-   | `NEXT_PUBLIC_BASE_URL`  | Production だけ     | 本番の URL（例: `https://<プロジェクト名>.vercel.app`）                                                      |
-   | `DATABASE_URL`          | Production・Preview | Neon の接続文字列（プール経由）。**必須**（無いと注文を扱う API が失敗します）                               |
-   | `STRIPE_WEBHOOK_SECRET` | Production だけ     | Stripe の Webhook の署名シークレット `whsec_...`（下の「Webhook を登録する」で手に入ります）                 |
-   | `BETTER_AUTH_SECRET`    | Production・Preview | 認証の鍵。32 文字以上のランダムな値（`openssl rand -base64 32`）。**Production と Preview で別の値**にします |
-   | `BETTER_AUTH_URL`       | Production だけ     | 本番の URL（例: `https://<プロジェクト名>.vercel.app`。パスは付けません）                                    |
+   | 変数                    | 設定する環境        | 値                                                                                                                           |
+   | ----------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+   | `STRIPE_SECRET_KEY`     | Production・Preview | Stripe のテストモードのキー `sk_test_...`                                                                                    |
+   | `NEXT_PUBLIC_BASE_URL`  | Production だけ     | 本番の URL（例: `https://<プロジェクト名>.vercel.app`）                                                                      |
+   | `DATABASE_URL`          | Production          | Neon の本番ブランチの接続文字列（プール経由）。**必須**（無いと注文を扱う API が失敗します）                                 |
+   | `DATABASE_URL`          | Preview             | **本番の接続文字列は入れません。** Preview 用の DB（Neon のプレビューまたは開発ブランチ）の接続文字列か、置かない（DB なし） |
+   | `STRIPE_WEBHOOK_SECRET` | Production だけ     | Stripe の Webhook の署名シークレット `whsec_...`（下の「Webhook を登録する」で手に入ります）                                 |
+   | `BETTER_AUTH_SECRET`    | Production・Preview | 認証の鍵。32 文字以上のランダムな値（`openssl rand -base64 32`）。**Production と Preview で別の値**にします                 |
+   | `BETTER_AUTH_URL`       | Production だけ     | 本番の URL（例: `https://<プロジェクト名>.vercel.app`。パスは付けません）                                                    |
    - `NEXT_PUBLIC_BASE_URL` を Preview にも入れると、プレビューで決済したときの戻り先が本番になります。Preview では未設定にしておけば、戻り先はそのプレビューの URL になります。
    - `NEXT_PUBLIC_` で始まる値はビルド時に埋め込まれるので、変えたら再デプロイしてください。
-   - `DATABASE_URL` は **本番では必須**です（`NODE_ENV=production` は Vercel の Production と Preview の両方）。無いと、決済の確認 API・Webhook・GraphQL の `orderBySession` が DB に繋げず失敗し、成功ページは「決済の確認が取れていません」になります。置き場所は「データベース」の環境変数の表です。
-   - `STRIPE_WEBHOOK_SECRET` は Production だけに置きます。Webhook は本番の URL にしか登録しないので、Preview では置かず（置いても何も届きません）、成功ページの確認で注文を確定します。
-   - `BETTER_AUTH_SECRET` は **Production と Preview の両方に必須**です（`NODE_ENV=production` は両方）。無い・32 文字未満だと、認証 API（`/api/auth/*`）が 500 になり、ログイン・登録ができません（ゲストの購入には影響しません）。
+   - `DATABASE_URL` は **Production では必須**です（`NODE_ENV=production` は Vercel の Production と Preview の両方）。無いと、決済の確認 API・Webhook・GraphQL の `orderBySession` が DB に繋げず失敗し、成功ページは「決済の確認が取れていません」になります。置き場所は「データベース」の環境変数の表です。
+   - **Preview には本番の `DATABASE_URL` を入れません。** 入れると、プレビューのビルド（どのブランチでも）が本番の利用者・注文を直接読み書きします。Preview 用の DB（Neon のプレビューブランチか開発ブランチ。マイグレーションと seed は別に当てます）を置くか、置かずに DB なしにします。DB なしの Preview でも、商品の閲覧・カート・決済ページへの移動は動きます（`NODE_ENV=production` は Preview も同じなので、DB が無ければ DB に触れる処理は例外で失敗します: 決済の確認（成功ページは「決済の確認が取れていません」）・登録・ログイン・注文履歴）。
+   - `STRIPE_WEBHOOK_SECRET` は Production だけに置きます。**Webhook は本番の URL にだけ登録します**（プレビューの URL やローカルは登録しません）。Preview では置かず、成功ページの確認で注文を確定します。Stripe はアカウント（とモード）で起きたイベントを、登録済みのエンドポイントすべてに送るので、Preview やローカルで払ったテスト決済のイベントも本番の Webhook に届き、本番は同じ `STRIPE_SECRET_KEY` で取り直せたその決済を、本番の DB にゲストの注文（持ち主の利用者が本番に居ないため）として確定します。避けたいときは、Preview とローカルには本番と別の Stripe アカウント（またはサンドボックス）のテストキーを使います。
+   - `BETTER_AUTH_SECRET` は **Production と Preview の両方に必須**です（`NODE_ENV=production` は両方）。無い・32 文字未満だと、認証 API（`/api/auth/*`）が 500 になり、ログイン・登録ができません。セッションの cookie を持つ人（それまでにログインしたことのある人）は、/login・/signup・/account・/orders も「ただいま表示できません」になり、購入手続き（GraphQL の `createCheckoutSession`・`POST /checkout`）も失敗します。cookie を持たない人の閲覧と購入は動きます。
    - `BETTER_AUTH_URL` は **Production だけ**に置きます。Preview に置くと（Vercel の既定の「全環境」で作ると）、プレビューの URL からのログインが「信用できない送信元」として 403 で断られます。置かなければ、そのプレビュー自身の URL を信用します。
 
 3. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
-4. データベースを用意します。Neon の本番ブランチを作り、接続文字列を `DATABASE_URL`（プール経由）に置きます。**デプロイの前に**、手元から本番の DB へマイグレーションと seed を当てます（`products` に商品が無いと、注文の明細が外部キーで失敗し、決済の確認が通りません。認証の表 `user` `session` `account` `verification` と `orders.user_id` の外部キーも、このマイグレーションで作られます。**認証を入れたデプロイの前に必ず当ててください**。無いと、登録とログインが 500 になります。注文履歴の絞り込みを支える索引 `orders_user_id_idx` も、このマイグレーションで作られます。無くても動きますが、注文が増えると履歴が遅くなります）。接続文字列は `.env.local` に書くか、そのコマンドだけに環境変数で渡します。
+4. データベースを用意します。Neon の本番ブランチを作り、接続文字列を Production の `DATABASE_URL`（プール経由）に置きます（Preview には置きません。上の表）。**デプロイの前に**、手元から本番の DB へマイグレーションと seed を当てます（`products` に商品が無いと、注文の明細が外部キーで失敗し、決済の確認が通りません。認証の表 `user` `session` `account` `verification` と `orders.user_id` の外部キーも、このマイグレーションで作られます。**認証を入れたデプロイの前に必ず当ててください**。無いと、登録とログインが 500 になります。注文履歴の絞り込みを支える索引 `orders_user_id_idx` も、このマイグレーションで作られます。無くても動きますが、注文が増えると履歴が遅くなります）。接続文字列は `.env.local` に書くか、そのコマンドだけに環境変数で渡します。
 
    ```bash
    DATABASE_URL_UNPOOLED='<Neon の直結の接続文字列>' npm run db:migrate
@@ -148,7 +150,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 
 ### Webhook を登録する（本番・テストモード）
 
-Webhook は、ブラウザを閉じたり回線が切れたりして成功ページに戻れなかった決済も、注文として残すためのものです（成功ページの確認だけでも注文は確定します）。デプロイして本番の URL が決まってから 1 回だけ登録します。
+Webhook は、ブラウザを閉じたり回線が切れたりして成功ページに戻れなかった決済も、注文として残すためのものです（成功ページの確認だけでも注文は確定します）。デプロイして本番の URL が決まってから 1 回だけ登録します（本番の URL だけ。プレビューの URL やローカルは登録しません）。
 
 1. Stripe ダッシュボードを **テストモード** にして、**開発者 → Webhook → エンドポイントを追加**（「+ エンドポイントを追加」）を開きます。
 2. **エンドポイント URL** に `https://<本番のドメイン>/api/stripe/webhook`、**イベント** に `checkout.session.completed` と `checkout.session.async_payment_succeeded` の 2 つだけを選んで作成します。
@@ -171,8 +173,8 @@ Webhook は、ブラウザを閉じたり回線が切れたりして成功ペー
    - **成功ページ** `/success` は `GET /api/checkout/session?session_id=...` で確認します。確認ルートも `fulfillCheckout` を呼び、結果を 3 つに分けます。
      - **支払い済み**（`payment_status` が `paid`）: 注文が DB にあります（Webhook が先に確定していれば Stripe に問い合わせずその注文を返し、無ければ Stripe から取り直して確定します）。確認ルートは metadata の id と数量をカタログに当てて作った注文（品目・単価・数量・合計）に **注文番号**（`ORD-` と 10 文字）を付けて返し、成功ページはその番号を出して、購入した品目と数量だけをカートから取り除きます（決済後にカートへ足した品は残ります。カートが空でも注文番号は出ます）。取り除くのは同じ決済では 1 回だけです（成功ページを再読み込みしても買った分が余計に消えません。ブラウザに残すのは「取り除き済みの決済の id」だけで、注文は記録しません）。
      - **未払い**（未払いの Session・`session_id` が無い / 形が不正）: 「決済を確認できませんでした」と表示し、何も記録しません。
-     - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・DB に確定できなかった・カートの更新時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
-   - **同じ決済で注文は 1 件だけ**です。`orders.stripe_session_id` の一意制約と `INSERT … ON CONFLICT DO NOTHING` が、同時に来た 2 つ目を空振りにします。注文・明細・処理済みのイベントは 1 つのトランザクションで書くので、途中で失敗しても半端な注文は残らず、Stripe の再送や「もう一度確認する」でやり直せます。未払いの Session は注文にしません（あとから入金される支払い方法は、入金の `async_payment_succeeded` で確定します）。
+     - **確認できなかった**（通信失敗・サーバエラー・10 秒の時間切れ・DB に確定できなかった・請求額が注文の合計と合わなかった・カートの更新時の例外）: 「決済の確認が取れていません。二重に購入しないでください」と「もう一度確認する」を表示し、何も記録しません。サーバ側の Stripe への要求も 4 秒で打ち切り、再試行は 1 回までです。
+   - **同じ決済で注文は 1 件だけ**です。`orders.stripe_session_id` の一意制約と `INSERT … ON CONFLICT DO NOTHING` が、同時に来た 2 つ目を空振りにします。注文・明細・処理済みのイベントは 1 つのトランザクションで書くので、途中で失敗しても半端な注文は残らず、Stripe の再送や「もう一度確認する」でやり直せます。未払いの Session は注文にしません（あとから入金される支払い方法は、入金の `async_payment_succeeded` で確定します）。**支払い済みでも、Stripe の請求額（`amount_total`）・通貨が、metadata とカタログから作った合計と合わなければ注文にしません**（決済を作ってから確定するまでにカタログの価格が変わると、請求額と違う合計で記録されるため）。値（金額・品目）を含まない構造化ログ（`fulfillment.payment-mismatch`）を残し、Webhook は 422 を返します（手で直す前提で、明細を Stripe の `line_items` から作る設計は段 7 の課題）。
 
 価格の決定・Session からの注文作成・確認結果の判定・戻り先 URL の決め方は `lib/checkout.ts` `lib/cart.ts` `lib/site.ts` の純粋な関数に分けてあり、`tests/` で検証しています。注文を DB に確定する `fulfillCheckout`（`lib/fulfillment.ts`）、Webhook の本体 `handleStripeWebhook`（`lib/stripe-webhook.ts`）、決済確認の route の本体 `verifyCheckoutSession`（`lib/checkout-session.ts`）は、DB と Stripe を引数で受ける形にしてあり、`tests/fulfillment.test.ts` `tests/webhook.test.ts` `tests/checkout-verify.test.ts` が PGlite（メモリ上の Postgres）と偽の Stripe で確かめています（同じイベントを 2 回・同時に送っても、Webhook と成功ページが同時に来ても注文は 1 件、署名が違えば 400 で DB は変わらない、未払いは注文にしない、など。Webhook の署名は Stripe のライブラリで本物を作ります）。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は引数を `unknown` で受けて中で絞ります（テストはわざと不正な値を渡します）。お問い合わせの検証（`lib/contact.ts`。文字数は見た目の 1 文字で数える）は `tests/contact.test.ts`、平坦な CSS の検査（`scripts/check-flat-css.ts`）が違反を見落とさないことは `tests/flat-css.test.ts` で検証しています。
 
@@ -180,7 +182,7 @@ Webhook は、ブラウザを閉じたり回線が切れたりして成功ペー
 
 ## GraphQL API
 
-エンドポイントは `/api/graphql`（`POST` は `Content-Type: application/json`。`GET` でもクエリを送れます。開発中はブラウザで開くと GraphiQL が使えます）。スキーマは `lib/graphql/sdl.ts`、resolver は `lib/graphql/schema.ts` です。
+エンドポイントは `/api/graphql`（`POST` は `Content-Type: application/json`。**本番（`NODE_ENV=production`）では `GET` は 405** で、`POST` だけです。開発中はブラウザで開くと GraphiQL が使え、`GET` でもクエリを送れます）。スキーマは `lib/graphql/sdl.ts`、resolver は `lib/graphql/schema.ts` です。
 
 商品をカテゴリとキーワードで絞り込む:
 
@@ -293,6 +295,8 @@ curl -s http://localhost:3000/api/graphql \
 - **入口の保護**:
   - 本文は 4KB まで（超えたら 413）。POST は `Content-Type: application/json` だけ（それ以外は 415）。
   - Stripe を呼ぶフィールド（`createCheckoutSession`・`orderBySession`）は 1 リクエスト合計 1 つまで。エイリアス・フラグメント・`@include` 経由も数えるので、1 リクエストで Stripe に多重に要求させられません。Mutation も 1 つまで。
+  - DB を読むフィールド（`viewer`・`myOrders`・`order`・`orderBySession`）は 1 リクエスト合計 2 つまで（エイリアス・フラグメントも数えます。超えたら HTTP 400 で `extensions.code` が `BAD_USER_INPUT` のエラーになり、DB には触れません）。`myOrders` 1 つが DB への問い合わせ 2 回なので、数に上限が無いと、3.5KB の要求のエイリアス 100 個で 200 回になります。
+  - 本番では `GET` と `HEAD` を 405 にします（本文の 4KB の上限も `Content-Type` の検査も通らず、副作用のある `orderBySession` も実行できてしまうため。ブラウザのクライアント `lib/graphql/client.ts` は `POST` だけを使います）。イントロスペクション（`__schema`・`__type`）も本番では断ります。
   - 選択するフィールドの総数は 1 リクエスト 200 まで（エイリアス・同名フィールドの重複・フラグメントの展開も数える）。解析・検証結果のキャッシュは 100 件まで。
   - Stripe の例外文は返さない（yoga の maskedErrors）。CORS ヘッダーは付けない（他オリジンを反射しない）。応答はすべて `Cache-Control: no-store`。GraphiQL は本番（`NODE_ENV=production`）では出さない。
 - テスト（`tests/graphql.test.ts`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
@@ -302,32 +306,52 @@ curl -s http://localhost:3000/api/graphql \
 メールアドレスとパスワードで新規登録・ログインします（[Better Auth](https://www.better-auth.com/) 1.7.6。利用者・セッション・口座は DB に置きます）。**メール確認とパスワードの再設定は付けていません**（メールを送る仕組みを持たないため。忘れた場合は別のメールアドレスで新規登録します。画面にも書いてあります）。ログインしなくても購入できます（ゲストの注文は持ち主なし）。
 
 - **画面**: 新規登録 `/signup`・ログイン `/login`・アカウント `/account`（ログアウトもここ）。`/account` と `/orders` は未ログインだと `/login?next=%2Faccount`・`/login?next=%2Forders` へ転送し、ログインしたら元のページへ戻します。ヘッダーのアカウントのリンクと表示名は、サーバのセッション（`GET /api/auth/get-session`）から出します（ヘッダーは全ページにあるので、ページを読み込むたびに 1 回呼びます。アプリの中の遷移では呼ばず、タブに戻ったとき・ログイン／ログアウトしたときに取り直します。セッションの cookie が無ければ DB には触れず `null` を返します）。ブラウザの localStorage にはログイン状態を持ちません。
-- **API**: 登録・ログイン・ログアウトは GraphQL の Mutation ではなく、Better Auth の `/api/auth/*`（`app/api/auth/[...all]/route.ts`）が受けます（cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持っているため）。GraphQL は `viewer`（ログイン中の利用者の `id` `email` `name`。未ログインは `null`）を読むだけです。
+- **API**: 登録・ログイン・ログアウトは GraphQL の Mutation ではなく、Better Auth の `/api/auth/*`（`app/api/auth/[...all]/route.ts`）が受けます（cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持っているため）。GraphQL は `viewer`（ログイン中の利用者の `id` `email` `name`。未ログインは `null`）を読むだけです。本文を持つ要求は **16KB まで**（超えたら 413。本体は `lib/auth/handler.ts`）。公開している口の一覧は下の「公開している口」。
+- **入力の長さの上限**: 表示名 50 文字・メールアドレス 254 文字・画像の URL 2048 文字（超えたら 400 `NAME_TOO_LONG` / `EMAIL_TOO_LONG` / `IMAGE_TOO_LONG`。登録と `update-user` の両方で、Better Auth の `databaseHooks` が DB に書く前に検査します）。`session.user_agent` に保存する User-Agent は 256 文字で切ります。値は `lib/auth/constants.ts` で、登録フォームの入力欄にも同じ値を付けています。
+- **ログ**: Better Auth のログの出し先を差し替え（`lib/auth/log.ts`）、先頭 1 行と例外の名前・SQLSTATE だけを 1 行の JSON（`lib/log.ts`）で出します。DB の失敗でも、SQL の引数（パスワードのハッシュ・メールアドレス）はログに残りません。
 - **セッション**: DB の `session` 表に置き、cookie には署名つきの識別子だけを持たせます（`better-auth.session_token`。HttpOnly・SameSite=Lax・Path=/、https の URL では Secure）。有効期間は 7 日で、最後の更新から 1 日以上たって使うと延びます（使い続ける限り切れません）。ログインのたびに新しい識別子を作ります。
 - **パスワード**: 8〜128 文字。Node の scrypt でハッシュにして `account.password` に入れます（平文は DB のどの表にも残りません。テストが全部の表を探して確かめています）。ログインの失敗は「メールアドレスかパスワードが違います」の 1 文で、メールアドレスの有無を言い分けません。
 - **ログイン後の行き先（`?next=`）**: URL に書ける値（誰でも作れる）なので、そのまま移動先にしません。自サイトの中のパスだけを通す純粋な関数 `safeNextPath`（`lib/auth/next-path.ts`）を通し、`//evil.example`・`/\evil.example`・`https://…`・`javascript:` などは `/account` に落とします（短い文字列の総当たりのテストつき）。
 - **購入と持ち主**: ログイン中に購入手続きへ進むと、サーバがセッションから引いた利用者の `id` を Checkout Session の `client_reference_id` に付けます（リクエストの本文の値は使いません）。注文を確定する `fulfillCheckout` が、それを `orders.user_id` に入れます（Webhook と成功ページのどちらから確定しても同じです。付いていない決済・実在しない利用者はゲストの注文として確定し、支払い済みの注文を失いません）。持ち主ごとの注文は、注文履歴 `/orders` と GraphQL の `myOrders` が読みます（`lib/order-history.ts`）。
 - **ファイル**: `lib/auth/config.ts`（設定。DB は引数で受ける）・`server.ts`（サーバ専用。`getAuth` と、ページが使う `getViewer`）・`viewer.ts`（セッション → 利用者）・`next-path.ts`・`messages.ts`（失敗の文）・`constants.ts`（パスワードの長さ・セッションの期限）・`client.ts`（ブラウザ用）。認証の表は `lib/db/schema.ts`（Better Auth の CLI の出力が正本。`tests/auth.test.ts` が Better Auth の要求との食い違いを検出します）。
 
+### 公開している口（`/api/auth/*`）
+
+`app/api/auth/[...all]/route.ts` は Better Auth の口をすべて同じ入口で受けます。確かめた結果（Better Auth 1.7.6、このリポジトリの設定）です。ここに無い口は、そもそも登録されていません。
+
+| 口                                                                                                         | メソッド              | 状態                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `sign-up/email` `sign-in/email` `sign-out` `get-session`                                                   | POST・POST・POST・GET | 画面が使う。`get-session` はヘッダーが読み込みのたびに呼ぶ（cookie が無ければ DB に触れず `null`）            |
+| `update-user`                                                                                              | POST                  | ログイン中の本人だけ。表示名・画像を書き換える（長さの上限つき）。画面には出していない                        |
+| `change-password` `verify-password`                                                                        | POST                  | ログイン中の本人だけ。画面には出していない                                                                    |
+| `list-sessions` `revoke-session` `revoke-sessions` `revoke-other-sessions`                                 | GET・POST             | ログイン中の本人だけ。`list-sessions` は自分のセッションの token・IP・User-Agent を返す。画面には出していない |
+| `list-accounts` `account-info` `update-session`                                                            | GET・GET・POST        | ログイン中の本人だけ。画面には出していない                                                                    |
+| `sign-in/social` `callback/:id` `link-social` `unlink-account` `refresh-token` `get-access-token`          |                       | 外部サービスのログインを設定していないので失敗する（404・400・302）                                           |
+| `verify-email` `send-verification-email` `request-password-reset` `reset-password` `reset-password/:token` |                       | メール確認・再設定を付けていないので失敗する（400・401）                                                      |
+| `change-email` `delete-user` `delete-user/callback`                                                        |                       | 無効（400・404）                                                                                              |
+| `ok` `error`                                                                                               | GET                   | 動作の確認と Better Auth のエラー画面                                                                         |
+
+「画面には出していない」口を閉じるには `disabledPaths`（Better Auth の設定）がありますが、今は閉じていません。使わない口が増えないよう、Better Auth を上げるときは `tests/auth-endpoints.test.ts`（口の一覧を固定）が落ちるので、この表を読み直してください。
+
 ### 既定値の採否
 
 Better Auth 1.7.6 のコード（`node_modules`）で確かめた既定値と、そのまま採ったか、変えたかの一覧です。Better Auth を上げるときは、この表と `tests/auth.test.ts` を読み直してください。
 
-| 項目                        | 値                                                                                                                                                                                                                                                            | 採否                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| cookie                      | `better-auth.session_token`（https では `__Secure-` 付き）。HttpOnly・SameSite=Lax・Path=/・Max-Age 7 日・Secure は https のとき。Domain は付けない                                                                                                           | 採用                                           |
-| セッションの期限            | 7 日。最後の更新から 1 日以上たって `/api/auth/get-session` を通ったときだけ、7 日先へ延ばして cookie も更新する。絶対の期限は無い                                                                                                                            | 採用（`lib/auth/constants.ts` で明示して固定） |
-| 期限を延ばす場所            | サーバコンポーネントと GraphQL からの確認では延ばさず（`disableRefresh`）、`/api/auth/get-session` だけが延ばす（DB の期限と cookie の期限を食い違わせないため）                                                                                              | 変更                                           |
-| 試行回数の制限              | 本番（`NODE_ENV=production`）だけ有効。同じ IP から、ログイン・登録は 10 秒に 3 回、そのほかは 10 秒に 100 回。超えると 429（正しいパスワードでも通さない）。IP は `x-forwarded-for` が値 1 つのときだけ信用する。保存先はメモリ（Vercel では関数の実体ごと） | 採用（限界あり。下）                           |
-| 送信元（Origin）の検査      | `BETTER_AUTH_URL`（無ければリクエスト自身）のオリジンだけを信用する。cookie 付きの POST は Origin を照合し、他のサイトからのフォーム送信（`Sec-Fetch-Site: cross-site`）は拒否する                                                                            | 採用                                           |
-| `BETTER_AUTH_URL`           | オリジンだけを受け付ける（パスが付くと Better Auth はそれを基準にして動かなくなる）。Preview には置かない                                                                                                                                                     | 変更（検査を足した）                           |
-| パスワード                  | 8〜128 文字・scrypt（N=16384・r=16・p=1）                                                                                                                                                                                                                     | 採用                                           |
-| メール確認・再設定          | なし。登録のあとはそのままログインする                                                                                                                                                                                                                        | 付けない                                       |
-| 登録の書き込み              | user・account・session を 1 つのトランザクションで作る（既定は別々。途中で失敗してもログインできない利用者を残さない）                                                                                                                                        | 変更                                           |
-| `BETTER_AUTH_SECRET`        | 本番では必須・32 文字以上。無い・短い・開発用の固定の値は例外（既定は警告だけ）                                                                                                                                                                               | 変更                                           |
-| 利用状況の送信（telemetry） | なし（既定でも無効。明示して切る）                                                                                                                                                                                                                            | 採用                                           |
+| 項目                        | 値                                                                                                                                                                                                                                                                                                                                          | 採否                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| cookie                      | `better-auth.session_token`（https では `__Secure-` 付き）。HttpOnly・SameSite=Lax・Path=/・Max-Age 7 日・Secure は https のとき。Domain は付けない                                                                                                                                                                                         | 採用                                           |
+| セッションの期限            | 7 日。最後の更新から 1 日以上たって `/api/auth/get-session` を通ったときだけ、7 日先へ延ばして cookie も更新する。絶対の期限は無い                                                                                                                                                                                                          | 採用（`lib/auth/constants.ts` で明示して固定） |
+| 期限を延ばす場所            | サーバコンポーネントと GraphQL からの確認では延ばさず（`disableRefresh`）、`/api/auth/get-session` だけが延ばす（DB の期限と cookie の期限を食い違わせないため）                                                                                                                                                                            | 変更                                           |
+| 試行回数の制限              | 本番（`NODE_ENV=production`）だけ有効。同じ IP から、ログイン・登録は 10 秒に 3 回、そのほかは 10 秒に 100 回。超えると 429（正しいパスワードでも通さない）。IP は `x-real-ip`（Vercel が前段で付ける）を先に、無ければ `x-forwarded-for`（値 1 つのときだけ）で決める（`IP_ADDRESS_HEADERS`）。保存先はメモリ（Vercel では関数の実体ごと） | 採用（限界あり。下）                           |
+| 送信元（Origin）の検査      | `BETTER_AUTH_URL`（無ければリクエスト自身）のオリジンだけを信用する。cookie 付きの POST は Origin を照合し、他のサイトからのフォーム送信（`Sec-Fetch-Site: cross-site`）は拒否する                                                                                                                                                          | 採用                                           |
+| `BETTER_AUTH_URL`           | オリジンだけを受け付ける（パスが付くと Better Auth はそれを基準にして動かなくなる）。Preview には置かない                                                                                                                                                                                                                                   | 変更（検査を足した）                           |
+| パスワード                  | 8〜128 文字・scrypt（N=16384・r=16・p=1）                                                                                                                                                                                                                                                                                                   | 採用                                           |
+| メール確認・再設定          | なし。登録のあとはそのままログインする                                                                                                                                                                                                                                                                                                      | 付けない                                       |
+| 登録の書き込み              | user・account・session を 1 つのトランザクションで作る（既定は別々。途中で失敗してもログインできない利用者を残さない）                                                                                                                                                                                                                      | 変更                                           |
+| `BETTER_AUTH_SECRET`        | 本番では必須・32 文字以上。無い・短い・開発用の固定の値は例外（既定は警告だけ）                                                                                                                                                                                                                                                             | 変更                                           |
+| 利用状況の送信（telemetry） | なし（既定でも無効。明示して切る）                                                                                                                                                                                                                                                                                                          | 採用                                           |
 
-既知の限界（段 3 の後の敵対レビューで判断します）: 試行回数の制限はメモリなので、分散した試行は関数の実体ごとに通ります。セッションに絶対の期限が無く、メールアドレスの持ち主を確かめず、登録済みのメールアドレスが分かります（メール確認を使わないため）。scrypt のコストは固定です。表示名とメールアドレスの長さに上限がありません。`NODE_ENV=test` か環境変数 `TEST` があると Better Auth の Origin の検査が切れます（本番に置かないでください）。
+既知の限界（段 3 の後の敵対レビューで判断します）: 試行回数の制限はメモリなので、分散した試行は関数の実体ごとに通ります。セッションに絶対の期限が無く、メールアドレスの持ち主を確かめず、登録済みのメールアドレスが分かります（メール確認を使わないため）。scrypt のコストは固定です。`NODE_ENV=test` か環境変数 `TEST` があると Better Auth の Origin の検査が切れます（本番に置かないでください）。
 
 ### ローカルで動かす
 
@@ -354,6 +378,7 @@ npx playwright show-report               # 直近の HTML レポート
 - **ブラウザ**: ローカルは Playwright の Chromium が既定です。システムの Google Chrome で回すときは `PW_CHANNEL=chrome npx playwright test`
 - **Stripe には通信しません**。Stripe に向かう通信（カートの `createCheckoutSession` と、`/success` の決済確認）は、テストごとに既定で閉じてあり、各テストが `page.route` でモックします。モックし忘れた通信が出るとテストが失敗します。サーバの `STRIPE_SECRET_KEY` も空にして起動するので、`.env.local` にキーがあっても使われません
 - **DB**: サーバを立てる前に、E2E 専用の PGlite（`.pglite-e2e/`。`PGLITE_DATA_DIR` で指定し、`DATABASE_URL` は空にして `.env.local` の Neon に繋がらないようにします）へマイグレーションと seed を当てます。seed は、商品（`npm run db:seed`）と、注文履歴が見せる利用者と注文（`e2e/seed.ts`。本物の Better Auth で登録した利用者に注文が 2 件、ゲストの注文が 1 件。毎回、自分の利用者と注文だけを消して作り直します）です。買う操作（Stripe の決済）は E2E では行えないので、買った注文を DB に入れるのは seed です。決済の確認はモックするので、決済の画面の操作はサーバの DB まで届きません。注文の確定そのもの（冪等・Webhook との競合）と、持ち主ごとの絞り込み・ページ送りは、単体テストが PGlite で確かめます。**認証は別で、本物の Better Auth がこの DB に利用者とセッションを書きます**（`e2e/auth.spec.ts`: 新規登録 → ログアウト → ログイン・`/account` の転送・誤ったパスワード・外部の `next`・cookie の属性）。**注文履歴は、この DB の注文をサーバから読む**ので `e2e/orders.spec.ts` が確かめます（未ログインの転送・新規登録直後の空の表示・注文を持つ利用者の履歴が新しい順で、ゲストの注文は出ない・成功ページ（実サーバの確認）の注文番号と同じ・別の context でも同じ）。メールアドレスは実行ごとに一意にします（DB は実行をまたいで残るため）
+- **DB が使えないサーバ**: 同じビルドを別のポート（3211）でも立て、PGlite の保存先を作れないパス（`package.json/pglite-unavailable`）を渡します。DB に触れる要求は必ず失敗するので、セッションの cookie を持つ人の `/orders` `/account` `/login` `/signup` が「ただいま表示できません」（`app/error.tsx`）になること、cookie を持たない人のホーム・商品・カート・ログインは動くことを `e2e/db-unavailable.spec.ts` が確かめます。
 - **認証の設定**: サーバに固定のダミーの `BETTER_AUTH_SECRET` と `BETTER_AUTH_URL`（サーバ自身の URL）を渡し、`.env.local` の値に左右されないようにします。本番ビルドは試行回数の制限が有効で、接続元の IP が分からない要求を全員で 1 つの枠に入れるため、幅ごとに `x-forwarded-for` を変えて枠を分けます（`playwright.config.ts`・`e2e/constants.ts`）
 - **実際の Stripe に通信する 1 本**（`@stripe`）だけは、`STRIPE_SECRET_KEY`（テストモードのキー）と `E2E_STRIPE=1` の**両方**があるときだけ動き、無ければ skip になります。サーバが Checkout Session を作り、`https://checkout.stripe.com/…` へ遷移するところまでで、Stripe の画面には何もしません。CI にはキーを置かないので skip です
 
@@ -372,7 +397,7 @@ npx playwright show-report               # 直近の HTML レポート
 注文と、認証の利用者・セッションをサーバに置きます。**決済の確認 API（`/api/checkout/session`）・Stripe の Webhook・GraphQL の `orderBySession` が、`orders` / `order_items` / `stripe_events` を読み書きします**（どれも `fulfillCheckout` を通ります）。商品ページ・一覧・カートは DB を読みません。注文履歴 `/orders` と GraphQL の `myOrders`・`order` は、ログイン中の利用者の注文だけを読みます（`lib/order-history.ts`。書くのは `fulfillCheckout` だけです）。表・制約・マイグレーション・seed・テスト用の DB・CI の検査を入れてあります。
 
 - **Drizzle ORM**: 表と制約は `lib/db/schema.ts` が正本です。`npm run db:generate`（`drizzle-kit generate`）が SQL のマイグレーションを `drizzle/` に出すので、**生成物もコミット**します。`drizzle-kit push` は使いません（履歴が残らないため）。
-- **本番は Neon、ローカルとテストは PGlite**: Neon は Postgres で、`@neondatabase/serverless` の Pool（WebSocket 越し）で繋ぐのでトランザクションが使えます。PGlite は Postgres を WASM で同じプロセスの中に立てるもので、docker も Neon のアカウントもネットも要りません。どちらに繋ぐかを決めるのは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所だけで、`DATABASE_URL` があれば Neon、無ければ PGlite（既定は `.pglite/` に保存。`PGLITE_DATA_DIR` で変えられます）です。**本番（`NODE_ENV=production`）で `DATABASE_URL` が無いときは例外にします**（PGlite のファイルに黙って切り替えると、Vercel では書き込めず、書けたとしても消える DB に注文を置くことになるため）。本番ビルドをローカルで動かすとき（`next start`・E2E）は、`PGLITE_DATA_DIR` で PGlite を使うと明示します。
+- **本番は Neon、ローカルとテストは PGlite**: Neon は Postgres で、`@neondatabase/serverless` の Pool（WebSocket 越し）で繋ぐのでトランザクションが使えます。PGlite は Postgres を WASM で同じプロセスの中に立てるもので、docker も Neon のアカウントもネットも要りません。どちらに繋ぐかを決めるのは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所だけで、`DATABASE_URL` があれば Neon、無ければ PGlite（既定は `.pglite/` に保存。`PGLITE_DATA_DIR` で変えられます）です。**本番（`NODE_ENV=production`）で `DATABASE_URL` が無いときは例外にします**（PGlite のファイルに黙って切り替えると、Vercel では書き込めず、書けたとしても消える DB に注文を置くことになるため）。本番ビルドをローカルで動かすとき（`next start`・E2E）は、`PGLITE_DATA_DIR` で PGlite を使うと明示します（Vercel（`VERCEL=1`）では `PGLITE_DATA_DIR` を無視し、`DATABASE_URL` が無ければ例外にします）。
 - 商品の正本は `lib/catalog.ts` のままです。`products` 表は `npm run db:seed` がカタログから作る写しで、注文の明細の外部キーと在庫のためにあります（商品ページは DB を読まないので、ビルドに DB は要りません）。
 
 ### ローカルで動かす（Neon なし）
@@ -408,7 +433,7 @@ Neon の開発用ブランチの接続文字列を、`.env.local` の `DATABASE_
 ### 注文の確定（`fulfillCheckout`）
 
 - **注文を書くのは `lib/fulfillment.ts` の `fulfillCheckout` だけ**です（Webhook・決済確認 API・GraphQL はこれを呼ぶだけで、`orders` を直接書きません）。DB と Stripe は引数で受けます。
-- 流れ: ① `stripe_session_id` で DB を探し、あればそれを返す（Stripe を呼ばない）→ ② Stripe から Checkout Session を取り直し、`payment_status` が `paid` でなければ何もしない → ③ 1 つのトランザクションで `orders`（`ON CONFLICT (stripe_session_id) DO NOTHING`）・`order_items`・処理済みの Webhook イベントを書き、DB の注文を読み戻して返す。
+- 流れ: ① `stripe_session_id` で DB を探し、あればそれを返す（Stripe を呼ばない）→ ② Stripe から Checkout Session を取り直し、`payment_status` が `paid` でなければ何もしない。`paid` でも、`amount_total`・通貨（`jpy`）が metadata とカタログから作った合計と合わなければ、注文を作らない（構造化ログ `fulfillment.payment-mismatch`。Webhook は 422）→ ③ 1 つのトランザクションで `orders`（`ON CONFLICT (stripe_session_id) DO NOTHING`）・`order_items`・処理済みの Webhook イベントを書き、DB の注文を読み戻して返す。
 - 注文の中身は既存の `orderFromSession`（metadata の id と数量 + カタログ）です。名前と単価は購入した時点の値を `order_items` に写すので、あとでカタログが変わっても注文は変わりません。画像とカテゴリは表示のためにカタログから引きます。明細は商品 id の順で返します（DB は並びを持たないため）。
 - 注文番号 `order_no` は `ORD-` と 10 文字の乱数（50 ビット）です。万一重なれば一意制約が INSERT を失敗させ、確定は失敗して再送や再確認でやり直せます（別の注文として握りつぶしません）。持ち主 `user_id` は、ログイン中に買った決済の `client_reference_id`（`user.id`）が実在する利用者のときだけ入ります（無い・実在しない・不正な値はゲスト = null。支払い済みの注文を失わないため）。
 
@@ -422,11 +447,11 @@ Neon の開発用ブランチの接続文字列を、`.env.local` の `DATABASE_
 
 ### 環境変数（データベースと Webhook）
 
-| 変数                    | 用途                       | Production                              | Preview                                                                   | Development（.env.local）                | CI                                                 |
-| ----------------------- | -------------------------- | --------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------- |
-| `DATABASE_URL`          | 実行時の接続（プール経由） | Neon の本番ブランチ                     | Neon のプレビューブランチ（既存アカウント連携の方式で自動）か開発ブランチ | Neon の開発ブランチ                      | テストは PGlite なので不要。移行ジョブだけ Secrets |
-| `DATABASE_URL_UNPOOLED` | マイグレーション用の直結   | 同上                                    | 同上                                                                      | 同上                                     | 移行ジョブの Secrets                               |
-| `STRIPE_WEBHOOK_SECRET` | Webhook の署名検証         | 本番 URL に登録したエンドポイントの秘密 | 置かない（プレビューは成功ページの経路で確定する）                        | `stripe listen` の秘密（CLI を入れたら） | テストはダミー（E2E は空）                         |
+| 変数                    | 用途                       | Production                              | Preview                                                                                                  | Development（.env.local）                | CI                                                 |
+| ----------------------- | -------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------- |
+| `DATABASE_URL`          | 実行時の接続（プール経由） | Neon の本番ブランチ                     | Preview 用の DB（Neon のプレビューブランチか開発ブランチ）。**本番の値は入れない**。置かなければ DB なし | Neon の開発ブランチ                      | テストは PGlite なので不要。移行ジョブだけ Secrets |
+| `DATABASE_URL_UNPOOLED` | マイグレーション用の直結   | 同上                                    | 同上                                                                                                     | 同上                                     | 移行ジョブの Secrets                               |
+| `STRIPE_WEBHOOK_SECRET` | Webhook の署名検証         | 本番 URL に登録したエンドポイントの秘密 | 置かない（プレビューは成功ページの経路で確定する）                                                       | `stripe listen` の秘密（CLI を入れたら） | テストはダミー（E2E は空）                         |
 
 - `DATABASE_URL` と `DATABASE_URL_UNPOOLED` がどちらも未設定なら、開発・テストではローカルの PGlite です（本番では例外）。Vercel の Neon 連携が実際に入れる変数名は、連携したあとの Vercel の画面で確かめて、違えばこの表を直してください。
 - CI の列の「移行ジョブ」は、本番の DB へ自動で当てるジョブです（まだありません。Neon を用意したら足します）。今の CI は Secrets を使わず、`services: postgres` の Postgres に当てて確かめるだけです。
@@ -449,8 +474,9 @@ app/
   api/graphql/route.ts  GraphQL API（graphql-yoga）
   api/checkout/session/route.ts  決済確認 API（fulfillCheckout で DB に注文を確定して返す。本体は lib/checkout-session.ts の verifyCheckoutSession）
   api/stripe/webhook/route.ts    Stripe の Webhook（署名を検証し、fulfillCheckout で注文を確定する。本体は lib/stripe-webhook.ts の handleStripeWebhook）
-  api/auth/[...all]/route.ts     認証（Better Auth の /api/auth/*。登録・ログイン・ログアウト・セッションの取得。設定は lib/auth/config.ts）
+  api/auth/[...all]/route.ts     認証（Better Auth の /api/auth/*。入口は lib/auth/handler.ts。設定は lib/auth/config.ts。公開している口は「認証」）
   success / cancel      決済結果
+  error.tsx             想定外のエラー（DB が使えないときなど）の画面「ただいま表示できません」
   not-found.tsx         404 ページ
   orders                注文履歴（サーバでセッションを確かめ、ログイン中の利用者の注文を DB から読む。未ログインは /login?next= へ転送）
   login / signup / account   ログイン・新規登録・アカウント（サーバでセッションを確かめ、フォームだけクライアント。/account は未ログインを /login?next= へ転送）
@@ -467,7 +493,8 @@ lib/catalog.ts          商品カタログ（クライアントとサーバで�
 lib/checkout.ts         価格の決定・Session からの注文作成・確認結果の判定（純粋な関数）
 lib/checkout-session.ts Checkout Session 作成と決済確認の本体（Route Handler と GraphQL で共有。Stripe は最小の型 StripeLike で、DB は getDb で受ける）
 lib/fulfillment.ts      注文の確定 fulfillCheckout（冪等。Webhook・決済確認・GraphQL が呼ぶ）と、注文番号・行の組み立て（純粋な関数）
-lib/stripe-webhook.ts   Webhook の本体 handleStripeWebhook（署名の検証・イベントの読み取り・冪等）
+lib/stripe-webhook.ts   Webhook の本体 handleStripeWebhook（署名の検証・イベントの読み取り・冪等）と、route の配線 createWebhookDeps
+lib/log.ts              構造化ログ（1 行 1 JSON）と、例外から名前・コードだけを取り出す describeError（例外を console に渡さない）
 lib/order-history.ts    注文履歴の読み取り（利用者ごとの注文。GraphQL の myOrders・order と /orders が呼ぶ。持ち主の絞り込みはここの where だけ）
 lib/graphql/            GraphQL の SDL・resolver・handler・認可（authorize.ts の requireViewer）・ブラウザ用クライアント・生成した型
 lib/cart.ts             カートをカタログに合わせる・購入分を取り除く（同じ決済では 1 回だけ。純粋な関数）
@@ -478,14 +505,14 @@ lib/contact.ts          お問い合わせの検証（純粋な関数）
 lib/policies.ts         配送・保証・返品・テストモードの注記の文面（商品詳細・案内ページ・約束の帯・ヘッダーで共有）
 lib/links.ts            カテゴリへのリンク（ヘッダー・フッター・サイドメニュー・トップのタイルで共有）
 lib/types.ts            共有するドメインの型（Product・CartLine・Viewer など。型だけで、実行時の値は置かない）
-lib/auth/               認証（Better Auth）: config（設定。DB は引数）・server（サーバ専用の getAuth / getViewer）・viewer（セッション → 利用者）・next-path（safeNextPath）・messages（失敗の文）・constants（パスワードの長さ・セッションの期限）・client（ブラウザ用）
+lib/auth/               認証（Better Auth）: config（設定。DB は引数）・handler（/api/auth/* の入口。本文の上限）・server（サーバ専用の getAuth / getViewer）・viewer（セッション → 利用者）・limits（表示名・メール・画像・User-Agent の長さ）・log（Better Auth のログの出し先）・next-path（safeNextPath）・messages（失敗の文）・constants（パスワードの長さ・セッションの期限・入力の上限）・client（ブラウザ用）
 lib/db/                 DB のスキーマ（schema.ts）・Neon / PGlite の接続（connect.ts）・アプリの入口（client.ts）・seed・テスト用の DB（test-helpers.ts）
 drizzle/                DB のマイグレーション（drizzle-kit generate が出す SQL と履歴。コミットする）
 drizzle.config.ts       drizzle-kit の設定
 scripts/check-flat-css.ts  平坦な CSS の検査（npm run check:css）
 scripts/seed-products.ts   カタログの商品を products 表に入れる（npm run db:seed）
-tests/                  node --test のテスト（決済・決済確認・注文の確定・Webhook・カート・GraphQL・認証・ログイン後の行き先・サイト設定・注文履歴・日付と金額の整形・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 22.18 以上が型を剥がして実行する。support/ = 偽の Stripe・Webhook の署名・本物の Better Auth を PGlite で動かす道具・持ち主と時刻を指定して注文を入れる道具）
-e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ・注文履歴の seed の中身、seed.ts = 注文履歴の利用者と注文を E2E 専用の DB に入れる、constants.ts = URL とビューポート）
+tests/                  node --test のテスト（決済・決済確認・POST /checkout の本体・注文の確定（請求額の照合を含む）・Webhook（配線を含む）・カート・GraphQL（入口の上限・本番の GET と introspection）・認証（入力の長さ・本文の上限・ログに値が出ないこと・公開している口・試行回数の制限）・構造化ログ・next.config のヘッダー・ログイン後の行き先・サイト設定・注文履歴・日付と金額の整形・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 22.18 以上が型を剥がして実行する。support/ = 偽の Stripe・Webhook の署名・本物の Better Auth を PGlite で動かす道具・持ち主と時刻を指定して注文を入れる道具・console に出た内容を集める道具）
+e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。db-unavailable.spec.ts は DB の使えないサーバ（ポート 3211）に対して回す。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ・注文履歴の seed の中身、seed.ts = 注文履歴の利用者と注文を E2E 専用の DB に入れる、constants.ts = URL とビューポート）
 playwright.config.ts    E2E の設定（next start -p 3210・幅 390 / 1280・retries は CI だけ 1・reporter は list + html）
 DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
 ```
