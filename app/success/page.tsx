@@ -204,7 +204,7 @@ function OrderConfirmed({ orderNo }: { orderNo: string | null }) {
         <>
           ご注文を承りました。心を込めてお包みし、お届けいたします。
           <br className="hidden sm:block" />
-          確認のご連絡を追ってお送りいたします。
+          ご注文番号は、下記をお控えください。
         </>
       }
       actions={

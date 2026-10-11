@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_EXPIRES_IN_DAYS,
 } from "@/lib/auth/constants";
+import { MAX_SETTLED_SESSIONS } from "@/lib/cart";
 import { TEST_MODE_NOTE } from "@/lib/policies";
 
 export const metadata: Metadata = {
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 const STORAGE = [
   {
     term: "cart-storage",
-    desc: "カートに入れた商品の id・商品名・価格・画像の URL・カテゴリ・数量。表示のたびに id でカタログから引き直すため、保存された価格や商品名は使いません。",
+    desc: `カートに入れた商品の id・商品名・価格・画像の URL・カテゴリ・数量。表示のたびに id でカタログから引き直すため、保存された価格や商品名は使いません。あわせて、購入分をカートから取り除き済みの決済の番号（Stripe の session_id。最大 ${MAX_SETTLED_SESSIONS} 件。成功ページを開き直しても買った分を二重に取り除かないため）を保存します。`,
   },
   {
     term: "注文（サーバのデータベース）",
@@ -33,7 +34,7 @@ const STORAGE = [
   },
   {
     term: `${SESSION_COOKIE_NAME}（cookie）`,
-    desc: `ログイン中であることを示す cookie（HttpOnly。JavaScript からは読めません）。ログアウトするか、最後に使ってから ${SESSION_EXPIRES_IN_DAYS} 日たつと無効になります。登録した表示名・メールアドレスと、元に戻せない形に変えたパスワード、ログインの記録（有効期限・IP アドレス・ブラウザの種類）は、サーバのデータベースに保存します。`,
+    desc: `ログイン中であることを示す cookie（HttpOnly。JavaScript からは読めません）。ログアウトするか、最後に使ってから最長 ${SESSION_EXPIRES_IN_DAYS} 日で無効になります。登録した表示名・メールアドレスと、元に戻せない形に変えたパスワード、ログインの記録（有効期限・IP アドレス・ブラウザの種類）は、サーバのデータベースに保存します。`,
   },
 ];
 
@@ -53,7 +54,7 @@ export default function PrivacyPage() {
             align="start"
             eyebrow="Browser Storage"
             title="ブラウザに保存するもの"
-            lead="次の情報は、お使いのブラウザの localStorage と cookie に保存します（注文だけは、ブラウザには保存せず、サーバのデータベースに保存します）。ブラウザのサイトデータを消すと、ブラウザの保存分は削除されます。購入手続きでは、カートの商品の id と数量を /api/graphql 経由で Stripe に送ります（価格と商品名はサーバがカタログから引きます）。"
+            lead="次の情報は、お使いのブラウザの localStorage と cookie に保存します（注文だけは、ブラウザには保存せず、サーバのデータベースに保存します）。ブラウザのサイトデータを消すと、ブラウザの保存分は削除されます。購入手続きでは、カートの商品の id と数量を /api/graphql 経由で Stripe に送ります（価格と商品名はサーバがカタログから引きます）。ログイン中は、注文の持ち主を決めるために、利用者の識別子（ランダムな値。メールアドレスや名前ではありません）も Stripe に送ります。"
           />
           <InfoList items={STORAGE} className="mt-8" />
         </section>
