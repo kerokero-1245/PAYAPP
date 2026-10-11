@@ -17,6 +17,7 @@ import { withTestDb } from "../lib/db/test-helpers.ts";
 import {
   FULFILLMENT_EVENT_TYPES,
   MAX_WEBHOOK_BODY_BYTES,
+  createWebhookDeps,
   handleStripeWebhook,
   parseWebhookEvent,
 } from "../lib/stripe-webhook.ts";
@@ -726,4 +727,48 @@ test("Webhook: 未払いの completed と、Stripe が知らない決済（鍵�
       ],
     );
     assert.deepEqual(await counts(db), NOTHING);
+  }));
+
+/* ---------- Route Handler の配線（createWebhookDeps） ---------- */
+
+test("Webhook の配線: Route Handler が使う依存（createWebhookDeps）は、環境変数 STRIPE_WEBHOOK_SECRET の秘密で本物の署名を検証する。STRIPE_SECRET_KEY を秘密にしてしまうと常に失敗する", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({
+      cs_test_paid: paidSession("cs_test_paid", BOUGHT),
+    });
+    const wired = (env: Record<string, string | undefined>) =>
+      createWebhookDeps(env, {
+        getDb: async () => db,
+        getStripe: stripe.getStripe,
+      });
+    const event = sessionEvent(COMPLETED, "cs_test_paid", "evt_wired");
+
+    // 正しい配線: STRIPE_WEBHOOK_SECRET で署名した本文が通り、注文が確定する
+    const ok = await send(
+      webhookRequest(event),
+      wired({
+        STRIPE_WEBHOOK_SECRET: WEBHOOK_SECRET,
+        STRIPE_SECRET_KEY: "sk_test_x",
+      }),
+    );
+    assert.deepEqual(ok.body, { received: true, result: "fulfilled" });
+    assert.deepEqual(await counts(db), ONE_ORDER);
+
+    // 別の秘密で署名した本文は 400（検証は本物の constructEvent。this を失うと、正しい署名でも失敗する）
+    const forged = await send(
+      webhookRequest(event, { secret: "whsec_someone_else" }),
+      wired({ STRIPE_WEBHOOK_SECRET: WEBHOOK_SECRET }),
+    );
+    assert.equal(forged.status, 400);
+
+    // STRIPE_WEBHOOK_SECRET が無ければ 503。STRIPE_SECRET_KEY など、ほかの変数を秘密にしない
+    for (const env of [
+      {},
+      { STRIPE_WEBHOOK_SECRET: "" },
+      { STRIPE_SECRET_KEY: WEBHOOK_SECRET },
+    ]) {
+      const res = await send(webhookRequest(event), wired(env));
+      assert.equal(res.status, 503, JSON.stringify(env));
+    }
   }));

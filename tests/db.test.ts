@@ -731,3 +731,50 @@ test(".env.local の読み込み: 無ければ何もせず、あれば読み、�
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("接続先: Vercel（VERCEL=1）では PGLITE_DATA_DIR を無視する（本番は DATABASE_URL 必須のまま。Neon が先なのも変わらない）。VERCEL が 1 以外なら従来どおり", () => {
+  const dir = "/tmp/payapp-pglite";
+  const url = "postgres://app@pooler.example/db";
+
+  // 本番の Vercel: PGLITE_DATA_DIR があっても例外（消える DB に注文を書かない）。理由を文に出し、値は出さない
+  assert.throws(
+    () =>
+      resolveDbTarget({
+        NODE_ENV: "production",
+        VERCEL: "1",
+        PGLITE_DATA_DIR: dir,
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      /DATABASE_URL/.test(error.message) &&
+      /Vercel/.test(error.message) &&
+      !error.message.includes(dir),
+  );
+  // 本番以外の Vercel（vercel dev など）でも無視して、既定の PGlite
+  assert.deepEqual(
+    resolveDbTarget({
+      NODE_ENV: "development",
+      VERCEL: "1",
+      PGLITE_DATA_DIR: dir,
+    }),
+    { kind: "pglite", dataDir: PGLITE_DATA_DIR },
+  );
+  // 接続文字列があれば Neon
+  assert.deepEqual(
+    resolveDbTarget({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      PGLITE_DATA_DIR: dir,
+      DATABASE_URL: url,
+    }),
+    { kind: "neon", url },
+  );
+  // VERCEL が 1 でなければ（E2E・ローカルの next start）従来どおり PGLITE_DATA_DIR が効く
+  for (const VERCEL of [undefined, "", "0", "true"]) {
+    assert.deepEqual(
+      resolveDbTarget({ NODE_ENV: "production", VERCEL, PGLITE_DATA_DIR: dir }),
+      { kind: "pglite", dataDir: dir },
+      String(VERCEL),
+    );
+  }
+});

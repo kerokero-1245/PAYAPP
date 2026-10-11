@@ -17,8 +17,10 @@
  *    処理済みだった・未払いだった・対象外のイベントだった）だけ
  *
  * 署名の検証関数・秘密・DB・Stripe はすべて引数で受ける（lib/db/client.ts の getDb は server-only でテストから読めない）。
- * Route Handler が Stripe.webhooks.constructEvent などの本物を渡し、tests/webhook.test.ts が本物の署名を作って呼ぶ。
+ * Route Handler は createWebhookDeps（Stripe.webhooks.constructEvent と環境変数の秘密を渡す配線）を使い、
+ * tests/webhook.test.ts が本物の署名を作って、配線ごと呼ぶ。
  */
+import Stripe from "stripe";
 import { isValidSessionId } from "./checkout.ts";
 import {
   BAD_REQUEST,
@@ -97,6 +99,26 @@ export type WebhookDeps = {
   getDb: () => Promise<Db>;
   getStripe: () => StripeLike;
 };
+
+/**
+ * Route Handler（app/api/stripe/webhook/route.ts）が handleStripeWebhook に渡す本物の依存を作る。
+ * 署名の検証は Stripe のライブラリの constructEvent、秘密は環境変数 STRIPE_WEBHOOK_SECRET（STRIPE_SECRET_KEY ではない）。
+ * route.ts は node --test から import できない（"@/" と server-only）ので、取り違えると常に 400 / 503 になる配線を、ここに置いて
+ * tests/webhook.test.ts が確かめる。
+ */
+export function createWebhookDeps(
+  env: Readonly<Record<string, string | undefined>>,
+  { getDb, getStripe }: Pick<WebhookDeps, "getDb" | "getStripe">,
+): WebhookDeps {
+  return {
+    // constructEvent は this を使うので、メソッドのまま呼ぶ（関数だけを取り出して渡すと検証が常に失敗する）
+    constructEvent: (payload, signature, secret) =>
+      Stripe.webhooks.constructEvent(payload, signature, secret),
+    secret: env.STRIPE_WEBHOOK_SECRET,
+    getDb,
+    getStripe,
+  };
+}
 
 /** 失敗の応答（利用者向けの文ではなく、Stripe のダッシュボードで読むための短い説明。例外の中身は入れない） */
 function failure(status: number, error: string): Response {

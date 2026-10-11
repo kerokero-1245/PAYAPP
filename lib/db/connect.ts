@@ -4,7 +4,8 @@
  * - DATABASE_URL がある → Neon（本番・プレビュー・Neon の開発ブランチ）。@neondatabase/serverless の Pool（WebSocket）なのでトランザクションが使える
  * - DATABASE_URL が無い → PGlite（Postgres を WASM で同じプロセスの中に立てる）。ローカルのファイル（既定は .pglite/）に保存する。
  *   Neon のアカウントもネットも要らない。ファイルを開けるのは 1 プロセスだけなので、dev サーバを止めてから db:migrate / db:seed を打つ
- *   保存先は PGLITE_DATA_DIR で変えられる（E2E は専用のディレクトリを使う）
+ *   保存先は PGLITE_DATA_DIR で変えられる（E2E は専用のディレクトリを使う）。PGLITE_DATA_DIR は E2E とローカルの `next start` のための明示で、
+ *   Vercel（VERCEL=1）では無視する（置かれても、関数の実体ごとに消える DB に注文を書かないため）
  * - 本番（NODE_ENV=production）で DATABASE_URL が無いときは例外にする。本番で PGlite に黙って切り替わると、書き込めない（Vercel）か、
  *   消える DB に注文を書くことになるため。本番ビルドをローカルで動かすとき（next start・E2E）は、PGLITE_DATA_DIR で PGlite を明示する
  *
@@ -59,7 +60,7 @@ function nonEmpty(value: string | undefined): string | undefined {
 /**
  * 環境変数から接続先を決める（Neon か PGlite かの切り替えはここだけ）。
  *  1. DATABASE_URL（migrate では先に DATABASE_URL_UNPOOLED）があれば Neon
- *  2. PGLITE_DATA_DIR があれば、そのディレクトリの PGlite（PGlite を使うという明示。本番ビルドでも使える）
+ *  2. PGLITE_DATA_DIR があれば、そのディレクトリの PGlite（PGlite を使うという明示。本番ビルドでも使える。VERCEL=1 のときは無視する）
  *  3. NODE_ENV=production なら例外（接続先を決めずに本番で動かさない）
  *  4. それ以外（dev・test・scripts）は、既定のディレクトリ（.pglite/）の PGlite
  * 接続文字列にはパスワードが入るので、エラー文には値を入れない。
@@ -79,12 +80,17 @@ export function resolveDbTarget(
     }
     return { kind: "neon", url };
   }
-  const dataDir = nonEmpty(env.PGLITE_DATA_DIR);
+  // Vercel では PGLITE_DATA_DIR を使わない（/tmp を指されると、関数の実体ごとに消える DB に注文を書く。.env.local を取り込んだ・
+  // E2E の設定を写した、などで置かれうる）。無いものとして扱い、下の本番の検査に任せる
+  const onVercel = env.VERCEL === "1";
+  const dataDir = onVercel ? undefined : nonEmpty(env.PGLITE_DATA_DIR);
   if (dataDir !== undefined) return { kind: "pglite", dataDir };
   if (env.NODE_ENV === "production") {
     throw new Error(
       "本番（NODE_ENV=production）では DATABASE_URL が必要です。PGlite のファイルには黙って切り替えません。" +
-        "ローカルで本番ビルドを動かすときは、PGLITE_DATA_DIR で PGlite の保存先を明示してください",
+        (onVercel
+          ? "Vercel では PGLITE_DATA_DIR は使いません（関数の実体ごとに消える DB になるため）。Neon の接続文字列を DATABASE_URL に置いてください"
+          : "ローカルで本番ビルドを動かすときは、PGLITE_DATA_DIR で PGlite の保存先を明示してください"),
     );
   }
   return { kind: "pglite", dataDir: PGLITE_DATA_DIR };
