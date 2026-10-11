@@ -6,9 +6,18 @@
  * （tests/auth.test.ts・tests/next-path.test.ts）が確かめる。ここでは実ブラウザで、画面の操作とサーバが噛み合うことを見る。
  */
 import { SESSION_COOKIE_NAME } from "../lib/auth/constants.ts";
-import { test, expect } from "./fixtures/index.ts";
+import { test, expect as baseExpect } from "./fixtures/index.ts";
 import { BASE_URL, PATHS } from "./constants.ts";
 import { accountLink, mainRegion, open } from "./support/page.ts";
+
+/**
+ * このテストの assertion の待ち時間を、既定の 10 秒から 30 秒にする。登録・ログインのたびにサーバが本物の scrypt で
+ * パスワードを計算し（負荷の高い環境ではそれだけで数秒かかる）、手順も 8 つあるため。待つ長さを延ばすだけで、期待は変えない
+ */
+const expect = baseExpect.configure({ timeout: 30_000 });
+
+/** 8 手順ぶんの制限時間（既定は 1 本 30 秒。負荷の高い環境では、ページの読み込みだけで 1 手順に十数秒かかる） */
+const TEST_TIMEOUT_MS = 180_000;
 
 /** E2E 専用の DB のダミーのパスワード（本物の秘密ではない） */
 const PASSWORD = "e2e-correct-horse-battery-staple";
@@ -18,6 +27,7 @@ test("auth: 新規登録でログイン状態になり、ログアウトで戻�
   page,
   context,
 }, testInfo) => {
+  test.setTimeout(TEST_TIMEOUT_MS);
   const main = mainRegion(page);
   // 実行・幅ごとに違うメール（E2E の DB は実行をまたいで残り、2 つの幅のテストが同時に動くので、重ならないようにする）
   const email = `e2e-${testInfo.project.name}-${crypto.randomUUID()}@example.com`;
