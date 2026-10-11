@@ -19,6 +19,15 @@ export const SIGN_IN_FAILED_MESSAGE = "メールアドレスかパスワード�
 export const TOO_MANY_ATTEMPTS_MESSAGE =
   "試行回数が多すぎます。しばらく待ってからもう一度お試しください";
 
+/**
+ * サーバが認証を処理できなかったとき（/api/auth/* の 500）の応答。理由（例外の中身）は入れない。
+ * 画面に出す文ではない（authErrorMessage は 500 を既定の文にする）
+ */
+export const AUTH_UNAVAILABLE = {
+  code: "AUTH_UNAVAILABLE",
+  message: "認証を利用できません",
+} as const;
+
 /** 通信そのものが失敗した（サーバに届かなかった） */
 export const NETWORK_FAILED_MESSAGE =
   "通信に失敗しました。時間をおいてもう一度お試しください";

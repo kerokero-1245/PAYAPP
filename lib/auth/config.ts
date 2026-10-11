@@ -15,15 +15,19 @@
  */
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import type { Db } from "../db/connect.ts";
 import { account, session, user, verification } from "../db/schema.ts";
 import {
   AUTH_BASE_PATH,
+  IP_ADDRESS_HEADERS,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   SESSION_EXPIRES_IN_SECONDS,
   SESSION_UPDATE_AGE_SECONDS,
 } from "./constants.ts";
+import { clipUserAgent, findUserFieldViolation } from "./limits.ts";
+import { handleAuthError, logAuthMessage } from "./log.ts";
 
 /** 環境変数（process.env を渡す。テストは値を直接渡す） */
 export type AuthEnv = Readonly<Record<string, string | undefined>>;
@@ -108,8 +112,21 @@ export function resolveAuthSettings(env: AuthEnv): AuthSettings {
 }
 
 /**
+ * 登録・更新の値（表示名・メールアドレス・画像の URL）が上限を超えていたら、DB に書く前に 400 で断る。
+ * Better Auth は長さの上限を持たない（sign-up と update-user は匿名・ログイン中の誰でも呼べる）ので、書き込みの入口で止める
+ */
+function rejectOversizedUserFields(fields: {
+  name?: unknown;
+  email?: unknown;
+  image?: unknown;
+}): void {
+  const violation = findUserFieldViolation(fields);
+  if (violation) throw APIError.from("BAD_REQUEST", violation);
+}
+
+/**
  * Better Auth を作る（アプリで 1 つ。作り方は lib/auth/server.ts の getAuth）。
- * 表は lib/db/schema.ts の認証の表。ここで決めている値（パスワードの長さ・セッションの期限）は lib/auth/constants.ts にある。
+ * 表は lib/db/schema.ts の認証の表。ここで決めている値（パスワードの長さ・セッションの期限・入力の長さの上限）は lib/auth/constants.ts にある。
  */
 export function createAuth(db: Db, settings: AuthSettings) {
   return betterAuth({
@@ -137,6 +154,28 @@ export function createAuth(db: Db, settings: AuthSettings) {
     ...(settings.rateLimit === undefined
       ? {}
       : { rateLimit: { enabled: settings.rateLimit } }),
+    // 試行回数の制限が数える接続元は、Vercel が付ける x-real-ip を先に、無ければ x-forwarded-for で決める
+    advanced: { ipAddress: { ipAddressHeaders: IP_ADDRESS_HEADERS } },
+    databaseHooks: {
+      user: {
+        create: { before: async (data) => rejectOversizedUserFields(data) },
+        update: { before: async (data) => rejectOversizedUserFields(data) },
+      },
+      session: {
+        // ログインのたびに session の行が増えるので、User-Agent は上限の長さで切る
+        create: {
+          before: async (data) => ({
+            data: { userAgent: clipUserAgent(data.userAgent) },
+          }),
+        },
+      },
+    },
+    // ログは lib/auth/log.ts へ。例外の本体と SQL の引数（パスワードのハッシュ・メール）を捨て、先頭 1 行と例外のコードだけを出す。
+    // 水準は指定しない（既定の warn。info の「登録済みのメールアドレスへの登録の試み」にはメールアドレスが入るので出さない。
+    // tests/auth-log.test.ts が見ている）。水準を指定すると Better Auth は API エラーの message まで error で出すようになる
+    logger: { log: logAuthMessage },
+    // 想定外の例外（DB の失敗など）は、better-call が console.error で例外ごと出す前にここで受け、名前とコードだけを記録して 500 にする
+    onAPIError: { onError: handleAuthError },
     // 利用状況の送信は、既定でも無効。外へ通信しないことを明示しておく
     telemetry: { enabled: false },
   });

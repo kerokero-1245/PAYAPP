@@ -4,7 +4,13 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/auth/constants";
+import {
+  MAX_EMAIL_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/auth/constants";
+import { clipName } from "@/lib/auth/limits";
 import { authErrorMessage } from "@/lib/auth/messages";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
@@ -14,7 +20,7 @@ import FormField from "@/components/ui/FormField";
  * ---------------------------------------------------
  * Better Auth の /api/auth/sign-up/email に送る。登録できたら、そのままログイン状態になる（メール確認は付けていない）。
  * 表示名は任意で、空ならメールアドレスの @ より前を使う（以前のログイン画面と同じ）。
- * パスワードの長さの制限は、サーバの検査（lib/auth/config.ts）と同じ値（lib/auth/constants.ts）を入力欄にも付ける。
+ * パスワード・表示名・メールアドレスの長さの制限は、サーバの検査（lib/auth/config.ts）と同じ値（lib/auth/constants.ts）を入力欄にも付ける。
  * 成功したら next（サーバが safeNextPath を通した自サイトのパス）へ移る。
  */
 export default function SignupForm({ next }: { next: string }) {
@@ -33,8 +39,8 @@ export default function SignupForm({ next }: { next: string }) {
     const address = email.trim();
     try {
       const { error: failure } = await authClient.signUp.email({
-        // 名前未入力ならメールのローカル部を表示名に流用
-        name: name.trim() || address.split("@")[0],
+        // 名前未入力ならメールのローカル部を表示名に流用（長いメールでも登録できるよう、表示名の上限の長さで切る）
+        name: clipName(name.trim() || address.split("@")[0]),
         email: address,
         password,
       });
@@ -59,6 +65,7 @@ export default function SignupForm({ next }: { next: string }) {
         label="表示名（任意）"
         type="text"
         autoComplete="name"
+        maxLength={MAX_NAME_LENGTH}
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="山田 花子"
@@ -71,6 +78,7 @@ export default function SignupForm({ next }: { next: string }) {
         required
         requiredMark={false}
         autoComplete="email"
+        maxLength={MAX_EMAIL_LENGTH}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
