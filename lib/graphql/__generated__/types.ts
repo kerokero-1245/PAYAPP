@@ -67,7 +67,7 @@ export type CheckoutSessionPayload = {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  /** Stripe Checkout Session を作る。価格はカタログから決め、id と数量を metadata に持たせる。1 リクエストに 1 つまで */
+  /** Stripe Checkout Session を作る。価格はカタログから決め、id と数量を metadata に持たせる。ログイン中なら持ち主の id（viewer.id）を client_reference_id に付ける。1 リクエストに 1 つまで */
   createCheckoutSession: CheckoutSessionPayload;
 };
 
@@ -122,6 +122,8 @@ export type Query = {
   product?: Maybe<Product>;
   /** category を省略・all・知らない値なら全件。q は name / tagline / description の部分一致（app/product/page.tsx と同じ規則） */
   products: Array<Product>;
+  /** ログイン中の利用者。ログインしていなければ null（エラーにしない）。セッションの cookie から引く */
+  viewer?: Maybe<Viewer>;
 };
 
 
@@ -150,6 +152,14 @@ export type UserError = {
   __typename?: 'UserError';
   code: CheckoutErrorCode;
   message: Scalars['String']['output'];
+};
+
+/** ログイン中の利用者（Better Auth のセッションから引く）。パスワードのハッシュ・セッションの識別子・IP は持たない */
+export type Viewer = {
+  __typename?: 'Viewer';
+  email: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
 };
 
 
@@ -243,6 +253,7 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   UserError: ResolverTypeWrapper<UserError>;
+  Viewer: ResolverTypeWrapper<Viewer>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -263,6 +274,7 @@ export type ResolversParentTypes = {
   Query: Record<PropertyKey, never>;
   String: Scalars['String']['output'];
   UserError: UserError;
+  Viewer: Viewer;
 };
 
 export type CartItemResolvers<ContextType = any, ParentType extends ResolversParentTypes['CartItem'] = ResolversParentTypes['CartItem']> = {
@@ -326,11 +338,18 @@ export type QueryResolvers<ContextType = any, ParentType extends ResolversParent
   orderBySession?: Resolver<ResolversTypes['OrderLookup'], ParentType, ContextType, RequireFields<QueryOrderBySessionArgs, 'sessionId'>>;
   product?: Resolver<Maybe<ResolversTypes['Product']>, ParentType, ContextType, RequireFields<QueryProductArgs, 'id'>>;
   products?: Resolver<Array<ResolversTypes['Product']>, ParentType, ContextType, Partial<QueryProductsArgs>>;
+  viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
 
 export type UserErrorResolvers<ContextType = any, ParentType extends ResolversParentTypes['UserError'] = ResolversParentTypes['UserError']> = {
   code?: Resolver<ResolversTypes['CheckoutErrorCode'], ParentType, ContextType>;
   message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type ViewerResolvers<ContextType = any, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
+  email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type Resolvers<ContextType = any> = {
@@ -345,5 +364,6 @@ export type Resolvers<ContextType = any> = {
   Product?: ProductResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   UserError?: UserErrorResolvers<ContextType>;
+  Viewer?: ViewerResolvers<ContextType>;
 };
 

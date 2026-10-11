@@ -10,6 +10,9 @@
  *
  * 注文の中身は Webhook の本文ではなく、session_id で Stripe から取り直した Checkout Session から作る
  * （metadata の id と数量をカタログに当てる。既存の orderFromSession をそのまま使う）。
+ * 注文の持ち主（orders.user_id）も同じ session から決める: ログイン中に買った決済は client_reference_id に user.id が付いている
+ * （createCheckoutSessionCore）ので、その利用者が実在すれば持ち主にする。付いていない・実在しない利用者ならゲスト（null）。
+ * どの経路（Webhook・成功ページ・GraphQL）から確定しても、持ち主は Stripe の session だけで決まる（確認ルートを開いた人は関係しない）。
  * DB は引数で受け取る（lib/db/client.ts の getDb() は server-only でテストから読めない。getStripe と同じ流儀）。
  *
  * - decideFulfillment / toOrderRows / toStoredOrder / generateOrderNo: DB に触れない純粋な関数
@@ -22,11 +25,12 @@ import {
   isStripeNotFound,
   isValidSessionId,
   orderFromSession,
+  ownerIdFromSession,
 } from "./checkout.ts";
 import type { PaidOrder } from "./checkout.ts";
 import type { StripeLike } from "./checkout-session.ts";
 import type { Db } from "./db/connect.ts";
-import { orderItems, orders, stripeEvents } from "./db/schema.ts";
+import { orderItems, orders, stripeEvents, user } from "./db/schema.ts";
 import type { OrderStatus } from "./db/schema.ts";
 import type { OrderItem, ProductLookup } from "./types.ts";
 
@@ -65,8 +69,11 @@ export function generateOrderNo(
 
 /** Checkout Session から見た、注文にしてよいかの判定 */
 export type FulfillmentDecision =
-  /** 支払い済みで、metadata とカタログから注文を作れた */
-  | { kind: "paid"; order: PaidOrder }
+  /**
+   * 支払い済みで、metadata とカタログから注文を作れた。
+   * ownerId は session の client_reference_id（ログイン中に買った人の user.id。ゲストは null）。実在する利用者かは確かめていない
+   */
+  | { kind: "paid"; order: PaidOrder; ownerId: string | null }
   /** 支払い済みではない（注文を作らない） */
   | { kind: "unpaid" }
   /** 支払い済みだが、metadata から注文を作れない（この店の決済ではない・metadata が壊れている） */
@@ -83,7 +90,11 @@ export function decideFulfillment(
   if (!isSessionPaid(session)) return { kind: "unpaid" };
   const result = orderFromSession(session, lookup);
   return result.ok
-    ? { kind: "paid", order: result.order }
+    ? {
+        kind: "paid",
+        order: result.order,
+        ownerId: ownerIdFromSession(session),
+      }
     : { kind: "unreadable", error: result.error };
 }
 
@@ -95,15 +106,16 @@ type OrderItemRow = typeof orderItems.$inferSelect;
 /**
  * 支払い済みの注文から、orders と order_items に入れる行を作る。
  * 名前と単価は購入した時点のカタログの写し（あとでカタログが変わっても注文は変わらない）。
- * order_items の order_id は orders の行ができてから付ける。持ち主（user_id）はゲスト（null）。
+ * order_items の order_id は orders の行ができてから付ける。持ち主（user_id）は meta.userId（実在を確かめた user.id。無ければゲスト = null）。
  */
 export function toOrderRows(
   order: PaidOrder,
-  meta: { orderNo: string; paidAt: Date },
+  meta: { orderNo: string; paidAt: Date; userId?: string | null },
 ): { order: NewOrderRow; items: NewOrderItemRow[] } {
   return {
     order: {
       orderNo: meta.orderNo,
+      userId: meta.userId ?? null,
       stripeSessionId: order.sessionId,
       status: "paid",
       total: order.total,
@@ -122,6 +134,8 @@ export function toOrderRows(
 export type StoredOrder = {
   /** 画面に出す注文番号 */
   orderNo: string;
+  /** 持ち主の user.id（ゲストの注文は null）。画面と API の応答には出さない（持ち主かどうかの判定に使う） */
+  userId: string | null;
   /** Stripe の Checkout Session の id */
   sessionId: string;
   status: OrderStatus;
@@ -156,6 +170,7 @@ export function toStoredOrder(
     });
   return {
     orderNo: row.orderNo,
+    userId: row.userId,
     sessionId: row.stripeSessionId,
     status: row.status,
     total: row.total,
@@ -184,6 +199,24 @@ export async function findOrderBySessionId(
     .from(orderItems)
     .where(eq(orderItems.orderId, row.id));
   return toStoredOrder(row, itemRows, lookup);
+}
+
+/**
+ * 注文の持ち主にしてよい利用者か確かめる（実在すればその id、無ければ null）。
+ * ログイン中に決済を始めたあと、確定までに利用者が消えていても、注文を失わずにゲストの注文として確定するため
+ * （存在しない user を orders.user_id に入れると外部キーで失敗し、支払い済みの注文が確定できなくなる）
+ */
+async function findOwnerId(
+  db: Db,
+  ownerId: string | null,
+): Promise<string | null> {
+  if (ownerId === null) return null;
+  const [row] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.id, ownerId))
+    .limit(1);
+  return row?.id ?? null;
 }
 
 /** この Webhook イベントを処理済みとして記録してあるか */
@@ -275,9 +308,12 @@ export async function fulfillCheckout({
     return { status: "unreadable-order", error: decision.error };
   }
 
+  // 持ち主は、確かめてからトランザクションの外で決める（確かめたあとに利用者が消えると外部キーで失敗するが、
+  // そのときは確定が失敗するだけで半端な注文は残らず、再送や再確認でやり直せば、利用者が居ないのでゲストの注文になる）
   const rows = toOrderRows(decision.order, {
     orderNo: newOrderNo(),
     paidAt: now(),
+    userId: await findOwnerId(db, decision.ownerId),
   });
   // トランザクションの中では tx だけを使う（db を使うと、PGlite では自分の終わりを待って止まる）
   return db.transaction(async (tx): Promise<FulfillResult> => {

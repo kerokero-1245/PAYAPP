@@ -4,8 +4,9 @@
  * 既存の純粋な関数（lib/catalog.ts・lib/checkout.ts）と、/checkout と共有する
  * createCheckoutSessionCore（lib/checkout-session.ts）、注文を確定する fulfillCheckout（lib/fulfillment.ts）を呼ぶだけで、
  * resolver 自身は状態を持たない（カートはブラウザ。注文は DB）。
- * Stripe と DB は context.getStripe() / context.getDb() 経由でだけ触る（server-only のモジュールは import しない）。
- * DB を引くのは orderBySession だけで、ほかのフィールドは DB に繋がない。
+ * Stripe・DB・ログイン中の利用者は context.getStripe() / getDb() / getViewer() 経由でだけ触る（server-only のモジュールは import しない）。
+ * DB を引くのは orderBySession と、ログインの cookie を持つ人の viewer・createCheckoutSession だけ
+ * （cookie の無い人（ゲスト）の要求は、ほかのフィールドと同じく DB に繋がない）。
  */
 import { createSchema } from "graphql-yoga";
 import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.ts";
@@ -20,7 +21,7 @@ import type { Db } from "../db/connect.ts";
 import { fulfillCheckout } from "../fulfillment.ts";
 import type { StoredOrder } from "../fulfillment.ts";
 import { typeDefs } from "./sdl.ts";
-import type { ItemQuantity } from "../types.ts";
+import type { ItemQuantity, Viewer } from "../types.ts";
 import type {
   CartItem,
   CheckoutErrorCode,
@@ -35,6 +36,11 @@ export type GraphqlContext = {
   getStripe: () => StripeLike;
   /** DB を返す関数（orderBySession が呼んだときだけ呼ばれる） */
   getDb: () => Promise<Db>;
+  /**
+   * ログイン中の利用者を返す関数（ログインしていなければ null）。viewer・createCheckoutSession が呼んだときだけ呼ばれ、
+   * 1 リクエストの中では 1 回しか引かない（handler.ts がそう包む）。引けなければ例外
+   */
+  getViewer: () => Promise<Viewer | null>;
   baseUrl?: string;
 };
 
@@ -121,6 +127,7 @@ export const resolvers: Resolvers<GraphqlContext> = {
         errors: [],
       };
     },
+    viewer: (_parent, _args, context) => context.getViewer(),
     orderBySession: async (_parent, { sessionId }, context) => {
       // 形の不正な id は実在しうる決済の参照ではない（既存の 400 → unpaid と同じ扱い）
       if (!isValidSessionId(sessionId)) return { state: "UNPAID", order: null };
@@ -146,10 +153,13 @@ export const resolvers: Resolvers<GraphqlContext> = {
   },
   Mutation: {
     createCheckoutSession: async (_parent, { items }, context) => {
+      // 持ち主はサーバがセッションから引く（引数には持たせない）。引けなければ例外（利用者には既定の文言が返る）
+      const viewer = await context.getViewer();
       const result = await createCheckoutSessionCore({
         items,
         requestUrl: context.request.url,
         baseUrl: context.baseUrl,
+        userId: viewer?.id,
         getStripe: context.getStripe,
       });
       if (result.ok) return { url: result.url, errors: [] };

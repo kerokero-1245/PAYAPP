@@ -25,6 +25,7 @@ import {
   isValidSessionId,
   normalizeOrderItems,
   orderFromSession,
+  ownerIdFromSession,
 } from "../lib/checkout.ts";
 import type { OrderFromSessionResult, VerifyInput } from "../lib/checkout.ts";
 import type { ItemQuantity } from "../lib/types.ts";
@@ -434,6 +435,31 @@ test("payment_status が paid のときだけ支払い済み", () => {
       false,
       `${JSON.stringify(s)} が支払い済みになった`,
     );
+  }
+});
+
+test("決済の持ち主: session の client_reference_id が、空でない 200 文字以下の文字列のときだけその値。付いていない・ほかの型・空・長すぎる値は null（ゲスト）", () => {
+  assert.equal(ownerIdFromSession({ client_reference_id: "user_1" }), "user_1");
+  assert.equal(
+    ownerIdFromSession({ client_reference_id: "u".repeat(200) }),
+    "u".repeat(200),
+    "Stripe が付けられる最大の長さ",
+  );
+  for (const notOwner of [
+    null,
+    undefined,
+    "cs_test_x",
+    1,
+    [],
+    {},
+    { client_reference_id: null },
+    { client_reference_id: undefined },
+    { client_reference_id: "" },
+    { client_reference_id: 123 },
+    { client_reference_id: ["user_1"] },
+    { client_reference_id: "u".repeat(201) },
+  ]) {
+    assert.equal(ownerIdFromSession(notOwner), null, JSON.stringify(notOwner));
   }
 });
 

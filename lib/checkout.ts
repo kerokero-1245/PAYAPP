@@ -6,7 +6,7 @@
  * - encodeOrderMetadata / decodeOrderMetadata: 購入した id と数量を session の metadata に持たせる
  * - orderFromSession: 支払い済みの session から注文（品目・単価・数量・合計）を作る（DB に確定する前の形。確定は lib/fulfillment.ts）
  * - decideVerifyOutcome: 成功ページの確認結果を「支払い済み / 未払い / 確認できなかった」に分ける
- * - isValidSessionId / isSessionPaid / isStripeNotFound / findOrderBySession
+ * - isValidSessionId / isSessionPaid / ownerIdFromSession / isStripeNotFound / findOrderBySession
  *
  * tests/*.test.ts で `node --test` から検証する。
  */
@@ -312,6 +312,25 @@ export function isSessionPaid(session: unknown): session is PaidSession {
     (session as { payment_status?: unknown } | null | undefined)
       ?.payment_status === "paid"
   );
+}
+
+/** Stripe の client_reference_id の最大の長さ（Stripe の仕様。これを超える値は付けられない） */
+const MAX_CLIENT_REFERENCE_ID_LENGTH = 200;
+
+/**
+ * Checkout Session の持ち主（ログイン中に買った人の user.id）。サーバが session を作るときに client_reference_id に付ける
+ * （lib/checkout-session.ts の createCheckoutSessionCore）。付いていない（ゲスト）・文字列でない・空・長すぎる値は null。
+ * 値が実在する利用者かは、ここでは見ない（確定するとき fulfillCheckout が user 表で確かめる）。
+ */
+export function ownerIdFromSession(session: unknown): string | null {
+  const value = (
+    session as { client_reference_id?: unknown } | null | undefined
+  )?.client_reference_id;
+  return typeof value === "string" &&
+    value !== "" &&
+    value.length <= MAX_CLIENT_REFERENCE_ID_LENGTH
+    ? value
+    : null;
 }
 
 /** Stripe の「その session は存在しない」エラーか（それ以外は一時的な失敗として扱う） */

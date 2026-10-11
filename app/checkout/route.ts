@@ -1,3 +1,4 @@
+import { getViewerFromHeaders } from "@/lib/auth/server";
 import { getStripe } from "@/lib/stripe";
 import { MAX_BODY_BYTES } from "@/lib/checkout";
 import {
@@ -9,12 +10,15 @@ import {
 
 const TOO_LARGE = "リクエストが大きすぎます";
 const BAD_REQUEST = "リクエストの形式が不正です";
+const CHECKOUT_FAILED =
+  "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください";
 
 /**
  * Stripe Checkout Session を作成する。
  * クライアントからは { items: [{ id, quantity }] } だけを受け取り、
  * 価格と商品名はサーバ側のカタログ（lib/catalog.ts）から引く。
  * 購入した id と数量は session の metadata に持たせ、成功ページの確認で注文を作るのに使う。
+ * ログイン中なら、持ち主の id（セッションから引く。本文の値は使わない）を client_reference_id に付ける。
  * 本体は lib/checkout-session.ts（GraphQL の createCheckoutSession と共有）。
  */
 export async function POST(request: Request) {
@@ -39,10 +43,20 @@ export async function POST(request: Request) {
     return Response.json({ error: BAD_REQUEST }, { status: 400 });
   }
 
+  // cookie の無い要求（ゲスト）は DB に触れない。セッションを引けなければ（DB の失敗など）、持ち主を決められないので失敗にする
+  let userId: string | undefined;
+  try {
+    userId = (await getViewerFromHeaders(request.headers))?.id;
+  } catch (cause) {
+    console.error("Checkout viewer error:", cause);
+    return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
+  }
+
   const result = await createCheckoutSessionCore({
     items: (body as { items?: unknown } | null | undefined)?.items,
     requestUrl: request.url,
     baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+    userId,
     getStripe,
   });
   if (result.ok) return Response.json({ url: result.url });
@@ -50,11 +64,5 @@ export async function POST(request: Request) {
     return Response.json({ error: result.error }, { status: 400 });
   }
   console.error("Checkout error:", result.cause);
-  return Response.json(
-    {
-      error:
-        "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください",
-    },
-    { status: 500 },
-  );
+  return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
 }

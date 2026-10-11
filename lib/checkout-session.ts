@@ -41,6 +41,11 @@ export type CheckoutSessionInput = {
   items: unknown;
   requestUrl: string;
   baseUrl?: string;
+  /**
+   * ログイン中の利用者の id（user.id）。あれば Checkout Session の client_reference_id に付け、注文の持ち主（orders.user_id）になる。
+   * 無い（ゲスト）なら付けない。サーバがセッションから引いた値だけを渡す（リクエストの本文の値は使わない）
+   */
+  userId?: string | null;
   getStripe: () => StripeLike;
 };
 
@@ -88,12 +93,14 @@ export async function readBodyWithLimit(
 
 /**
  * Checkout Session を作る。価格と商品名はカタログから引き、送られた price / name は使わない。
- * 購入した id と数量は session の metadata に持たせる。
+ * 購入した id と数量は session の metadata に持たせる。ログイン中なら持ち主の id を client_reference_id に付ける
+ * （Webhook と成功ページの確認が、同じ session から注文を確定するとき、これを orders.user_id に入れる）。
  */
 export async function createCheckoutSessionCore({
   items,
   requestUrl,
   baseUrl,
+  userId,
   getStripe,
 }: CheckoutSessionInput): Promise<CheckoutSessionResult> {
   const result = buildLineItems(items);
@@ -108,6 +115,7 @@ export async function createCheckoutSessionCore({
       mode: "payment",
       line_items: result.lineItems,
       metadata: encodeOrderMetadata(result.items),
+      ...(userId ? { client_reference_id: userId } : {}),
       // {CHECKOUT_SESSION_ID} は Stripe が実際の session id に置き換える。
       // 成功ページはこの id で決済状況を確認してから注文を記録する。
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,

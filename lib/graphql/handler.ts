@@ -1,8 +1,8 @@
 /**
  * GraphQL の handler（graphql-yoga）
  * ---------------------------------------------------
- * createGraphqlHandler({ getStripe, getDb }) は fetch(Request) → Response の関数を返す。
- * app/api/graphql/route.ts が本物の getStripe / getDb を渡し、tests/graphql.test.ts は偽の Stripe とテスト用の DB を渡す。
+ * createGraphqlHandler({ getStripe, getDb, getViewer }) は fetch(Request) → Response の関数を返す。
+ * app/api/graphql/route.ts が本物の getStripe / getDb / getViewer を渡し、tests/graphql.test.ts は偽の Stripe とテスト用の DB・利用者を渡す。
  *
  * - 本文は 4KB 上限（超えたら 413）。yoga に渡す前に当てる（/checkout の 16KB とは別の値）
  * - POST は Content-Type が application/json のものだけ受け付ける（フォーム送信を通さない）
@@ -27,6 +27,7 @@ import {
   isJsonContentType,
   readBodyWithLimit,
 } from "../checkout-session.ts";
+import type { Viewer } from "../types.ts";
 import { schema } from "./schema.ts";
 import type { GraphqlContext } from "./schema.ts";
 
@@ -214,6 +215,11 @@ type HandlerOptions = {
   getStripe: GraphqlContext["getStripe"];
   /** DB を返す関数（orderBySession が呼んだときだけ呼ぶ） */
   getDb: GraphqlContext["getDb"];
+  /**
+   * リクエストからログイン中の利用者を引く関数（ログインしていなければ null）。viewer・createCheckoutSession が必要としたときだけ、
+   * 1 リクエストにつき 1 回だけ呼ぶ。本物は lib/auth/server.ts の getViewerFromHeaders（cookie から引く）
+   */
+  getViewer: (request: Request) => Promise<Viewer | null>;
   /** 決済後の戻り先の基準（NEXT_PUBLIC_BASE_URL）。無ければリクエスト URL の origin */
   baseUrl?: string;
 };
@@ -233,9 +239,16 @@ function noStore(res: Response): Response {
   });
 }
 
+/** 最初に呼んだときだけ fn を実行し、同じ結果（失敗も）を返し続ける */
+function once<T>(fn: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | undefined;
+  return () => (pending ??= fn());
+}
+
 export function createGraphqlHandler({
   getStripe,
   getDb,
+  getViewer,
   baseUrl,
 }: HandlerOptions) {
   const yoga = createYoga<object, GraphqlContext>({
@@ -249,7 +262,13 @@ export function createGraphqlHandler({
       errorCache: boundedCache(PARSE_CACHE_MAX),
     },
     plugins: [limitsPlugin],
-    context: ({ request }) => ({ request, getStripe, getDb, baseUrl }),
+    context: ({ request }) => ({
+      request,
+      getStripe,
+      getDb,
+      getViewer: once(() => getViewer(request)),
+      baseUrl,
+    }),
   });
 
   /** Content-Type と本文の上限を先に当ててから yoga に渡す */

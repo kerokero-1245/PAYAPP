@@ -1,9 +1,10 @@
 /**
  * GraphQL のスキーマ（SDL）。codegen（codegen.ts）もこの文字列を読む。
- * 商品・カテゴリの読み取り、カートの見積もり、決済セッションの作成、確定した注文の照会を持つ。
+ * 商品・カテゴリの読み取り、カートの見積もり、決済セッションの作成、確定した注文の照会、ログイン中の利用者（viewer）を持つ。
  * カートはブラウザ（localStorage）のまま（サーバにカートの状態は持たない）。注文は支払いを確認したときに DB に確定し
  * （lib/fulfillment.ts。Webhook・成功ページ・orderBySession が同じ関数を呼ぶ）、orderBySession はその DB の注文を返す。
- * 注文履歴の一覧（myOrders など）は、認証の段のあとで足す。
+ * ログイン・ログアウト・登録は GraphQL ではなく Better Auth の /api/auth/*（lib/auth/）が受け、GraphQL は viewer を読むだけ。
+ * 注文履歴の一覧（myOrders など）は、次の段で足す。
  */
 export const typeDefs = /* GraphQL */ `
   """
@@ -65,6 +66,15 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  ログイン中の利用者（Better Auth のセッションから引く）。パスワードのハッシュ・セッションの識別子・IP は持たない
+  """
+  type Viewer {
+    id: ID!
+    email: String!
+    name: String!
+  }
+
+  """
   利用者に見せてよい入力エラー（CHECKOUT_ERRORS の文言。入力値は含めない）
   """
   type UserError {
@@ -115,10 +125,12 @@ export const typeDefs = /* GraphQL */ `
     cartQuote(items: [CartItemInput!]!): CartQuoteResult!
     "支払い済みの注文を返す。DB に確定済みならそれを、無ければ Stripe に 1 回照会して確定する（Webhook・成功ページと同じ fulfillCheckout）。未払い・存在しない・形の不正は UNPAID。照会や確定に失敗したら GraphQL エラー（unverified 扱い）"
     orderBySession(sessionId: ID!): OrderLookup!
+    "ログイン中の利用者。ログインしていなければ null（エラーにしない）。セッションの cookie から引く"
+    viewer: Viewer
   }
 
   type Mutation {
-    "Stripe Checkout Session を作る。価格はカタログから決め、id と数量を metadata に持たせる。1 リクエストに 1 つまで"
+    "Stripe Checkout Session を作る。価格はカタログから決め、id と数量を metadata に持たせる。ログイン中なら持ち主の id（viewer.id）を client_reference_id に付ける。1 リクエストに 1 つまで"
     createCheckoutSession(items: [CartItemInput!]!): CheckoutSessionPayload!
   }
 `;

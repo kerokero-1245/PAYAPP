@@ -6,6 +6,8 @@
 //  - 未払い・存在しない session・読めない metadata からは注文を作らない
 //  - 途中で失敗したら、半端な注文も処理済みの記録も残さない（やり直せる）
 //  - 注文には購入した時点の名前と単価を写す
+//  - 注文の持ち主（orders.user_id）は、Stripe の session の client_reference_id（ログイン中に買った人の user.id）だけで決まる。
+//    ゲスト・実在しない利用者・不正な値は、支払い済みの注文を失わずにゲストの注文として確定する
 // DB は PGlite をテストごとにメモリ上に立て（lib/db/test-helpers.ts）、Stripe は偽物を差し込む。外部には通信しない。
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -14,7 +16,7 @@ import { getProductById } from "../lib/catalog.ts";
 import type { PaidOrder } from "../lib/checkout.ts";
 import { validateContactField } from "../lib/contact.ts";
 import type { Db } from "../lib/db/connect.ts";
-import { orderItems, orders, stripeEvents } from "../lib/db/schema.ts";
+import { orderItems, orders, stripeEvents, user } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import {
   PG_FOREIGN_KEY_VIOLATION,
@@ -69,6 +71,13 @@ function inputFor(db: Db, stripe: ReturnType<typeof fakeStripe>) {
     now: () => NOW,
     newOrderNo: numbering(),
   };
+}
+
+/** 利用者を 1 人入れる（認証の表。Better Auth を通さず、注文の持ち主にできる利用者だけを用意する） */
+async function insertUser(db: Db, id: string) {
+  await db
+    .insert(user)
+    .values({ id, name: `利用者 ${id}`, email: `${id}@example.com` });
 }
 
 /** 結果が fulfilled であることを確かめて、その中身を返す */
@@ -138,6 +147,44 @@ test("decideFulfillment: 支払い済みならカタログに当てた注文、�
   }
 });
 
+test("decideFulfillment: 支払い済みの決済には、持ち主の id（client_reference_id）を添える。無い・文字列でない・空・200 文字超はゲスト（null）", () => {
+  const ownerOf = (extra: Record<string, unknown>) => {
+    const decision = decideFulfillment(
+      paidSession("cs_test_owner", BOUGHT, extra),
+    );
+    assert.ok(decision.kind === "paid", JSON.stringify(extra));
+    return decision.ownerId;
+  };
+  assert.equal(ownerOf({}), null);
+  assert.equal(
+    ownerOf({ client_reference_id: null }),
+    null,
+    "Stripe はゲストの決済に null を返す",
+  );
+  assert.equal(ownerOf({ client_reference_id: "user_1" }), "user_1");
+  assert.equal(
+    ownerOf({ client_reference_id: "u".repeat(200) }),
+    "u".repeat(200),
+  );
+  for (const bad of ["", 1, true, {}, [], "u".repeat(201)]) {
+    assert.equal(
+      ownerOf({ client_reference_id: bad }),
+      null,
+      JSON.stringify(bad),
+    );
+  }
+  // 未払いの決済は、持ち主が付いていても注文にしない
+  assert.deepEqual(
+    decideFulfillment(
+      paidSession("cs_test_owner", BOUGHT, {
+        payment_status: "unpaid",
+        client_reference_id: "user_1",
+      }),
+    ),
+    { kind: "unpaid" },
+  );
+});
+
 test("注文番号: ORD- に 32 文字の中から 10 文字。お問い合わせフォームが受け付ける形で、重ならない", () => {
   assert.equal(ORDER_NO_ALPHABET.length, 32);
   assert.equal(new Set(ORDER_NO_ALPHABET).size, 32);
@@ -164,7 +211,7 @@ test("注文番号: ORD- に 32 文字の中から 10 文字。お問い合わ�
   );
 });
 
-test("toOrderRows: 注文の行は paid・ゲスト・購入時の合計、明細の行は購入時の名前と単価の写し", () => {
+test("toOrderRows: 注文の行は paid・購入時の合計・持ち主（渡さなければゲストの null）、明細の行は購入時の名前と単価の写し", () => {
   const order: PaidOrder = {
     sessionId: "cs_test_rows",
     total: totalOf(BOUGHT),
@@ -185,12 +232,23 @@ test("toOrderRows: 注文の行は paid・ゲスト・購入時の合計、明�
 
   assert.deepEqual(rows.order, {
     orderNo: "ORD-ROWS000001",
+    userId: null,
     stripeSessionId: "cs_test_rows",
     status: "paid",
     total: totalOf(BOUGHT),
     paidAt: NOW,
   });
-  assert.ok(!("userId" in rows.order), "持ち主は列の既定（null = ゲスト）");
+  const owned = toOrderRows(order, {
+    orderNo: "ORD-ROWS000002",
+    paidAt: NOW,
+    userId: "user_1",
+  });
+  assert.equal(owned.order.userId, "user_1");
+  assert.equal(
+    toOrderRows(order, { orderNo: "ORD-ROWS000003", paidAt: NOW, userId: null })
+      .order.userId,
+    null,
+  );
   assert.deepEqual(
     rows.items,
     BOUGHT.map(({ id, quantity }) => ({
@@ -252,6 +310,15 @@ test("toStoredOrder: 明細は商品 id の数の順、名前と単価は DB の
   assert.equal(stored.items[0].category, getProductById("1")!.category);
   assert.equal(stored.items[2].image, null);
   assert.equal(stored.items[2].category, null);
+  assert.equal(
+    stored.userId,
+    null,
+    "持ち主は DB の行のとおり（ゲスト = null）",
+  );
+  assert.equal(
+    toStoredOrder({ ...row, userId: "user_1" }, [], changedCatalog).userId,
+    "user_1",
+  );
   assert.deepEqual(
     {
       orderNo: stored.orderNo,
@@ -273,6 +340,79 @@ test("toStoredOrder: 明細は商品 id の数の順、名前と単価は DB の
 });
 
 /* ---------- 注文を 1 件だけ作る ---------- */
+
+test("fulfillCheckout: ログイン中に決済した session（client_reference_id = 実在する user.id）は、その利用者の注文として確定する。同じ session を Webhook から再び確定しても持ち主は変わらない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, "user_1");
+    await insertUser(db, "user_2");
+    const stripe = fakeStripe({
+      cs_test_member: paidSession("cs_test_member", BOUGHT, {
+        client_reference_id: "user_1",
+      }),
+    });
+
+    const first = fulfilled(
+      await fulfillCheckout({
+        ...inputFor(db, stripe),
+        sessionId: "cs_test_member",
+      }),
+    );
+    assert.equal(first.created, true);
+    assert.equal(first.order.userId, "user_1", "返す注文が持ち主を持つ");
+    const [row, ...others] = await db.select().from(orders);
+    assert.deepEqual(others, []);
+    assert.equal(row.userId, "user_1", "DB の orders.user_id に入る");
+
+    // 別の経路（Webhook。イベント id つき）が同じ session を確定しに来ても、注文は 1 件のままで持ち主は変わらない
+    const again = fulfilled(
+      await fulfillCheckout({
+        ...inputFor(db, stripe),
+        sessionId: "cs_test_member",
+        eventId: "evt_member_1",
+      }),
+    );
+    assert.equal(again.created, false);
+    assert.equal(again.order.userId, "user_1");
+    assert.equal((await db.select().from(orders)).length, 1);
+  }));
+
+test("fulfillCheckout: ゲストの決済・実在しない利用者・不正な持ち主の値は、ゲストの注文（user_id = null）として確定する。支払い済みの注文を失わない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, "user_1");
+    const cases: [string, Record<string, unknown>][] = [
+      ["guest", {}],
+      ["null", { client_reference_id: null }],
+      // ログイン中に決済を始めたあと、確定までに利用者が消えた（外部キーで失敗して注文が確定できなくなるのを避ける）
+      ["gone", { client_reference_id: "user_gone" }],
+      ["empty", { client_reference_id: "" }],
+      ["number", { client_reference_id: 123 }],
+      ["long", { client_reference_id: "u".repeat(201) }],
+    ];
+    const sessions = Object.fromEntries(
+      cases.map(([name, extra]) => [
+        `cs_test_${name}`,
+        paidSession(`cs_test_${name}`, BOUGHT, extra),
+      ]),
+    );
+    const stripe = fakeStripe(sessions);
+
+    for (const [name] of cases) {
+      const result = fulfilled(
+        await fulfillCheckout({
+          ...inputFor(db, stripe),
+          sessionId: `cs_test_${name}`,
+          newOrderNo: () => `ORD-GUEST-${name}`,
+        }),
+      );
+      assert.equal(result.created, true, name);
+      assert.equal(result.order.userId, null, name);
+    }
+    const rows = await db.select().from(orders);
+    assert.equal(rows.length, cases.length);
+    assert.ok(rows.every((row) => row.userId === null));
+  }));
 
 test("fulfillCheckout: 支払い済みの session から、注文と明細を作って DB の注文を返す", () =>
   withTestDb(async ({ db }) => {

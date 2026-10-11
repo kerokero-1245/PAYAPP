@@ -1,3 +1,4 @@
+import { getViewerFromHeaders } from "@/lib/auth/server";
 import { getDb } from "@/lib/db/client";
 import { getStripe } from "@/lib/stripe";
 import { createGraphqlHandler } from "@/lib/graphql/handler";
@@ -5,6 +6,8 @@ import { createGraphqlHandler } from "@/lib/graphql/handler";
 const handler = createGraphqlHandler({
   getStripe,
   getDb,
+  // ログイン中の利用者は cookie から引く（cookie が無い要求は DB に触れない）
+  getViewer: (request) => getViewerFromHeaders(request.headers),
   baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
 });
 

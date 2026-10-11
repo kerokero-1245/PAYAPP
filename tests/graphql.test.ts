@@ -4,6 +4,8 @@
 // 「価格はカタログから決める」「入力値をエラー文に入れない」「16KB の上限」
 // 「Stripe の例外文を返さない」を GraphQL 経由でも崩さないことを固定する。
 // さらに GraphQL 特有の「エイリアスで Mutation を何個も並べて Stripe に多重要求させる」を塞ぐ。
+// ログイン中の利用者（viewer）と、購入の持ち主（Checkout Session の client_reference_id）も、ここで固定する
+// （本物の Better Auth のセッションを通した確認は tests/auth-viewer.test.ts）。
 // handler は lib/graphql/handler.ts を Node 22 の型消去でそのまま import する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -32,6 +34,7 @@ import {
 import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
 import { createCheckoutSession as clientCreateCheckoutSession } from "../lib/graphql/client.ts";
 import type { Db } from "../lib/db/connect.ts";
+import type { Viewer } from "../lib/types.ts";
 import { orderItems, orders } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import { withTestDb } from "../lib/db/test-helpers.ts";
@@ -47,6 +50,7 @@ type CreatedArgs = {
     price_data: { unit_amount: number; product_data: { name: string } };
   }[];
   metadata: Record<string, string>;
+  client_reference_id?: string;
   success_url: string;
   cancel_url: string;
 };
@@ -103,13 +107,22 @@ function fakeStripe() {
 
 /**
  * handler と偽の Stripe を作る。db を渡したテストだけが DB を使える
- * （渡さないテストで getDb が呼ばれたら例外にして、DB に触れてはいけないテストが触れたことに気付けるようにする）
+ * （渡さないテストで getDb が呼ばれたら例外にして、DB に触れてはいけないテストが触れたことに気付けるようにする）。
+ * ログイン中の利用者は viewer で渡す（無ければゲスト）。引き方そのものを確かめるテストは getViewer を渡す
  */
 function setup({
   getStripe,
   baseUrl,
   db,
-}: { getStripe?: () => StripeLike; baseUrl?: string; db?: Db } = {}) {
+  viewer,
+  getViewer,
+}: {
+  getStripe?: () => StripeLike;
+  baseUrl?: string;
+  db?: Db;
+  viewer?: Viewer | null;
+  getViewer?: () => Promise<Viewer | null>;
+} = {}) {
   const stripe = fakeStripe();
   const handler = createGraphqlHandler({
     getStripe: getStripe ?? (() => stripe),
@@ -117,6 +130,7 @@ function setup({
       if (!db) throw new Error("このテストは DB を使わないはず");
       return db;
     },
+    getViewer: getViewer ?? (async () => viewer ?? null),
     baseUrl,
   });
   return { stripe, handler };
@@ -516,6 +530,7 @@ test("GraphQL: orderBySession で DB に繋げなければ GraphQL エラーに�
     getDb: async () => {
       throw new Error("connect ECONNREFUSED db.internal.example:5432");
     },
+    getViewer: async () => null,
   });
   const savedError = console.error;
   console.error = () => {};
@@ -709,6 +724,42 @@ test("createCheckoutSessionCore: REST 形の本文の price は無視し、カ�
   assert.deepEqual(stripe.created[0].metadata, { order_items_0: "1:2" });
 });
 
+test("createCheckoutSessionCore: userId があれば client_reference_id に付け、無い・空ならゲストとして付けない。本文（REST 形の items）の値は使わない", async () => {
+  const items = [
+    {
+      id: "1",
+      quantity: 1,
+      userId: "user_other",
+      client_reference_id: "user_other",
+    },
+  ];
+  for (const [userId, expected] of [
+    ["user_1", "user_1"],
+    [undefined, undefined],
+    [null, undefined],
+    ["", undefined],
+  ] as const) {
+    const stripe = fakeStripe();
+    const r = await createCheckoutSessionCore({
+      items,
+      requestUrl: "http://localhost/checkout",
+      userId,
+      getStripe: () => stripe,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(
+      stripe.created[0].client_reference_id,
+      expected,
+      String(userId),
+    );
+    assert.equal(
+      "client_reference_id" in stripe.created[0],
+      expected !== undefined,
+      "ゲストには client_reference_id のキーごと付けない",
+    );
+  }
+});
+
 test("GraphQL: handler に渡した baseUrl が戻り先（success_url / cancel_url）になる", async () => {
   const { handler, stripe } = setup({
     baseUrl: "https://shop.example/some/path",
@@ -719,6 +770,102 @@ test("GraphQL: handler に渡した baseUrl が戻り先（success_url / cancel_
     "https://shop.example/success?session_id={CHECKOUT_SESSION_ID}",
   );
   assert.equal(stripe.created[0].cancel_url, "https://shop.example/cancel");
+});
+
+/* ---------- ログイン中の利用者（viewer）と、購入の持ち主 ---------- */
+
+const VIEWER = `query { viewer { id email name } }`;
+const HANAKO: Viewer = {
+  id: "user_hanako",
+  email: "hanako@example.com",
+  name: "山田 花子",
+};
+
+test("GraphQL: viewer は、ログインしていなければ null（エラーにしない）、ログイン中は id・email・name だけを返す", async () => {
+  const guest = await post(setup().handler, VIEWER);
+  assert.equal(guest.status, 200);
+  assert.deepEqual(guest.body, { data: { viewer: null } });
+
+  const member = await post(setup({ viewer: HANAKO }).handler, VIEWER);
+  assert.deepEqual(member.body, { data: { viewer: HANAKO } });
+});
+
+test("GraphQL: Viewer 型は id・email・name だけを持つ（パスワードのハッシュ・セッションの識別子・IP を取り出す経路が無い）", async () => {
+  const r = await post(
+    setup().handler,
+    `{ __type(name: "Viewer") { fields { name } } }`,
+  );
+  const fields: { name: string }[] = r.body.data.__type.fields;
+  assert.deepEqual(fields.map((f) => f.name).sort(), ["email", "id", "name"]);
+});
+
+test("GraphQL: 利用者は必要なリクエストでだけ引き、1 リクエストにつき 1 回だけ（エイリアスで並べても 1 回）。別のリクエストに持ち越さない", async () => {
+  let calls = 0;
+  const { handler } = setup({
+    getViewer: async () => {
+      calls += 1;
+      return HANAKO;
+    },
+  });
+  await post(handler, `{ products { id } }`);
+  assert.equal(calls, 0, "viewer を要求しないリクエストは、利用者を引かない");
+
+  const r = await post(handler, `{ a: viewer { id } b: viewer { email } }`);
+  assert.deepEqual(r.body.data, {
+    a: { id: HANAKO.id },
+    b: { email: HANAKO.email },
+  });
+  assert.equal(calls, 1, "1 リクエストの中では 1 回");
+
+  await post(handler, VIEWER);
+  assert.equal(calls, 2, "リクエストごとに引く");
+});
+
+test("GraphQL: createCheckoutSession は、ログイン中なら利用者の id を client_reference_id に付け、ゲストには付けない。持ち主を決める入力は無い", async () => {
+  const items = [{ id: "1", quantity: 1 }];
+
+  const guest = setup();
+  const g = await post(guest.handler, CREATE, { items });
+  assert.deepEqual(g.body.data.createCheckoutSession.errors, []);
+  assert.ok(!("client_reference_id" in guest.stripe.created[0]));
+
+  const member = setup({ viewer: HANAKO });
+  const m = await post(member.handler, CREATE, { items });
+  assert.deepEqual(m.body.data.createCheckoutSession.errors, []);
+  assert.equal(member.stripe.created[0].client_reference_id, HANAKO.id);
+
+  // 持ち主を決める入力（userId など）は、CartItemInput に無い。送ると検証で断られ、Stripe に届かない
+  const forged = setup({ viewer: HANAKO });
+  const f = await post(forged.handler, CREATE, {
+    items: [{ id: "1", quantity: 1, userId: "user_other" }],
+  });
+  assert.ok(Array.isArray(f.body.errors) && f.body.errors.length > 0);
+  assert.equal(forged.stripe.created.length, 0);
+});
+
+test("GraphQL: createCheckoutSession は、利用者を引けなければ Stripe に要求せず失敗にし、例外の中身を返さない", async () => {
+  const { handler, stripe } = setup({
+    getViewer: async () => {
+      throw new Error("connect ECONNREFUSED db.internal.example:5432");
+    },
+  });
+  const savedError = console.error;
+  console.error = () => {};
+  try {
+    const r = await post(handler, CREATE, {
+      items: [{ id: "1", quantity: 1 }],
+    });
+    assert.ok(Array.isArray(r.body.errors) && r.body.errors.length > 0);
+    assert.ok(!r.text.includes("ECONNREFUSED"), r.text);
+    assert.ok(!r.text.includes("db.internal"), r.text);
+    assert.equal(
+      stripe.created.length,
+      0,
+      "持ち主を決められないので、決済を始めない",
+    );
+  } finally {
+    console.error = savedError;
+  }
 });
 
 /* ---------- ブラウザ用クライアントの文言の振り分け ---------- */
