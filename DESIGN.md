@@ -16,10 +16,11 @@
 
 - **置き場**: `e2e/*.spec.ts`（1 ファイル 1 導線）、`e2e/fixtures/`（localStorage の形・Stripe のモック・外部画像・`test` の拡張）、`e2e/support/`（カタログから期待値を作る・画面を開く・ロケータ）、`e2e/constants.ts`（URL・ビューポート・session id）。`tests/` は `node --test` のグロブなので混ぜない。新規は TS で、`any` は使わない
 - **ロケータ**: `getByRole` / `getByLabel` / 文言で取り、クラス名と DOM の構造には頼らない（部品クラスを改名しても落ちないのが正しい）。取れない部品には、見た目を変えずに `aria-label` を足す（例: ヘッダーのカート点数バッジ）
-- **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart / order）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる
+- **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる。注文はブラウザに持たないので seed しない（`readOrderKeys` で、注文を記録するキーが無いことを確かめる）
 - **Stripe には通信しない**: Stripe に向かう通信（`createCheckoutSession`・決済確認）は既定で閉じてあり、テストが `page.route` でモックする。モックし忘れるとテストが落ちる。実通信は `@stripe` タグの 1 本だけで、`STRIPE_SECRET_KEY` と `E2E_STRIPE=1` の両方があるときだけ動く。CI には Stripe のキーを置かない
-- **DB は専用の PGlite**: サーバ（`next start`）を立てる前に、`.pglite-e2e/` へ `db:migrate` と `db:seed` を順に当てる（`playwright.config.ts` の webServer。`PGLITE_DATA_DIR` で指定し、`DATABASE_URL` は空にして開発の Neon に繋がらないようにする）。決済の確認はモックするので画面の操作はサーバの DB まで届かない。注文の確定そのもの（冪等・競合）は単体テスト（PGlite）の仕事で、E2E ではブラウザ側の結果（注文番号の表示・購入分だけカートから外れる・二重に外さない）を見る
+- **DB は専用の PGlite**: サーバ（`next start`）を立てる前に、`.pglite-e2e/` へ `db:migrate` と `db:seed` を順に当てる（`playwright.config.ts` の webServer。`PGLITE_DATA_DIR` で指定し、`DATABASE_URL` は空にして開発の Neon に繋がらないようにする）。決済の確認はモックするので、買う操作ではサーバの DB に注文は入らない。注文の確定そのもの（冪等・競合）は単体テスト（PGlite）の仕事で、E2E ではブラウザ側の結果（注文番号の表示・購入分だけカートから外れる・二重に外さない）を見る
 - **認証は本物**: ログイン状態は localStorage ではなくサーバのセッションなので、seed せず、画面の操作（新規登録・ログイン）で作る。サーバは固定のダミーの `BETTER_AUTH_SECRET` と `BETTER_AUTH_URL` で起動し（`playwright.config.ts`。`.env.local` に左右されない）、利用者は E2E 専用の PGlite に残る（実行をまたぐので、メールアドレスは実行ごとに一意にする）。本番ビルドは試行回数の制限が有効で、IP が分からない要求を全員で 1 つの枠に入れるため、幅ごとに `x-forwarded-for` を変えて枠を分ける（`e2e/constants.ts` の `E2E_CLIENT_IPS`）。ログインの試行は 1 つのテストの中で 10 秒に 3 回以内に収める。本物の scrypt でパスワードを計算するので、auth の spec だけは、テストの制限時間と assertion の待ち時間を長くしてある（全 E2E を並列で回すと 1 本が 40 秒を超えることがあった。期待は変えない）
+- **注文履歴は seed で見せる**: 買う操作は E2E で DB に届かないので、`/orders` が見せる注文は `e2e/seed.ts` が、サーバを立てる前に入れる（本物の Better Auth で登録した利用者に注文 2 件、ゲストの注文 1 件。中身は `e2e/support/history.ts`）。seed は毎回、自分の利用者と注文だけを消して作り直す（カタログの価格が変わっても期待がずれない）。E2E 専用の PGlite（`PGLITE_DATA_DIR=.pglite-e2e`）以外には書かない（取り違えたら止まる）。`e2e/orders.spec.ts` は、未ログインの転送・新規登録直後の空の表示・注文を持つ利用者の履歴（新しい順・ゲストの注文は出ない）・成功ページの注文番号との一致・別の context（localStorage が空）でも同じ履歴、を見る。ログインと登録の枠（10 秒に 3 回）は IP ごとなので、auth.spec.ts と取り合わないよう、orders.spec.ts は別の接続元（`E2E_ORDERS_CLIENT_IPS`）を使う
 - **本番ビルドで回す**: `next start` に対して回す（404 の本文が HTML に入るかなど、dev とは挙動が違う）。hydration が終わる前にフォームを操作しない（`e2e/support/page.ts` の `open`）。待つときは `waitForTimeout` ではなく、`expect` の自動再試行と `expect.poll` を使う
 - **新しい導線を足したとき**: E2E を 1 本足し、アプリ側の 1 行を一時的に壊して red になることを確かめる（壊しても落ちないテストは守りにならない）
 - 見た目の差は E2E の仕事にしない（`toHaveScreenshot` は mac と CI の linux で字形が揺れる）。前後のスクリーンショットで見る
@@ -79,14 +80,25 @@
 - **冪等は 3 つで守る**: ① 先に `stripe_session_id` で DB を探す（あれば Stripe を呼ばない）② `orders.stripe_session_id` の一意制約 + `ON CONFLICT … DO NOTHING`（同時に来た 2 つ目を空振りにする）③ 注文・明細・処理済みイベント（`stripe_events`）を 1 つのトランザクションで書く（途中で失敗したら全部取り消し、イベントだけ「処理済み」になって注文が失われることがない）。トランザクションの中では `db` ではなく `tx` だけを使う（PGlite では自分の終わりを待って止まる）
 - **注文の中身は Stripe から取り直す**: Webhook の本文は信じない（session の id だけ取り出す）。品目と数量は session の metadata、単価と名前はカタログから引いて、購入した時点の値を `order_items` に写す。`orderFromSession` を再利用し、注文の組み立てを重複して書かない
 - **Webhook**: 署名は `Stripe.webhooks.constructEvent` に、加工していない本文と `Stripe-Signature`、`STRIPE_WEBHOOK_SECRET` を渡して検証する（`constructEvent` は `this` を使うので、メソッドのまま呼ぶ）。通らなければ 400（秘密が未設定なら 503）で、DB にも Stripe にも触れない。2xx を返すのは「受け取って片付いた」ときだけで、失敗は非 2xx にして Stripe に再送させる。未払いは 2xx で片付けて何も記録しない（あとから入金される方法は `async_payment_succeeded` で来る）
-- **ブラウザに注文を記録しない**: 注文の正本は DB。ブラウザ（localStorage）に残すのは、購入分をカートから取り除き済みの決済の id（`cart-storage` の `settledSessions`。成功ページを開き直しても二重に取り除かないため）だけ。`orderStore` は `/orders` が読むだけで、もう書かない（段 4 で消す）
+- **ブラウザに注文を記録しない**: 注文の正本は DB。ブラウザ（localStorage）に残すのは、購入分をカートから取り除き済みの決済の id（`cart-storage` の `settledSessions`。成功ページを開き直しても二重に取り除かないため）だけ。注文履歴 `/orders` はサーバの DB から読む（`orderStore` は消した。以前のバージョンが記録した履歴は読み込まず、引き継がない）
 - **同時実行のテストは競合を作って確かめる**: 偽の Stripe（`tests/support/stripe.ts` の `waitFor`）が全員の到着を待ってから応答を返し、そろって「DB にまだ注文が無い」と見たまま書き込みに進ませる。止めないと、先の呼び出しが書き終えてから後の呼び出しが DB を見て、競合に当たらないまま通ってしまう。PGlite は 1 接続でトランザクションを順に処理するので、本物の Postgres での並行性の差はこのテストでは拾えない（CI の `db-migrate-postgres` はマイグレーションを当てるだけ。注文の確定を本物の Postgres で回すのは今後の課題）
+
+## 注文履歴
+
+- **注文を読むのは `lib/order-history.ts` の 3 関数だけ**: `listOrdersByUser`（利用者の注文を新しい順に 1 ページ）・`findOrderOfUser`（番号で 1 件）・`listAllOrdersByUser`（`/orders` 用に、ページをたどって上限まで集める）。GraphQL の `myOrders`・`order` とページ `/orders` は、どれもこれを呼ぶ。`orders` を利用者の絞り込みなしに読んで、画面や API に返さない
+- **持ち主の絞り込み（`orders.user_id = 利用者の id`）は、そのファイルの where にだけ書く**: resolver やページの側で「持ち主か」を後から判定しない（判定を書き忘れた経路が、他の人の注文を返す）。ゲストの注文（`user_id` が null）はどの利用者の履歴にも出ない。`order(orderNo)` は持ち主でなければ（未ログイン・他の人・ゲスト・存在しない番号のどれも）同じ `null` で、注文の存在を漏らさない
+- **ログインの確認は `requireViewer`（`lib/graphql/authorize.ts`）に寄せる**: 未ログインの `myOrders` は `extensions.code = "UNAUTHENTICATED"` と固定の文言で断り、DB に触れない。resolver の中で毎回 `if (!viewer) throw …` を書かない。管理者の確認（`FORBIDDEN`）は管理画面の段で `requireAdmin` として足す
+- **ページ送りの `after` は前のページの最後の注文番号**: その注文の `created_at` と `id` を DB の中で引いて「それより古い」を選ぶ（JS の `Date` に丸めるとマイクロ秒が失われ、作成時刻が近い注文が境目で落ちる）。持ち主の注文に限るので、他の人の注文の番号を渡しても何も返らない。件数の上限は `MAX_PAGE_SIZE`（範囲外の `first` は `BAD_USER_INPUT`）
+- **`PlacedOrder` に持ち主と Stripe の決済の番号を出す項目を足さない**: 応答に出すのは注文番号・状態・明細・合計・日時だけ（`tests/graphql.test.ts` が型の項目を固定している）。明細の `product` は今のカタログの商品で、カタログから消えた商品は注文時の写しの名前と単価で返す（落とさない）。小計は購入した時点の単価（DB の写し）× 数量
+- **`/orders` はサーバコンポーネントで、`/account` と同じ作り**: `getViewer()` を引き、無ければ `redirect(loginPathFor(ORDERS_PATH))`。localStorage を見ない。日付は `formatDate`（日本時間）で整える。ヘッダーのナビの「注文履歴」は未ログインでも出し、押すとログインへ送る
+- **注文の読み込み・変換は `readStoredOrders`（`lib/fulfillment.ts`）に共通化**: 決済の確認（`findOrderBySessionId`）と注文履歴が同じ関数で `StoredOrder` にする。明細の並びは商品 id の順（購入順の列は持たない）
+- **テスト**: `tests/order-history.test.ts`（自分の注文だけ・新しい順・ページ送りの境目・他の人の番号・カタログから消えた商品）、`tests/graphql.test.ts`（`myOrders`・`order` の認可と形）、`tests/auth-viewer.test.ts`（本物のセッションで、買った注文が履歴に出る）、`tests/db.test.ts`（`orders_user_id_idx`）
 
 ## 認証
 
 - **登録・ログイン・ログアウトは GraphQL にしない**: Better Auth の `/api/auth/*`（`app/api/auth/[...all]/route.ts`）が、cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持つ。GraphQL は `viewer` を読むだけ。`/api/auth/*` を自前で包み直さない
 - **セッションを引く場所は 1 つ**: ページ（サーバコンポーネント）は `lib/auth/server.ts` の `getViewer()`、Route Handler と GraphQL は `getViewerFromHeaders(headers)`。どちらも `lib/auth/viewer.ts` の `viewerFromHeaders`（セッションの cookie が無ければ DB に触れない。期限は延ばさない）を通る。ほかの場所で `auth.api.getSession` を直接呼ばない。**ヘッダーだけは例外**で、クライアントの `authClient.useSession()` を使う（ヘッダーはすべてのページにあり、サーバで cookie を読むとすべてのページが動的になって、商品ページの静的生成が外れるため）
-- **ログインが要るページ**: サーバで `getViewer()` を引き、無ければ `redirect(loginPathFor(<そのページ>))`。localStorage を見て判定しない。`/login` と `/signup` が受ける `next` は、必ず `safeNextPath`（`lib/auth/next-path.ts`）を通してから使う（未検査の値で移動しない。オープンリダイレクトを防ぐ）
+- **ログインが要るページ**（`/account`・`/orders`）: サーバで `getViewer()` を引き、無ければ `redirect(loginPathFor(<そのページ>))`。localStorage を見て判定しない。`/login` と `/signup` が受ける `next` は、必ず `safeNextPath`（`lib/auth/next-path.ts`）を通してから使う（未検査の値で移動しない。オープンリダイレクトを防ぐ）
 - **注文の持ち主は 1 か所で決める**: `createCheckoutSessionCore` が `client_reference_id`（セッションから引いた利用者の id。リクエストの本文の値は使わない）を付け、`fulfillCheckout` だけが `orders.user_id` に入れる（実在する利用者のときだけ。それ以外はゲストとして、支払い済みの注文を失わない）。別の経路から `orders.user_id` を書かない。応答（確認 API・GraphQL の `Order`）には持ち主を出さない
 - **認証の表は Better Auth の CLI の出力が正本**: 手で列を足さない。プロパティ名（`emailVerified` など）は Better Auth のフィールド名で、アダプタがこの名前で列を引く。`role` などは管理画面の段で、Better Auth の機能（`additionalFields` か admin プラグイン）で足して、CLI の出力を取り込み直す。`tests/auth.test.ts` の「認証の表」が、Better Auth の要求との食い違い（列・型・必須・一意・外部キー・索引）を検出する
 - **既定値は、採否を決めてから使う**: Better Auth の既定のうち方針に関わるもの（パスワードの長さ・セッションの期限）は `lib/auth/constants.ts` に明示して固定し、採否と理由は README の「既定値の採否」に書く。Better Auth を上げるときは、公開から 14 日以上たった版を完全一致で固定し、その表と `tests/auth.test.ts` を読み直す

@@ -15,8 +15,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * ブラウザに保存するもの（store/*.ts の persist の name と同じ。ログイン状態だけは cookie で、サーバが発行する）。
- * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行、注文は app/success の記録）。
+ * 保存するもの。ブラウザに保存するのは store/*.ts の persist の name（カート）と、サーバが発行するログインの cookie。
+ * 注文はブラウザには保存せず、サーバのデータベースに保存する（lib/order-history.ts が履歴を読む。e2e/orders.spec.ts が、
+ * ブラウザに注文を記録するキーが無いことを確かめている）。以前のバージョンが localStorage に記録した注文履歴は、読み込まず引き継がない。
+ * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行）。
  * ログイン状態の行は、本番ビルドでログインして書き出した cookie（e2e/auth.spec.ts が HttpOnly・約 7 日を確かめている）と、
  * DB の user・account・session の行（tests/auth.test.ts）の中身
  */
@@ -26,8 +28,8 @@ const STORAGE = [
     desc: "カートに入れた商品の id・商品名・価格・画像の URL・カテゴリ・数量。表示のたびに id でカタログから引き直すため、保存された価格や商品名は使いません。",
   },
   {
-    term: "order-storage",
-    desc: "決済の確認が取れた注文（注文番号・日時・品目の id・商品名・単価・数量・画像の URL・カテゴリ・合計金額）と、同じ注文を二重に記録しないための Stripe の決済の番号（session_id）。注文履歴の表示に使います。",
+    term: "注文（サーバのデータベース）",
+    desc: "決済の確認が取れた注文（注文番号・日時・品目の id・商品名・単価・数量・合計金額・Stripe の決済の番号（session_id））は、ブラウザではなくサーバのデータベースに保存します。ログインして購入した注文にはその利用者を結び付け、注文履歴に表示します（別の端末やブラウザでも、同じアカウントでログインすれば見られます）。ログインせずに購入した注文は利用者を結び付けず、注文履歴には表示しません。以前のバージョンがこのブラウザの localStorage に保存した注文履歴は、読み込まず、引き継ぎません。",
   },
   {
     term: `${SESSION_COOKIE_NAME}（cookie）`,
@@ -51,7 +53,7 @@ export default function PrivacyPage() {
             align="start"
             eyebrow="Browser Storage"
             title="ブラウザに保存するもの"
-            lead="次の情報は、お使いのブラウザの localStorage に保存します。ブラウザのサイトデータを消すと削除されます。購入手続きでは、カートの商品の id と数量を /api/graphql 経由で Stripe に送ります（価格と商品名はサーバがカタログから引きます）。"
+            lead="次の情報は、お使いのブラウザの localStorage と cookie に保存します（注文だけは、ブラウザには保存せず、サーバのデータベースに保存します）。ブラウザのサイトデータを消すと、ブラウザの保存分は削除されます。購入手続きでは、カートの商品の id と数量を /api/graphql 経由で Stripe に送ります（価格と商品名はサーバがカタログから引きます）。"
           />
           <InfoList items={STORAGE} className="mt-8" />
         </section>
