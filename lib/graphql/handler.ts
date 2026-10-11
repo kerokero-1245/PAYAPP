@@ -126,13 +126,13 @@ export const singleMutationRule: ValidationRule = (context) => ({
  * エイリアス（別名で同じフィールドを並べる）・インラインフラグメント・フラグメントの展開も数える
  * （同じフラグメントを何度展開しても、その中身を毎回数える）。@include / @skip は見ずに数える。
  * 子のフィールドは数えない（orderBySession { order { … } } の order は、ルートの order ではない）。
- * code を渡すと、エラーの extensions.code に入れる。
+ * extensions を渡すと、エラーの extensions に入れる（code や、HTTP の状態を決める http: { status }）。
  */
 function limitRootFieldsRule(
   names: ReadonlySet<string>,
   max: number,
   message: string,
-  code?: string,
+  extensions?: Record<string, unknown>,
 ): ValidationRule {
   return (context) => ({
     OperationDefinition(node) {
@@ -158,7 +158,7 @@ function limitRootFieldsRule(
         context.reportError(
           new GraphQLError(message, {
             nodes: [node],
-            ...(code ? { extensions: { code } } : {}),
+            ...(extensions ? { extensions } : {}),
           }),
         );
       }
@@ -173,12 +173,16 @@ export const singleStripeFieldRule: ValidationRule = limitRootFieldsRule(
   TOO_MANY_STRIPE_FIELDS,
 );
 
-/** DB を読むフィールドを 1 リクエスト合計 2 つまでにする（超えたら extensions.code = BAD_USER_INPUT。DB には触れない） */
+/**
+ * DB を読むフィールドを 1 リクエスト合計 2 つまでにする。超えたら extensions.code = BAD_USER_INPUT で、HTTP は 400
+ * （利用者の入力の誤り）。DB には触れない。yoga は検証のエラーに http.spec = true を付け、Accept が application/json のとき
+ * （既定。graphql-response+json 以外）は spec 付きの状態を使わず 200 にするので、spec: false を明示して 400 を通す
+ */
 export const maxDbFieldsRule: ValidationRule = limitRootFieldsRule(
   DB_FIELDS,
   MAX_DB_FIELDS,
   TOO_MANY_DB_FIELDS,
-  BAD_USER_INPUT,
+  { code: BAD_USER_INPUT, http: { status: 400, spec: false } },
 );
 
 /**

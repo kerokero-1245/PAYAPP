@@ -1300,6 +1300,7 @@ test("GraphQL: DB を読むフィールド（viewer・myOrders・order・orderBy
     queries.reset();
     for (const query of rejected) {
       const r = await post(handler, query);
+      assert.equal(r.status, 400, query.slice(0, 60));
       assert.equal(r.body.data, undefined, query.slice(0, 60));
       const error = (
         r.body.errors as { message: string; extensions?: { code?: string } }[]
