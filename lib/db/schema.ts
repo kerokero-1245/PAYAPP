@@ -8,10 +8,13 @@
  * （order_items の外部キーと在庫のため。商品ページの SSG は DB を読まない）。
  * 注文は fulfillCheckout（lib/fulfillment.ts）だけが書く。Webhook・決済確認 API・GraphQL の orderBySession が、それを通して orders / order_items / stripe_events を読み書きする。
  * 商品ページ・一覧・カートは DB を読まない。
+ * 認証の表（user・session・account・verification）は Better Auth（lib/auth/）が読み書きする。アプリのコードは直接書かない。
  */
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   check,
+  index,
   integer,
   pgTable,
   primaryKey,
@@ -39,6 +42,111 @@ const literal = (value: number | string) =>
 /** 時刻の列（タイムゾーン付き） */
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
 
+/* ---------- 認証（Better Auth） ---------- */
+
+/**
+ * 認証の表。Better Auth が読み書きする（lib/auth/config.ts の drizzleAdapter に渡す）。
+ * 列は Better Auth の CLI（`npx auth@1.7.6 generate --adapter drizzle --dialect postgresql`）の出力が正本で、
+ * このリポジトリの書き方に合わせたのは時刻の列だけ（生成物は timestamp（タイムゾーン無し）、ここは timestamptz）。
+ * プロパティ名（emailVerified・createdAt など）は Better Auth のフィールド名で、アダプタはこの名前で列を引く。変えない。
+ * Better Auth を上げたとき、表と列の過不足は tests/auth.test.ts の「認証の表」が検出する。
+ * role 列は持たない（管理画面の段で足す）。
+ */
+
+/** 利用者。email は Better Auth が小文字にして保存し、一意 */
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  image: text("image"),
+  createdAt: timestamptz("created_at").defaultNow().notNull(),
+  updatedAt: timestamptz("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+/** ログインのセッション。token は一意。利用者を消すとセッションも消える */
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamptz("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("session_userId_idx").on(table.userId)],
+);
+
+/**
+ * 認証方法ごとの口座。メール + パスワードは providerId = "credential" の行で、password にハッシュ（scrypt。salt:key の 16 進）が入る。
+ * 利用者を消すと口座も消える
+ */
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamptz("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamptz("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("account_userId_idx").on(table.userId)],
+);
+
+/** メール確認・パスワード再設定などの一時的な値。今は使わない（メール確認も再設定も付けていない）が、Better Auth が要求する表 */
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamptz("expires_at").notNull(),
+    createdAt: timestamptz("created_at").defaultNow().notNull(),
+    updatedAt: timestamptz("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, { fields: [session.userId], references: [user.id] }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, { fields: [account.userId], references: [user.id] }),
+}));
+
+/* ---------- 商品・注文 ---------- */
+
 /** 商品。id は lib/catalog.ts の id */
 export const products = pgTable(
   "products",
@@ -63,8 +171,11 @@ export const orders = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     /** 画面に出す注文番号 */
     orderNo: text("order_no").notNull().unique("orders_order_no_unique"),
-    /** 持ち主。null = ゲスト。user 表は段 3（認証）で作るので、外部キーはそのときに張る */
-    userId: text("user_id"),
+    /**
+     * 持ち主。null = ゲスト（ログインせずに買った注文）。ログイン中に買った注文は、Checkout Session の client_reference_id（= user.id）を入れる。
+     * 利用者を消しても注文は残す（持ち主だけ外れて、ゲストの注文になる）
+     */
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     stripeSessionId: text("stripe_session_id")
       .notNull()
       .unique("orders_stripe_session_id_unique"),

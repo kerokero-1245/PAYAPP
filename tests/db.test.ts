@@ -24,10 +24,13 @@ import {
 import type { Db } from "../lib/db/connect.ts";
 import { loadLocalEnv } from "../lib/db/load-env.ts";
 import {
+  account,
   orderItems,
   orders,
   products,
+  session,
   stripeEvents,
+  user,
 } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import {
@@ -80,14 +83,23 @@ const byId = (a: { id: string }, b: { id: string }) =>
 
 // ---------- マイグレーション ----------
 
-test("マイグレーション: 履歴どおり全部当たり、4 つの表ができる", () =>
+test("マイグレーション: 履歴どおり全部当たり、8 つの表（注文の 4 つと認証の 4 つ）ができる", () =>
   withTestDb(async ({ client }) => {
     const tables = await client.query<{ table_name: string }>(
       "select table_name from information_schema.tables where table_schema = 'public' order by table_name",
     );
     assert.deepEqual(
       tables.rows.map((row) => row.table_name),
-      ["order_items", "orders", "products", "stripe_events"],
+      [
+        "account",
+        "order_items",
+        "orders",
+        "products",
+        "session",
+        "stripe_events",
+        "user",
+        "verification",
+      ],
     );
 
     // drizzle/meta/_journal.json（外から来る値なので unknown で受けて絞る）の件数と、当たった件数・SQL の件数が一致する
@@ -361,6 +373,100 @@ test("外部キー: 注文を消すと明細も消え、売れた商品は消せ
       PRODUCTS.length - 1,
       "明細が無くなれば商品は消せる",
     );
+  }));
+
+// ---------- 認証の表と、orders.user_id の外部キー ----------
+
+/** 利用者を 1 人入れる（Better Auth を通さず、行だけ） */
+const newUser = (n: number) => ({
+  id: `user_${n}`,
+  name: `利用者 ${n}`,
+  email: `user${n}@example.com`,
+});
+
+test("外部キー: orders.user_id は user を指す（存在しない利用者は拒否、null のゲストは入る）。利用者を消しても注文は残り、user_id だけ null になる", () =>
+  withTestDb(async ({ db }) => {
+    await db.insert(user).values(newUser(1));
+
+    await assertPgError(
+      () => db.insert(orders).values(newOrder(1, { userId: "user_gone" })),
+      {
+        code: PG_FOREIGN_KEY_VIOLATION,
+        constraint: "orders_user_id_user_id_fk",
+      },
+    );
+    assert.equal((await db.select().from(orders)).length, 0);
+
+    const owned = await insertOrder(db, 2, { userId: "user_1" });
+    const guest = await insertOrder(db, 3, { userId: null });
+    assert.equal(
+      (await db.select().from(orders).where(eq(orders.id, owned)))[0]?.userId,
+      "user_1",
+    );
+
+    await db.delete(user).where(eq(user.id, "user_1"));
+    const after = await db.select().from(orders);
+    assert.deepEqual(
+      after.map(({ id, userId }) => ({ id, userId })).sort(byId),
+      [
+        { id: owned, userId: null },
+        { id: guest, userId: null },
+      ].sort(byId),
+      "注文は 2 件とも残り、持ち主だけが外れる（ゲストの注文になる）",
+    );
+  }));
+
+test("制約: 認証の表 — user.email と session.token は一意で、session・account は存在しない利用者を指せない。利用者を消すとセッションと口座も消える", () =>
+  withTestDb(async ({ db }) => {
+    await db.insert(user).values(newUser(1));
+    await assertPgError(
+      () =>
+        db.insert(user).values({ ...newUser(2), email: "user1@example.com" }),
+      { code: PG_UNIQUE_VIOLATION, constraint: "user_email_unique" },
+    );
+
+    const expiresAt = new Date(Date.now() + 60_000);
+    const sessionRow = (n: number, userId: string, token: string) => ({
+      id: `session_${n}`,
+      userId,
+      token,
+      expiresAt,
+    });
+    await db.insert(session).values(sessionRow(1, "user_1", "token_1"));
+    await assertPgError(
+      () => db.insert(session).values(sessionRow(2, "user_1", "token_1")),
+      { code: PG_UNIQUE_VIOLATION, constraint: "session_token_unique" },
+    );
+    await assertPgError(
+      () => db.insert(session).values(sessionRow(3, "user_gone", "token_3")),
+      {
+        code: PG_FOREIGN_KEY_VIOLATION,
+        constraint: "session_user_id_user_id_fk",
+      },
+    );
+    await assertPgError(
+      () =>
+        db.insert(account).values({
+          id: "account_1",
+          accountId: "user_gone",
+          providerId: "credential",
+          userId: "user_gone",
+        }),
+      {
+        code: PG_FOREIGN_KEY_VIOLATION,
+        constraint: "account_user_id_user_id_fk",
+      },
+    );
+
+    await db.insert(account).values({
+      id: "account_2",
+      accountId: "user_1",
+      providerId: "credential",
+      userId: "user_1",
+    });
+    await db.delete(user).where(eq(user.id, "user_1"));
+    assert.equal((await db.select().from(session)).length, 0);
+    assert.equal((await db.select().from(account)).length, 0);
   }));
 
 // ---------- 制約: stripe_events ----------
