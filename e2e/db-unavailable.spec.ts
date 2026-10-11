@@ -7,11 +7,19 @@
  * ダミーの cookie を持たせて /orders・/account・/login を開く。
  */
 import { SESSION_COOKIE_NAME } from "../lib/auth/constants.ts";
-import { test, expect } from "./fixtures/index.ts";
+import { test, expect as baseExpect } from "./fixtures/index.ts";
 import { DB_DOWN_BASE_URL, PATHS } from "./constants.ts";
 import { mainRegion, open } from "./support/page.ts";
 
 test.use({ baseURL: DB_DOWN_BASE_URL });
+
+/**
+ * auth.spec.ts と同じ理由（負荷の高い環境で、全 E2E を 2 本の worker で回すと 1 本が 30 秒を超えることがある）で、
+ * assertion の待ち時間と、テストの制限時間を長くする（期待は変えない）。DB の使えないサーバは、画面を開くたびに DB を開こうとして失敗し、
+ * 1 本目は 4 つの画面・読み直し・ホームへの移動を続けるので、特に長い
+ */
+const expect = baseExpect.configure({ timeout: 30_000 });
+const TEST_TIMEOUT_MS = 120_000;
 
 const UNAVAILABLE = "ただいま表示できません";
 
@@ -19,6 +27,7 @@ test("DB が使えない: セッションの cookie を持つ人の /orders・/a
   page,
   context,
 }) => {
+  test.setTimeout(TEST_TIMEOUT_MS);
   await context.addCookies([
     { name: SESSION_COOKIE_NAME, value: "dummy.dummy", url: DB_DOWN_BASE_URL },
   ]);
@@ -70,6 +79,7 @@ test("DB が使えない: セッションの cookie を持つ人の /orders・/a
 test("DB が使えない: cookie を持たない人は、DB を使わない画面（ホーム・商品・カート・ログイン）がふだんどおり動き、/orders は何も壊さずログインへ転送される", async ({
   page,
 }) => {
+  test.setTimeout(TEST_TIMEOUT_MS);
   const main = mainRegion(page);
   const unavailable = main.getByRole("heading", { name: UNAVAILABLE });
 
