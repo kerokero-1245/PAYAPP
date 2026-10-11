@@ -1,25 +1,22 @@
 /**
- * localStorage の形（カート・注文履歴）を知る唯一の場所
+ * localStorage の形（カート）を知る唯一の場所
  * ---------------------------------------------------
  * zustand の persist は { state, version } の入れ物で書く（version は既定の 0）。形は store/ から拾った:
- *  - cart-storage  = { state: { items: [{ id, quantity, … }] }, version: 0 }
+ *  - cart-storage = { state: { items: [{ id, quantity, … }] }, version: 0 }
  *      store/cartStore.ts。partialize で items だけを書き、戻すときに reconcileCart が価格・商品名・画像・カテゴリを
  *      カタログから id で引き直す。なので seed は id と数量だけでよい（読み戻すときはアプリが引き直した行が返る）
- *  - order-storage = { state: { orders: [{ id, date, items, total, sessionId? }] }, version: 0 }   store/orderStore.ts
- *      アプリはもう書かない（注文はサーバの DB に確定する）。/orders が段 4 でサーバから読む形になるまで読むので、
- *      以前の履歴を seed して「消さない」ことを確かめるのと、「新しい注文を書かない」ことを確かめるのに使う
- * ログイン状態は localStorage に持たない（サーバのセッション。cookie の HttpOnly の値で、画面の操作でだけ作る）。
+ * 注文はブラウザに持たない（サーバの DB。画面は /orders がサーバから読む）ので、seed しない。ログイン状態もサーバのセッションで
+ * localStorage に持たない（cookie の HttpOnly の値で、画面の操作でだけ作る）。ブラウザに注文を記録していないことは、
+ * readOrderKeys で、注文らしいキーが無いことを見て確かめる。
  * seed の入れ方と読み戻し方はここだけに置き、テストは入れ物の形を知らなくてよい。
  * Playwright に依存するのは型だけ（import type）なので、撮影スクリプトなど Node から直接 import してもよい。
  */
 import type { BrowserContext, Page } from "@playwright/test";
-import { paidOrder } from "../support/catalog.ts";
-import type { CartLine, ItemQuantity, Order } from "../../lib/types.ts";
+import type { CartLine, ItemQuantity } from "../../lib/types.ts";
 
 /** localStorage のキー（persist の name） */
 export const STORAGE_KEYS = {
   cart: "cart-storage",
-  orders: "order-storage",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
@@ -37,7 +34,6 @@ function persisted<State>(state: State): Persisted<State> {
 /** あらかじめ入れておく状態（書いたものだけが入る） */
 export type Seed = {
   cart?: ItemQuantity[];
-  orders?: Order[];
 };
 
 /** seed を localStorage に書く文字列にする（キー → JSON） */
@@ -46,10 +42,6 @@ export function seedEntries(seed: Seed): Record<string, string> {
   if (seed.cart)
     entries[STORAGE_KEYS.cart] = JSON.stringify(
       persisted({ items: seed.cart }),
-    );
-  if (seed.orders)
-    entries[STORAGE_KEYS.orders] = JSON.stringify(
-      persisted({ orders: seed.orders }),
     );
   return entries;
 }
@@ -72,28 +64,6 @@ export async function seedStorage(
         window.localStorage.setItem(key, value);
     }
   }, seedEntries(seed));
-}
-
-/** 固定の注文番号・日時（seed の注文を見分けるためだけの値） */
-const SEED_ORDER_ID = "ORD-E2ESEED";
-const SEED_ORDER_DATE = "2026-01-15T03:00:00.000Z";
-
-/**
- * カタログから組んだ注文履歴の 1 件。確認ルートが返す注文（品目・単価・数量・合計）に、
- * 注文番号と日時を足した形。
- */
-export function orderFor(
-  items: ItemQuantity[],
-  options: { sessionId: string; id?: string; date?: string },
-): Order {
-  const { items: lines, total } = paidOrder(options.sessionId, items);
-  return {
-    id: options.id ?? SEED_ORDER_ID,
-    date: options.date ?? SEED_ORDER_DATE,
-    items: lines,
-    total,
-    sessionId: options.sessionId,
-  };
 }
 
 /** localStorage の値を JSON として読む（キーが無ければ null） */
@@ -119,10 +89,13 @@ export async function readCart(page: Page): Promise<CartLine[]> {
   return Array.isArray(items) ? (items as CartLine[]) : [];
 }
 
-/** 注文履歴（新しい順。キーが無ければ空） */
-export async function readOrders(page: Page): Promise<Order[]> {
-  const { orders } = stateOf(await readStorage(page, STORAGE_KEYS.orders));
-  return Array.isArray(orders) ? (orders as Order[]) : [];
+/**
+ * localStorage のキーのうち、注文を記録していそうなもの（名前に order を含む）。注文はサーバの DB にあり、ブラウザには記録しないので、
+ * 空であることを確かめるのに使う
+ */
+export async function readOrderKeys(page: Page): Promise<string[]> {
+  const keys = await page.evaluate(() => Object.keys(window.localStorage));
+  return keys.filter((key) => /order/i.test(key));
 }
 
 /** カートの行から id と数量だけを取り出す（価格などはカタログから引き直した値なので、比べるのは id と数量） */

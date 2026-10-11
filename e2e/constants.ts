@@ -48,8 +48,8 @@ export const ORDER_NO = "ORD-E2ETESTPAID";
 /**
  * E2E のサーバ（next start）が使う PGlite の保存先。開発の .pglite/ と取り合わないよう専用にする。
  * 本番ビルドは DATABASE_URL が無いと DB を開かない（lib/db/connect.ts）ので、PGLITE_DATA_DIR で明示して渡す。
- * 画面の操作ではサーバの DB まで届かない（決済の確認はモックする）が、サーバが DB を使う導線を足したときのために、
- * サーバを立てる前にマイグレーションと seed を当てておく（playwright.config.ts）。
+ * 認証（利用者・セッション）と注文履歴（/orders）はこの DB を読み書きする。サーバを立てる前に、マイグレーション・商品の seed・
+ * 注文履歴の利用者と注文の seed（e2e/seed.ts）を当てておく（playwright.config.ts）。決済の確認はモックするので、買う操作では DB に注文は入らない。
  */
 export const E2E_PGLITE_DIR = ".pglite-e2e";
 
@@ -68,6 +68,15 @@ export const E2E_AUTH_SECRET = "e2e-secret-4d1f7a9b3c5e8f2a6b0d9c4e7f1a3b5c";
 export const E2E_CLIENT_IPS = {
   "mobile-390": "198.51.100.10",
   "desktop-1280": "198.51.100.20",
+} as const;
+
+/**
+ * orders.spec.ts のテストが使う接続元の IP（幅ごと）。登録とログインの枠（10 秒に 3 回）は IP ごとなので、
+ * auth.spec.ts と同じ幅のテストが同時に動いても、枠を取り合わないよう分ける
+ */
+export const E2E_ORDERS_CLIENT_IPS = {
+  "mobile-390": "198.51.100.11",
+  "desktop-1280": "198.51.100.21",
 } as const;
 
 /** Stripe のモックが返す決済ページの URL（遷移先もモックで返すので、外には出ない） */

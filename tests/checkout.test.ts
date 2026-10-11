@@ -13,12 +13,10 @@ import {
   CHECKOUT_ERRORS,
   MAX_LINE_ITEMS,
   MAX_QUANTITY,
-  appendOrder,
   buildLineItems,
   decideVerifyOutcome,
   decodeOrderMetadata,
   encodeOrderMetadata,
-  findOrderBySession,
   isSessionPaid,
   isStripeNotFound,
   isValidOrder,
@@ -473,60 +471,4 @@ test("Stripe の 404 だけを「存在しない session」とみなす", () => 
   ]) {
     assert.equal(isStripeNotFound(e), false);
   }
-});
-
-/* ---------- 注文の二重記録防止 ---------- */
-
-test("同じ session_id の注文を見つける", () => {
-  const orders = [{ id: "ORD-A", sessionId: "cs_test_a" }, { id: "ORD-B" }];
-  assert.equal(findOrderBySession(orders, "cs_test_a")?.id, "ORD-A");
-  assert.equal(findOrderBySession(orders, "cs_test_b"), undefined);
-  assert.equal(findOrderBySession(orders, null), undefined);
-  assert.equal(findOrderBySession(undefined, "cs_test_a"), undefined);
-});
-
-test("同じ session_id の注文は 2 回記録しない", () => {
-  const now = new Date("2026-10-05T00:00:00Z");
-  const { order } = orderFromSession(
-    paidSession([{ id: "1", quantity: 1 }]),
-  ) as PaidResult;
-  const once = appendOrder(
-    [],
-    {
-      id: "ORD-1",
-      items: order.items,
-      total: order.total,
-      sessionId: "cs_test_abc",
-    },
-    now,
-  );
-  assert.equal(once.length, 1);
-  assert.deepEqual(once[0], {
-    id: "ORD-1",
-    date: now.toISOString(),
-    items: order.items,
-    total: order.total,
-    sessionId: "cs_test_abc",
-  });
-  const twice = appendOrder(
-    once,
-    {
-      id: "ORD-2",
-      items: order.items,
-      total: order.total,
-      sessionId: "cs_test_abc",
-    },
-    now,
-  );
-  assert.equal(twice, once, "同じ配列のまま返す");
-  assert.equal(twice.length, 1);
-  const other = appendOrder(
-    once,
-    { id: "ORD-3", items: [], total: 0, sessionId: "cs_test_other" },
-    now,
-  );
-  assert.deepEqual(
-    other.map((o) => o.id),
-    ["ORD-3", "ORD-1"],
-  );
 });

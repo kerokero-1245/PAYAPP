@@ -3,8 +3,9 @@
  * ---------------------------------------------------
  * 本番ビルド済みの `next start` に対して回す（dev は 404 の HTML や初回コンパイルの遅さが本番と違う）。
  * 先に `npm run build` が要る（`npm run test:e2e` は build してから回す）。
- * サーバを立てる前に、専用の PGlite（.pglite-e2e/）にマイグレーションと seed を当てる。
+ * サーバを立てる前に、専用の PGlite（.pglite-e2e/）にマイグレーションと seed を当てる（商品と、注文履歴の利用者・注文。e2e/seed.ts）。
  * 認証（Better Auth）はこの DB に利用者とセッションを書く本物で、秘密は固定のダミー（e2e/constants.ts）を渡す。
+ * 注文履歴（/orders）はこの DB の注文をサーバから読む。
  * ブラウザは Playwright の Chromium が既定。システムの Chrome で回すときは PW_CHANNEL=chrome。
  */
 import { defineConfig, devices } from "@playwright/test";
@@ -67,11 +68,12 @@ export default defineConfig({
   ],
   webServer: {
     // DB を用意してから本番ビルドを立てる。PGlite の保存先を開けるのは 1 プロセスだけなので、&& で順に打つ
-    // （migrate と seed は何度打っても同じ状態になる）
-    command: `npm run db:migrate && npm run db:seed && npm run start -- -p ${PORT}`,
+    // （migrate・商品の seed・e2e/seed.ts は何度打っても同じ状態になる）。e2e/seed.ts は注文履歴の利用者と注文を入れる
+    command: `npm run db:migrate && npm run db:seed && node e2e/seed.ts && npm run start -- -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !isCI,
-    timeout: 120_000,
+    // 負荷の高い環境では、PGlite の起動 3 回と seed（本物のパスワードのハッシュ計算を含む）だけで時間がかかる
+    timeout: 240_000,
     env: {
       // サーバを Stripe から切り離す。空文字の環境変数は .env.local の値より優先される（getStripe は throw する）。
       // 実際の Stripe に通信する @stripe のテストを回すときだけ、キーを渡す

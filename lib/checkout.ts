@@ -6,7 +6,7 @@
  * - encodeOrderMetadata / decodeOrderMetadata: 購入した id と数量を session の metadata に持たせる
  * - orderFromSession: 支払い済みの session から注文（品目・単価・数量・合計）を作る（DB に確定する前の形。確定は lib/fulfillment.ts）
  * - decideVerifyOutcome: 成功ページの確認結果を「支払い済み / 未払い / 確認できなかった」に分ける
- * - isValidSessionId / isSessionPaid / ownerIdFromSession / isStripeNotFound / findOrderBySession
+ * - isValidSessionId / isSessionPaid / ownerIdFromSession / isStripeNotFound
  *
  * tests/*.test.ts で `node --test` から検証する。
  */
@@ -14,7 +14,6 @@ import { getProductById } from "./catalog.ts";
 import { MAX_QUANTITY } from "./cart.ts";
 import type {
   ItemQuantity,
-  Order,
   OrderItem,
   ProductLookup,
   RawItem,
@@ -92,15 +91,6 @@ export type VerifyOutcome =
   | { state: "paid"; order: ConfirmedOrder }
   | { state: "unpaid" }
   | { state: "unverified" };
-
-/** appendOrder に渡す注文（id・date は無ければ生成する） */
-export type NewOrder = {
-  id?: string;
-  date?: string;
-  items?: OrderItem[];
-  total?: number;
-  sessionId?: string;
-};
 
 /**
  * 届いた items を検査し、同じ id の行を合算する（数量の上限は合算後に当てる）。
@@ -338,38 +328,4 @@ export function isStripeNotFound(err: unknown): boolean {
   return (
     (err as { statusCode?: unknown } | null | undefined)?.statusCode === 404
   );
-}
-
-/** 注文履歴から、指定の session_id で記録済みの注文を探す */
-export function findOrderBySession(
-  orders: unknown,
-  sessionId: unknown,
-): Order | undefined {
-  if (!sessionId || !Array.isArray(orders)) return undefined;
-  return (orders as Order[]).find((o) => o?.sessionId === sessionId);
-}
-
-/**
- * 注文履歴の先頭に注文を足した新しい配列を返す。
- * sessionId 付きの注文は、同じ sessionId が記録済みなら足さない（元の配列をそのまま返す）。
- * orders は新しい順の注文履歴。
- *
- * ブラウザ（localStorage）の注文履歴用。注文は DB に確定する（lib/fulfillment.ts）ようになったので、
- * 呼び出し元は無い（store/orderStore.ts の addOrder だけ）。段 4 で /orders をサーバから読む形にしたとき、ストアごと消す。
- */
-export function appendOrder(
-  orders: Order[],
-  order: NewOrder,
-  now: Date = new Date(),
-): Order[] {
-  const list = Array.isArray(orders) ? orders : [];
-  if (order.sessionId && findOrderBySession(list, order.sessionId)) return list;
-  const record: Order = {
-    id: order.id ?? `ORD-${now.getTime().toString(36).toUpperCase()}`,
-    date: order.date ?? now.toISOString(),
-    items: order.items ?? [],
-    total: order.total ?? 0,
-    ...(order.sessionId ? { sessionId: order.sessionId } : {}),
-  };
-  return [record, ...list];
 }

@@ -3,10 +3,10 @@
  * ---------------------------------------------------
  * 3 か所以上で使う型をここに集める。1 つのモジュールの中だけで使う型は、そのモジュールに置く。
  * GraphQL の境界の型は lib/graphql/__generated__/types.ts（SDL から生成）が正本で、ここの型とは別に持つ。
- * 名前が同じもの（Product・Order など）は、生成型の側を `import type { Product as GqlProduct }` のように別名で読む。
+ * 名前が同じもの（Product など）は、生成型の側を `import type { Product as GqlProduct }` のように別名で読む。
  *
- * localStorage から戻した値（カートの行・注文）は、型で形を宣言しているだけで、
- * 実行時に形を保証するものではない（カートは reconcileCart で作り直すが、注文は検査しない）。
+ * localStorage から戻した値（カートの行）は、型で形を宣言しているだけで、
+ * 実行時に形を保証するものではない（カートは reconcileCart で作り直す）。
  */
 
 /** カテゴリ（lib/catalog.ts の CATEGORIES の 1 件） */
@@ -43,17 +43,6 @@ export type CartLine = {
 
 /** 注文の 1 行（カートの行と同じ形。購入した時点のカタログの値を写したもの） */
 export type OrderItem = CartLine;
-
-/** 注文履歴の 1 件（新しい順に保持する） */
-export type Order = {
-  id: string;
-  /** ISO 8601 */
-  date: string;
-  items: OrderItem[];
-  total: number;
-  /** 決済の確認が取れた注文だけが持つ（Stripe の Checkout Session の id） */
-  sessionId?: string;
-};
 
 /** ログイン中の利用者（Better Auth のセッションから lib/auth/viewer.ts の toViewer が作る。GraphQL の Viewer と同じ項目） */
 export type Viewer = {

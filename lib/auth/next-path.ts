@@ -1,7 +1,7 @@
 /**
  * ログイン後の行き先（?next=）の検査と、認証ページへのリンクの組み立て（純粋な関数）
  * ---------------------------------------------------
- * ログインが要るページ（/account）は、未ログインの人を /login?next=<そのページ> に転送する。ログインしたら next に戻す。
+ * ログインが要るページ（/account・/orders）は、未ログインの人を /login?next=<そのページ> に転送する。ログインしたら next に戻す。
  * next は URL に書ける値（誰でも作れる）なので、そのまま移動先にすると、
  * 「https://evil.example/login?next=//evil.example」のような URL を踏ませて、ログインした直後に別のサイトへ飛ばせてしまう（オープンリダイレクト）。
  * safeNextPath は自サイトの中のパスだけを通し、それ以外は既定の行き先に落とす。
@@ -10,6 +10,7 @@
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
 export const ACCOUNT_PATH = "/account";
+export const ORDERS_PATH = "/orders";
 
 /** next が無い・安全でないときの行き先 */
 export const DEFAULT_NEXT_PATH = ACCOUNT_PATH;
