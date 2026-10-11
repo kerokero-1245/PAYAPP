@@ -148,7 +148,7 @@ test("listOrdersByUser: after に他の人の注文の番号・知らない番�
     await placeOrder(db, 3, { userId: "user_a", at: timeAt(30) });
     await placeOrder(db, 4, { at: timeAt(40) }); // ゲスト
 
-    for (const after of [orderNoOf(2), orderNoOf(4), "ORD-NOSUCHORDER"]) {
+    for (const after of [orderNoOf(2), orderNoOf(4), "ORD-NOSUCHORDER", ""]) {
       assert.deepEqual(
         await listOrdersByUser(db, "user_a", { after }),
         { orders: [], nextCursor: null },

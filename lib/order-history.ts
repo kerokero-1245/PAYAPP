@@ -46,7 +46,7 @@ export type OrderPage = {
 export type ListOrdersOptions = {
   /** 1 ページの件数（1〜MAX_PAGE_SIZE。既定は DEFAULT_PAGE_SIZE） */
   first?: number;
-  /** 前のページの nextCursor。この注文より古いものから返す。知らない番号・他の人の注文の番号は、空のページになる */
+  /** 前のページの nextCursor。この注文より古いものから返す。省く（undefined・null）と最初のページ。知らない値（空文字を含む）・他の人の注文の番号は、空のページになる */
   after?: string | null;
   /** 商品の引き方（テストから差し替えられる） */
   lookup?: ProductLookup;
@@ -90,7 +90,9 @@ export async function listOrdersByUser(
     .where(
       and(
         eq(orders.userId, userId),
-        after ? olderThan(db, userId, after) : undefined,
+        after === undefined || after === null
+          ? undefined
+          : olderThan(db, userId, after),
       ),
     )
     .orderBy(desc(orders.createdAt), desc(orders.id))
