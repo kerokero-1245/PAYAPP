@@ -16,9 +16,10 @@
  * DB は引数で受け取る（lib/db/client.ts の getDb() は server-only でテストから読めない。getStripe と同じ流儀）。
  *
  * - decideFulfillment / toOrderRows / toStoredOrder / generateOrderNo: DB に触れない純粋な関数
- * - findOrderBySessionId / hasProcessedEvent / fulfillCheckout: DB を読み書きする
+ * - readStoredOrders / findOrderBySessionId / hasProcessedEvent / fulfillCheckout: DB を読み書きする
+ *   （利用者ごとの注文の読み取りは lib/order-history.ts。そちらも readStoredOrders で StoredOrder にする）
  */
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getProductById } from "./catalog.ts";
 import {
   isSessionPaid,
@@ -182,23 +183,47 @@ export function toStoredOrder(
 
 /* ---------- DB の読み書き ---------- */
 
+/**
+ * orders の行に明細を足して StoredOrder にする（明細は 1 回の問い合わせでまとめて読む。行の順を保つ）。
+ * 注文を DB から読む経路（決済の確認・Webhook・注文履歴）は、どれもこの関数で StoredOrder にする。
+ */
+export async function readStoredOrders(
+  db: Db,
+  rows: readonly OrderRow[],
+  lookup: ProductLookup = getProductById,
+): Promise<StoredOrder[]> {
+  if (rows.length === 0) return [];
+  const itemRows = await db
+    .select()
+    .from(orderItems)
+    .where(
+      inArray(
+        orderItems.orderId,
+        rows.map((row) => row.id),
+      ),
+    );
+  return rows.map((row) =>
+    toStoredOrder(
+      row,
+      itemRows.filter((item) => item.orderId === row.id),
+      lookup,
+    ),
+  );
+}
+
 /** Checkout Session の id で、確定済みの注文を探す（無ければ undefined） */
 export async function findOrderBySessionId(
   db: Db,
   sessionId: string,
   lookup: ProductLookup = getProductById,
 ): Promise<StoredOrder | undefined> {
-  const [row] = await db
+  const rows = await db
     .select()
     .from(orders)
     .where(eq(orders.stripeSessionId, sessionId))
     .limit(1);
-  if (!row) return undefined;
-  const itemRows = await db
-    .select()
-    .from(orderItems)
-    .where(eq(orderItems.orderId, row.id));
-  return toStoredOrder(row, itemRows, lookup);
+  const [order] = await readStoredOrders(db, rows, lookup);
+  return order;
 }
 
 /**

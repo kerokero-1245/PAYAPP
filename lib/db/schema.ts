@@ -7,6 +7,7 @@
  * 商品の正本は lib/catalog.ts のまま。products 表は scripts/seed-products.ts がカタログから upsert する
  * （order_items の外部キーと在庫のため。商品ページの SSG は DB を読まない）。
  * 注文は fulfillCheckout（lib/fulfillment.ts）だけが書く。Webhook・決済確認 API・GraphQL の orderBySession が、それを通して orders / order_items / stripe_events を読み書きする。
+ * 利用者ごとの注文の読み取り（GraphQL の myOrders・order と、ページ /orders）は lib/order-history.ts が受け持つ。
  * 商品ページ・一覧・カートは DB を読まない。
  * 認証の表（user・session・account・verification）は Better Auth（lib/auth/）が読み書きする。アプリのコードは直接書かない。
  */
@@ -186,6 +187,9 @@ export const orders = pgTable(
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (t) => [
+    // 利用者ごとの注文履歴（lib/order-history.ts）の絞り込みと、利用者を消したときの user_id の付け替え（ON DELETE SET NULL）の走査に使う。
+    // 外部キーは索引を作らない
+    index("orders_user_id_idx").on(t.userId),
     check("orders_total_nonnegative", sql`${t.total} >= 0`),
     check(
       "orders_status_valid",

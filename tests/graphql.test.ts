@@ -31,14 +31,25 @@ import {
   TOO_MANY_STRIPE_FIELDS,
   createGraphqlHandler,
 } from "../lib/graphql/handler.ts";
-import { STRIPE_UNAVAILABLE_MESSAGE } from "../lib/graphql/schema.ts";
+import { UNAUTHENTICATED_MESSAGE } from "../lib/graphql/authorize.ts";
+import {
+  PAGE_SIZE_MESSAGE,
+  STRIPE_UNAVAILABLE_MESSAGE,
+} from "../lib/graphql/schema.ts";
 import { createCheckoutSession as clientCreateCheckoutSession } from "../lib/graphql/client.ts";
 import type { Db } from "../lib/db/connect.ts";
 import type { Viewer } from "../lib/types.ts";
-import { orderItems, orders } from "../lib/db/schema.ts";
+import { orderItems, orders, products } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import { withTestDb } from "../lib/db/test-helpers.ts";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import {
+  DEFAULT_ITEMS,
+  insertUser,
+  orderNoOf,
+  placeOrder,
+  timeAt,
+} from "./support/orders.ts";
 
 const URL_ = "http://localhost/api/graphql";
 const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
@@ -866,6 +877,300 @@ test("GraphQL: createCheckoutSession は、利用者を引けなければ Stripe
   } finally {
     console.error = savedError;
   }
+});
+
+/* ---------- 注文履歴（myOrders・order） ---------- */
+
+const TARO: Viewer = {
+  id: "user_taro",
+  email: "taro@example.com",
+  name: "鈴木 太郎",
+};
+
+const MY_ORDERS = `query My($first: Int, $after: String) {
+  myOrders(first: $first, after: $after) {
+    nodes {
+      orderNo status total paidAt createdAt
+      items { quantity subtotal product { id name price category images } }
+    }
+    nextCursor
+  }
+}`;
+const ORDER_BY_NO = `query One($orderNo: ID!) {
+  order(orderNo: $orderNo) {
+    orderNo status total items { quantity subtotal product { id name price category images } }
+  }
+}`;
+
+/** 注文の明細（商品 1 を 2 点と商品 5 を 1 点）が GraphQL で返る形。単価の写しを変えていなければ、カタログの価格と一致する */
+function expectedItems(unitPrices: Record<string, number> = {}) {
+  return DEFAULT_ITEMS.map(({ id, quantity }) => {
+    const product = getProductById(id)!;
+    return {
+      quantity,
+      subtotal: (unitPrices[id] ?? product.price) * quantity,
+      product: {
+        id,
+        name: product.name,
+        price: product.price,
+        category: product.category,
+        images: product.images,
+      },
+    };
+  });
+}
+
+test("GraphQL: myOrders は自分の注文だけを新しい順に返し、他の人の注文・ゲストの注文は出ない。小計は購入した時点の単価（DB の写し）× 数量", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, HANAKO.id);
+    await insertUser(db, TARO.id);
+    // 入れた順と時刻の順をずらす（新しい順であって、入れた順ではない）
+    await placeOrder(db, 1, { userId: HANAKO.id, at: timeAt(30) });
+    await placeOrder(db, 2, { userId: TARO.id, at: timeAt(40) });
+    await placeOrder(db, 3, { userId: HANAKO.id, at: timeAt(50) });
+    await placeOrder(db, 4, { at: timeAt(60) }); // ゲスト
+    await placeOrder(db, 5, { userId: HANAKO.id, at: timeAt(10) });
+    // 注文 1 の商品 1 の単価の写しだけを変える（カタログの今の価格とは別の値）
+    const [first] = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(eq(orders.orderNo, orderNoOf(1)));
+    await db
+      .update(orderItems)
+      .set({ unitPrice: 1000 })
+      .where(
+        and(eq(orderItems.orderId, first!.id), eq(orderItems.productId, "1")),
+      );
+
+    const mine = await post(setup({ db, viewer: HANAKO }).handler, MY_ORDERS);
+    assert.equal(mine.status, 200);
+    assert.equal(mine.body.errors, undefined, mine.text);
+    const { nodes, nextCursor } = mine.body.data.myOrders;
+    assert.equal(nextCursor, null);
+    assert.deepEqual(
+      nodes.map((n: { orderNo: string }) => n.orderNo),
+      [orderNoOf(3), orderNoOf(1), orderNoOf(5)],
+    );
+
+    const total = expectedItems().reduce((sum, i) => sum + i.subtotal, 0);
+    assert.deepEqual(nodes[0], {
+      orderNo: orderNoOf(3),
+      status: "PAID",
+      total,
+      paidAt: timeAt(50).toISOString(),
+      createdAt: timeAt(50).toISOString(),
+      items: expectedItems(),
+    });
+    // 写しの単価が小計になり、product.price はカタログの今の価格のまま
+    assert.deepEqual(nodes[1].items, expectedItems({ "1": 1000 }));
+    assert.equal(nodes[1].items[0].product.price, getProductById("1")!.price);
+
+    // 太郎には太郎の注文だけ。ゲストの注文は誰にも出ない
+    const taro = await post(setup({ db, viewer: TARO }).handler, MY_ORDERS);
+    assert.deepEqual(
+      taro.body.data.myOrders.nodes.map((n: { orderNo: string }) => n.orderNo),
+      [orderNoOf(2)],
+    );
+  }));
+
+test("GraphQL: myOrders は未ログインなら UNAUTHENTICATED のエラーで、DB に触れない。利用者を引けなかったときは未ログインにせず失敗にし、例外の中身を返さない", async () => {
+  // setup() は DB を渡さない（DB に触れたら、このテストは別の理由で落ちる）
+  const guest = await post(setup().handler, MY_ORDERS);
+  assert.equal(guest.status, 200);
+  assert.equal(guest.body.data, null);
+  assert.equal(guest.body.errors.length, 1);
+  assert.equal(guest.body.errors[0].message, UNAUTHENTICATED_MESSAGE);
+  assert.equal(guest.body.errors[0].extensions.code, "UNAUTHENTICATED");
+  assert.deepEqual(guest.body.errors[0].path, ["myOrders"]);
+
+  const broken = setup({
+    getViewer: async () => {
+      throw new Error("connect ECONNREFUSED db.internal.example:5432");
+    },
+  });
+  const savedError = console.error;
+  console.error = () => {};
+  try {
+    const r = await post(broken.handler, MY_ORDERS);
+    assert.ok(Array.isArray(r.body.errors) && r.body.errors.length > 0);
+    assert.notEqual(r.body.errors[0].extensions?.code, "UNAUTHENTICATED");
+    assert.ok(!r.text.includes("ECONNREFUSED"), r.text);
+    assert.ok(!r.text.includes("db.internal"), r.text);
+  } finally {
+    console.error = savedError;
+  }
+});
+
+test("GraphQL: myOrders の first・after は、既定が 20 件、1〜50 の外は BAD_USER_INPUT、nextCursor を after に渡すと続きが取れる", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, HANAKO.id);
+    await insertUser(db, TARO.id);
+    for (let n = 1; n <= 21; n += 1) {
+      await placeOrder(db, n, { userId: HANAKO.id });
+    }
+    await placeOrder(db, 22, { userId: TARO.id });
+    const handler = setup({ db, viewer: HANAKO }).handler;
+    const orderNos = (r: { body: { data: { myOrders: OrdersBody } } }) =>
+      r.body.data.myOrders.nodes.map((n) => n.orderNo);
+
+    // 引数なし・first が null: 既定の 20 件。21 件目があるので続きがある（最後の注文の番号）
+    for (const variables of [undefined, { first: null }]) {
+      const page = await post(handler, MY_ORDERS, variables);
+      assert.equal(page.body.data.myOrders.nodes.length, 20);
+      assert.equal(page.body.data.myOrders.nextCursor, orderNoOf(2));
+    }
+
+    // 3 件ずつ: 21 件を 7 ページで、重ならず欠けずに新しい順（太郎の注文は混ざらない）
+    const collected: string[] = [];
+    let after: string | null = null;
+    let pages = 0;
+    do {
+      const page = await post(handler, MY_ORDERS, { first: 3, after });
+      assert.equal(page.body.errors, undefined, page.text);
+      collected.push(...orderNos(page));
+      after = page.body.data.myOrders.nextCursor;
+      pages += 1;
+    } while (after !== null && pages < 30);
+    assert.equal(pages, 7);
+    assert.deepEqual(
+      collected,
+      Array.from({ length: 21 }, (_, i) => orderNoOf(21 - i)),
+    );
+
+    // 範囲外の first は、決まった文言とコードで断る（DB は引かない）
+    for (const first of [0, -1, 51, 1000]) {
+      const r = await post(handler, MY_ORDERS, { first });
+      assert.equal(r.body.data, null, `first=${first}`);
+      assert.equal(r.body.errors[0].message, PAGE_SIZE_MESSAGE);
+      assert.equal(r.body.errors[0].extensions.code, "BAD_USER_INPUT");
+    }
+    assert.equal((await post(handler, MY_ORDERS, { first: 50 })).status, 200);
+    assert.equal(
+      orderNos(await post(handler, MY_ORDERS, { first: 1 })).length,
+      1,
+    );
+
+    // 知らない番号・他の人の注文の番号は、空のページ（エラーにしない）
+    for (const bad of ["ORD-NOSUCHORDER", orderNoOf(22)]) {
+      const r = await post(handler, MY_ORDERS, { first: 5, after: bad });
+      assert.deepEqual(r.body, {
+        data: { myOrders: { nodes: [], nextCursor: null } },
+      });
+    }
+  }));
+
+/** myOrders の応答の nodes の形（読む項目だけ） */
+type OrdersBody = { nodes: { orderNo: string }[]; nextCursor: string | null };
+
+test("GraphQL: order(orderNo) は自分の注文だけを返し、他の人の注文・ゲストの注文・存在しない番号・未ログインは、区別のつかない null", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, HANAKO.id);
+    await insertUser(db, TARO.id);
+    const mine = await placeOrder(db, 1, { userId: HANAKO.id });
+    const others = await placeOrder(db, 2, { userId: TARO.id });
+    const guest = await placeOrder(db, 3);
+
+    const as = (viewer: Viewer | null) => setup({ db, viewer }).handler;
+    const own = await post(as(HANAKO), ORDER_BY_NO, { orderNo: mine });
+    assert.equal(own.body.errors, undefined, own.text);
+    assert.deepEqual(own.body.data.order, {
+      orderNo: mine,
+      status: "PAID",
+      total: expectedItems().reduce((sum, i) => sum + i.subtotal, 0),
+      items: expectedItems(),
+    });
+
+    // 他の人の注文・ゲストの注文・存在しない番号・未ログインは、どれも同じ応答（エラーでもなく、中身が違いもしない）
+    const none = JSON.stringify({ data: { order: null } });
+    for (const [label, handler, orderNo] of [
+      ["他の人の注文", as(HANAKO), others],
+      ["ゲストの注文", as(HANAKO), guest],
+      ["存在しない番号", as(HANAKO), "ORD-NOSUCHORDER"],
+      ["未ログイン（自分の番号）", as(null), mine],
+      ["未ログイン（存在しない番号）", as(null), "ORD-NOSUCHORDER"],
+    ] as const) {
+      const r = await post(handler, ORDER_BY_NO, { orderNo });
+      assert.equal(r.status, 200, label);
+      assert.equal(r.text, none, label);
+    }
+
+    // 太郎から見ても同じ（花子の注文は null、自分の注文は返る）
+    const asTaro = as(TARO);
+    assert.equal(
+      (await post(asTaro, ORDER_BY_NO, { orderNo: mine })).text,
+      none,
+    );
+    assert.equal(
+      (await post(asTaro, ORDER_BY_NO, { orderNo: others })).body.data.order
+        .orderNo,
+      others,
+    );
+  }));
+
+test("GraphQL: カタログから消えた商品を含む注文でも、myOrders・order・orderBySession は落ちない（その商品は注文時の写しの名前と単価）", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    await insertUser(db, HANAKO.id);
+    const { handler } = setup({ db, viewer: HANAKO });
+    const orderNo = await placeOrder(db, 1, { userId: HANAKO.id });
+    // orderBySession で確定させた注文（持ち主なし）も用意する
+    await post(handler, LOOKUP, { id: "cs_test_paid" });
+
+    // カタログに無い商品（products 表には行がある = 昔は売っていた）に、商品 5 の明細を付け替える
+    await db.insert(products).values({ id: "999", price: 1234 });
+    await db
+      .update(orderItems)
+      .set({ productId: "999", name: "販売終了の商品", unitPrice: 1234 })
+      .where(eq(orderItems.productId, "5"));
+    const removed = {
+      quantity: 1,
+      subtotal: 1234,
+      product: {
+        id: "999",
+        name: "販売終了の商品",
+        price: 1234,
+        category: "",
+        images: [],
+      },
+    };
+    const kept = expectedItems()[0];
+
+    const list = await post(handler, MY_ORDERS);
+    assert.equal(list.body.errors, undefined, list.text);
+    assert.deepEqual(list.body.data.myOrders.nodes[0].items, [kept, removed]);
+
+    const one = await post(handler, ORDER_BY_NO, { orderNo });
+    assert.equal(one.body.errors, undefined, one.text);
+    assert.deepEqual(one.body.data.order.items, [kept, removed]);
+
+    // orderBySession（確定済みの注文を返す。同じ session の明細も付け替わっている）
+    const lookup = await post(handler, LOOKUP, { id: "cs_test_paid" });
+    assert.equal(lookup.body.errors, undefined, lookup.text);
+    assert.equal(lookup.body.data.orderBySession.state, "PAID");
+    const lookedUp = lookup.body.data.orderBySession.order.items;
+    assert.deepEqual(
+      lookedUp.map((i: { product: { id: string } }) => i.product.id),
+      ["1", "999"],
+    );
+  }));
+
+test("GraphQL: PlacedOrder 型は、持ち主と Stripe の決済の番号を取り出す経路を持たない", async () => {
+  const r = await post(
+    setup().handler,
+    `{ __type(name: "PlacedOrder") { fields { name } } }`,
+  );
+  const fields: { name: string }[] = r.body.data.__type.fields;
+  assert.deepEqual(fields.map((f) => f.name).sort(), [
+    "createdAt",
+    "items",
+    "orderNo",
+    "paidAt",
+    "status",
+    "total",
+  ]);
 });
 
 /* ---------- ブラウザ用クライアントの文言の振り分け ---------- */

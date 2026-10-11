@@ -331,3 +331,108 @@ test("購入の持ち主: ログインして買った注文は、Webhook でも�
     assert.equal(ownerOf(taroSession), await idOf(TARO.email));
     assert.equal(ownerOf(guestSession), null);
   }));
+
+/* ---------- 注文履歴（myOrders・order）を、本物のセッションで ---------- */
+
+const MY_ORDERS = `query { myOrders { nodes { orderNo total items { quantity product { id } } } nextCursor } }`;
+const ORDER_BY_NO = `query One($orderNo: ID!) { order(orderNo: $orderNo) { orderNo total } }`;
+
+/** myOrders の応答の形（読む項目だけ） */
+type MyOrdersBody = {
+  data: {
+    myOrders: { nodes: { orderNo: string }[]; nextCursor: string | null };
+  };
+};
+type OrderBody = { data: { order: { orderNo: string } | null } };
+
+test("注文履歴: 本物のセッション（cookie）で、ログインして買った自分の注文だけが myOrders に出る。ほかの人の cookie・cookie の無い要求・改ざんした cookie では出ず、他の人の注文は order でも null", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const auth = createTestAuth(db);
+    const stripe = recordingStripe();
+    const handler = appHandler(auth, db, stripe);
+    const hanako = await signUp(auth, HANAKO);
+    const taro = await signUp(auth, TARO);
+
+    // 購入手続き（花子・太郎・花子・ゲスト）→ 成功ページの確認で、この順に 1 件ずつ確定する（確定の時刻は順に新しくなる）
+    const buyers = [hanako.cookie, taro.cookie, hanako.cookie, undefined];
+    for (const cookie of buyers) {
+      const r = await gql<CreateBody>(handler, CREATE, {
+        variables: { items: ITEMS },
+        cookie,
+      });
+      assert.deepEqual(r.data.createCheckoutSession.errors, []);
+    }
+    const orderNos: string[] = [];
+    for (const n of [1, 2, 3, 4]) {
+      const res = await verifyCheckoutSession({
+        requestUrl: `http://localhost/api/checkout/session?session_id=cs_test_flow_${n}`,
+        getStripe: stripe.getStripe,
+        getDb: async () => db,
+      });
+      const body = (await res.json()) as { order: { orderNo: string } };
+      orderNos.push(body.order.orderNo);
+    }
+    const [h1, t1, h2, guest] = orderNos as [string, string, string, string];
+
+    const myOrders = async (cookie?: string) =>
+      (await gql<MyOrdersBody>(handler, MY_ORDERS, { cookie })).data.myOrders
+        .nodes;
+    const asAnyBody = async (cookie?: string) =>
+      await gql<{
+        data: unknown;
+        errors?: { message: string; extensions: { code: string } }[];
+      }>(handler, MY_ORDERS, { cookie });
+
+    // 花子には花子の 2 件（新しい順）、太郎には太郎の 1 件。ゲストの注文はどちらにも出ない
+    assert.deepEqual(
+      (await myOrders(hanako.cookie)).map((n) => n.orderNo),
+      [h2, h1],
+    );
+    assert.deepEqual(
+      (await myOrders(taro.cookie)).map((n) => n.orderNo),
+      [t1],
+    );
+
+    // cookie が無い・署名を壊した cookie は、ログインしていない扱い（他人の id を名乗れない）。myOrders は UNAUTHENTICATED
+    const [name, value = ""] = hanako.cookie.split("=") as [string, string];
+    for (const cookie of [undefined, `${name}=${value.slice(0, -3)}AAA`]) {
+      const r = await asAnyBody(cookie);
+      assert.equal(r.data, null);
+      assert.equal(r.errors?.[0]?.extensions.code, "UNAUTHENTICATED");
+    }
+
+    // order: 自分の注文は返り、他の人の注文・ゲストの注文・cookie の無い要求は null（区別がつかない）
+    const orderAs = async (orderNo: string, cookie?: string) =>
+      (
+        await gql<OrderBody>(handler, ORDER_BY_NO, {
+          variables: { orderNo },
+          cookie,
+        })
+      ).data.order;
+    assert.equal((await orderAs(h1, hanako.cookie))?.orderNo, h1);
+    assert.equal((await orderAs(t1, taro.cookie))?.orderNo, t1);
+    for (const [orderNo, cookie] of [
+      [h1, taro.cookie],
+      [t1, hanako.cookie],
+      [guest, hanako.cookie],
+      [guest, taro.cookie],
+      [h1, undefined],
+    ] as const) {
+      assert.equal(await orderAs(orderNo, cookie), null, `${orderNo}`);
+    }
+
+    // 利用者を消すと、注文は残る（持ち主だけ外れてゲストの注文になる）が、ほかの誰の履歴にも出ない
+    const [hanakoRow] = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, HANAKO.email));
+    await db.delete(user).where(eq(user.id, hanakoRow!.id));
+    assert.equal((await db.select().from(orders)).length, 4);
+    assert.deepEqual(
+      (await myOrders(taro.cookie)).map((n) => n.orderNo),
+      [t1],
+    );
+    assert.equal(await orderAs(h1, taro.cookie), null);
+    assert.equal((await asAnyBody(hanako.cookie)).data, null);
+  }));

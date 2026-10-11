@@ -5,9 +5,11 @@
  * createCheckoutSessionCore（lib/checkout-session.ts）、注文を確定する fulfillCheckout（lib/fulfillment.ts）を呼ぶだけで、
  * resolver 自身は状態を持たない（カートはブラウザ。注文は DB）。
  * Stripe・DB・ログイン中の利用者は context.getStripe() / getDb() / getViewer() 経由でだけ触る（server-only のモジュールは import しない）。
- * DB を引くのは orderBySession と、ログインの cookie を持つ人の viewer・createCheckoutSession だけ
- * （cookie の無い人（ゲスト）の要求は、ほかのフィールドと同じく DB に繋がない）。
+ * DB を引くのは orderBySession と、ログインの cookie を持つ人の viewer・createCheckoutSession・myOrders・order だけ
+ * （cookie の無い人（ゲスト）の要求は、ほかのフィールドと同じく DB に繋がない。myOrders はログインしていなければ DB に触れずに断る）。
+ * 注文履歴（myOrders・order）は lib/order-history.ts を呼ぶだけで、持ち主の絞り込みはそちらの where が持つ。
  */
+import { GraphQLError } from "graphql";
 import { createSchema } from "graphql-yoga";
 import { CATEGORIES, PRODUCTS, getProductById } from "../catalog.ts";
 import {
@@ -18,13 +20,24 @@ import {
 import { createCheckoutSessionCore } from "../checkout-session.ts";
 import type { StripeLike } from "../checkout-session.ts";
 import type { Db } from "../db/connect.ts";
+import type { OrderStatus } from "../db/schema.ts";
 import { fulfillCheckout } from "../fulfillment.ts";
 import type { StoredOrder } from "../fulfillment.ts";
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  findOrderOfUser,
+  isValidPageSize,
+  listOrdersByUser,
+} from "../order-history.ts";
+import { BAD_USER_INPUT, requireViewer } from "./authorize.ts";
 import { typeDefs } from "./sdl.ts";
-import type { ItemQuantity, Viewer } from "../types.ts";
+import type { ItemQuantity, OrderItem, Viewer } from "../types.ts";
 import type {
   CartItem,
   CheckoutErrorCode,
+  OrderStatus as GqlOrderStatus,
+  PlacedOrder,
   Product,
   Resolvers,
   UserError,
@@ -34,7 +47,7 @@ import type {
 export type GraphqlContext = {
   request: Request;
   getStripe: () => StripeLike;
-  /** DB を返す関数（orderBySession が呼んだときだけ呼ばれる） */
+  /** DB を返す関数（orderBySession・myOrders・order が呼んだときだけ呼ばれる） */
   getDb: () => Promise<Db>;
   /**
    * ログイン中の利用者を返す関数（ログインしていなければ null）。viewer・createCheckoutSession が呼んだときだけ呼ばれ、
@@ -75,21 +88,55 @@ function toCartItems(items: ItemQuantity[]): CartItem[] {
 }
 
 /**
- * DB の注文から GraphQL の Order を作る。小計は購入した時点の単価（DB の写し）× 数量で、product.price（カタログの今の価格）とは限らない。
- * product はカタログから引く（カタログから消えた商品を含む注文は、ここで例外になり GraphQL エラーになる）。
+ * DB の注文の明細から GraphQL の CartItem を作る。小計は購入した時点の単価（DB の写し）× 数量で、product.price（カタログの今の価格）とは限らない。
+ * product は今のカタログの商品。カタログから消えた商品を含む注文でも落とさないよう、その商品は注文時の写し（名前と単価）から作る
+ * （category は空文字、images は空）。
  */
+function toOrderCartItems(items: readonly OrderItem[]): CartItem[] {
+  return items.map(({ id, name, price, quantity }): CartItem => ({
+    product: getProductById(id) ?? {
+      id,
+      name,
+      price,
+      category: "",
+      images: [],
+    },
+    quantity,
+    subtotal: price * quantity,
+  }));
+}
+
+/** DB の注文から GraphQL の Order（orderBySession の応答）を作る */
 function toGraphqlOrder(order: StoredOrder) {
   return {
     orderNo: order.orderNo,
     sessionId: order.sessionId,
     total: order.total,
-    items: order.items.map(({ id, price, quantity }): CartItem => ({
-      product: findProduct(id),
-      quantity,
-      subtotal: price * quantity,
-    })),
+    items: toOrderCartItems(order.items),
   };
 }
+
+/** DB の orders.status（小文字）と GraphQL の OrderStatus（大文字）の対応。状態を足したら、ここが型の検査で漏れを教える */
+const ORDER_STATUS: Record<OrderStatus, GqlOrderStatus> = {
+  paid: "PAID",
+  pending: "PENDING",
+  failed: "FAILED",
+};
+
+/** DB の注文から GraphQL の PlacedOrder（myOrders・order の応答）を作る。持ち主と Stripe の決済の番号は出さない */
+function toPlacedOrder(order: StoredOrder): PlacedOrder {
+  return {
+    orderNo: order.orderNo,
+    status: ORDER_STATUS[order.status],
+    items: toOrderCartItems(order.items),
+    total: order.total,
+    paidAt: order.paidAt?.toISOString() ?? null,
+    createdAt: order.createdAt.toISOString(),
+  };
+}
+
+/** myOrders の first が範囲外のときの文言（固定） */
+export const PAGE_SIZE_MESSAGE = `first は 1〜${MAX_PAGE_SIZE} の整数で指定してください`;
 
 /** app/product/page.tsx と同じ絞り込み（カテゴリ → 小文字の部分一致） */
 function filterProducts(
@@ -128,6 +175,34 @@ export const resolvers: Resolvers<GraphqlContext> = {
       };
     },
     viewer: (_parent, _args, context) => context.getViewer(),
+    myOrders: async (_parent, { first, after }, context) => {
+      const viewer = await requireViewer(context);
+      const size = first ?? DEFAULT_PAGE_SIZE;
+      if (!isValidPageSize(size)) {
+        throw new GraphQLError(PAGE_SIZE_MESSAGE, {
+          extensions: { code: BAD_USER_INPUT },
+        });
+      }
+      const page = await listOrdersByUser(await context.getDb(), viewer.id, {
+        first: size,
+        after,
+      });
+      return {
+        nodes: page.orders.map(toPlacedOrder),
+        nextCursor: page.nextCursor,
+      };
+    },
+    order: async (_parent, { orderNo }, context) => {
+      // 未ログインでは持ち主が決まらない。他の人の注文・存在しない番号と同じ null を返す（注文の有無で応答を変えない）
+      const viewer = await context.getViewer();
+      if (!viewer) return null;
+      const order = await findOrderOfUser(
+        await context.getDb(),
+        viewer.id,
+        orderNo,
+      );
+      return order ? toPlacedOrder(order) : null;
+    },
     orderBySession: async (_parent, { sessionId }, context) => {
       // 形の不正な id は実在しうる決済の参照ではない（既存の 400 → unpaid と同じ扱い）
       if (!isValidSessionId(sessionId)) return { state: "UNPAID", order: null };

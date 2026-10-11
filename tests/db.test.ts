@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { eq } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 
 import { MAX_QUANTITY, MIN_QUANTITY } from "../lib/cart.ts";
 import { PRODUCTS } from "../lib/catalog.ts";
@@ -413,6 +414,27 @@ test("外部キー: orders.user_id は user を指す（存在しない利用者
         { id: guest, userId: null },
       ].sort(byId),
       "注文は 2 件とも残り、持ち主だけが外れる（ゲストの注文になる）",
+    );
+  }));
+
+test("索引: orders.user_id に索引がある（マイグレーションが作り、スキーマの定義と一致する）。利用者ごとの注文履歴の絞り込みと、利用者を消すときの user_id の付け替えが、全件の走査にならない", () =>
+  withTestDb(async ({ client }) => {
+    const { rows } = await client.query<{ indexdef: string }>(
+      "select indexdef from pg_indexes where schemaname = 'public' and tablename = 'orders' and indexname = 'orders_user_id_idx'",
+    );
+    assert.equal(rows.length, 1, "マイグレーションが索引を作っている");
+    assert.match(rows[0]!.indexdef, /^CREATE INDEX orders_user_id_idx ON /);
+    assert.match(rows[0]!.indexdef, /USING btree \(user_id\)$/);
+
+    // スキーマ（Drizzle）の定義にも同じ索引がある。片方だけ直して db:generate を忘れた食い違いを、CI の前に見つける
+    // （索引の列は、表の定義とは別のオブジェクトなので、列の名前で比べる）
+    const declared = getTableConfig(orders).indexes.find(
+      (index) => index.config.name === "orders_user_id_idx",
+    );
+    assert.ok(declared, "スキーマに索引がある");
+    assert.deepEqual(
+      declared.config.columns.map((c) => ("name" in c ? c.name : null)),
+      ["user_id"],
     );
   }));
 

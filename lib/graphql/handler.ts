@@ -213,7 +213,7 @@ function boundedCache<T>(max: number) {
 type HandlerOptions = {
   /** Stripe クライアントを返す関数（リクエストのたびに呼ぶ） */
   getStripe: GraphqlContext["getStripe"];
-  /** DB を返す関数（orderBySession が呼んだときだけ呼ぶ） */
+  /** DB を返す関数（orderBySession・myOrders・order が呼んだときだけ呼ぶ） */
   getDb: GraphqlContext["getDb"];
   /**
    * リクエストからログイン中の利用者を引く関数（ログインしていなければ null）。viewer・createCheckoutSession が必要としたときだけ、

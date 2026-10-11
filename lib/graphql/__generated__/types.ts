@@ -86,15 +86,43 @@ export type Order = {
   total: Scalars['Int']['output'];
 };
 
+export type OrderConnection = {
+  __typename?: 'OrderConnection';
+  /** 次のページがあるときだけ、このページの最後の注文番号。myOrders の after にそのまま渡す */
+  nextCursor?: Maybe<Scalars['String']['output']>;
+  nodes: Array<PlacedOrder>;
+};
+
 export type OrderLookup = {
   __typename?: 'OrderLookup';
   order?: Maybe<Order>;
   state: PaymentState;
 };
 
+/** 注文の状態（orders.status）。今は決済を確認できた PAID だけが入る */
+export type OrderStatus =
+  | 'FAILED'
+  | 'PAID'
+  | 'PENDING';
+
 export type PaymentState =
   | 'PAID'
   | 'UNPAID';
+
+/** ログイン中の利用者の注文 1 件（DB に確定した注文）。持ち主・Stripe の決済の番号は出さない */
+export type PlacedOrder = {
+  __typename?: 'PlacedOrder';
+  /** 注文の記録を作った日時（ISO 8601） */
+  createdAt: Scalars['String']['output'];
+  /** product は今のカタログの商品。カタログから消えた商品は、名前と単価が注文時の写しで、category は空文字・images は空になる。subtotal は購入した時点の単価 × quantity */
+  items: Array<CartItem>;
+  /** 画面に出す注文番号（ORD- で始まる） */
+  orderNo: Scalars['ID']['output'];
+  /** 支払いを確認して注文を確定した日時（ISO 8601） */
+  paidAt?: Maybe<Scalars['String']['output']>;
+  status: OrderStatus;
+  total: Scalars['Int']['output'];
+};
 
 /** 商品（lib/catalog.ts の PRODUCTS の 1 件） */
 export type Product = {
@@ -117,6 +145,10 @@ export type Query = {
   /** localStorage のカートを送り、カタログの価格で見積もる（副作用なし） */
   cartQuote: CartQuoteResult;
   categories: Array<Category>;
+  /** ログイン中の利用者の注文を新しい順に返す。他の人の注文とゲストの注文（持ち主なし）は含まない。未ログインは extensions.code = UNAUTHENTICATED のエラー。first は 1〜50（既定 20。範囲外は BAD_USER_INPUT）。after は前のページの nextCursor（知らない値・他の人の注文の番号は空のページになる） */
+  myOrders: OrderConnection;
+  /** 注文番号で 1 件。自分の注文でなければ（未ログイン・他の人の注文・ゲストの注文・存在しない番号のどれも）null を返し、注文の存在を漏らさない */
+  order?: Maybe<PlacedOrder>;
   /** 支払い済みの注文を返す。DB に確定済みならそれを、無ければ Stripe に 1 回照会して確定する（Webhook・成功ページと同じ fulfillCheckout）。未払い・存在しない・形の不正は UNPAID。照会や確定に失敗したら GraphQL エラー（unverified 扱い） */
   orderBySession: OrderLookup;
   product?: Maybe<Product>;
@@ -129,6 +161,17 @@ export type Query = {
 
 export type QueryCartQuoteArgs = {
   items: Array<CartItemInput>;
+};
+
+
+export type QueryMyOrdersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryOrderArgs = {
+  orderNo: Scalars['ID']['input'];
 };
 
 
@@ -247,8 +290,11 @@ export type ResolversTypes = {
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Order: ResolverTypeWrapper<Order>;
+  OrderConnection: ResolverTypeWrapper<OrderConnection>;
   OrderLookup: ResolverTypeWrapper<OrderLookup>;
+  OrderStatus: OrderStatus;
   PaymentState: PaymentState;
+  PlacedOrder: ResolverTypeWrapper<PlacedOrder>;
   Product: ResolverTypeWrapper<Product>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -269,7 +315,9 @@ export type ResolversParentTypes = {
   Int: Scalars['Int']['output'];
   Mutation: Record<PropertyKey, never>;
   Order: Order;
+  OrderConnection: OrderConnection;
   OrderLookup: OrderLookup;
+  PlacedOrder: PlacedOrder;
   Product: Product;
   Query: Record<PropertyKey, never>;
   String: Scalars['String']['output'];
@@ -316,9 +364,23 @@ export type OrderResolvers<ContextType = any, ParentType extends ResolversParent
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
+export type OrderConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['OrderConnection'] = ResolversParentTypes['OrderConnection']> = {
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['PlacedOrder']>, ParentType, ContextType>;
+};
+
 export type OrderLookupResolvers<ContextType = any, ParentType extends ResolversParentTypes['OrderLookup'] = ResolversParentTypes['OrderLookup']> = {
   order?: Resolver<Maybe<ResolversTypes['Order']>, ParentType, ContextType>;
   state?: Resolver<ResolversTypes['PaymentState'], ParentType, ContextType>;
+};
+
+export type PlacedOrderResolvers<ContextType = any, ParentType extends ResolversParentTypes['PlacedOrder'] = ResolversParentTypes['PlacedOrder']> = {
+  createdAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  items?: Resolver<Array<ResolversTypes['CartItem']>, ParentType, ContextType>;
+  orderNo?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  paidAt?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['OrderStatus'], ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type ProductResolvers<ContextType = any, ParentType extends ResolversParentTypes['Product'] = ResolversParentTypes['Product']> = {
@@ -335,6 +397,8 @@ export type ProductResolvers<ContextType = any, ParentType extends ResolversPare
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   cartQuote?: Resolver<ResolversTypes['CartQuoteResult'], ParentType, ContextType, RequireFields<QueryCartQuoteArgs, 'items'>>;
   categories?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+  myOrders?: Resolver<ResolversTypes['OrderConnection'], ParentType, ContextType, RequireFields<QueryMyOrdersArgs, 'first'>>;
+  order?: Resolver<Maybe<ResolversTypes['PlacedOrder']>, ParentType, ContextType, RequireFields<QueryOrderArgs, 'orderNo'>>;
   orderBySession?: Resolver<ResolversTypes['OrderLookup'], ParentType, ContextType, RequireFields<QueryOrderBySessionArgs, 'sessionId'>>;
   product?: Resolver<Maybe<ResolversTypes['Product']>, ParentType, ContextType, RequireFields<QueryProductArgs, 'id'>>;
   products?: Resolver<Array<ResolversTypes['Product']>, ParentType, ContextType, Partial<QueryProductsArgs>>;
@@ -360,7 +424,9 @@ export type Resolvers<ContextType = any> = {
   CheckoutSessionPayload?: CheckoutSessionPayloadResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Order?: OrderResolvers<ContextType>;
+  OrderConnection?: OrderConnectionResolvers<ContextType>;
   OrderLookup?: OrderLookupResolvers<ContextType>;
+  PlacedOrder?: PlacedOrderResolvers<ContextType>;
   Product?: ProductResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   UserError?: UserErrorResolvers<ContextType>;
