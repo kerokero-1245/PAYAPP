@@ -167,7 +167,8 @@ export function toConfirmedOrder({
  *  - 200 { paid: false }        未払い、またはその session が存在しない
  *  - 400                        session_id の形が不正（Stripe も DB も呼ばない）
  *  - 500 / 502                  確認できなかった（成功ページは「確認が取れていません」を出す）。
- *                               500 は DB に確定できなかったか、注文の内容を読めなかった。502 は Stripe から取れなかった
+ *                               500 は DB に確定できなかったか、注文の内容を読めなかった・請求額が注文の合計と合わなかった。
+ *                               502 は Stripe から取れなかった
  */
 export async function verifyCheckoutSession({
   requestUrl,
@@ -186,7 +187,11 @@ export async function verifyCheckoutSession({
   try {
     result = await fulfillCheckout({ db: await getDb(), getStripe, sessionId });
   } catch (err) {
-    console.error("Checkout session fulfill error:", err);
+    // DB の失敗の例外は SQL の引数を持つので、例外ごと console に渡さず、名前とコードだけを記録する
+    logEvent("error", "checkout.fulfill-failed", {
+      sessionId,
+      ...describeError(err),
+    });
     return Response.json(
       { paid: false, error: "注文を記録できませんでした" },
       { status: 500, headers: NO_STORE },

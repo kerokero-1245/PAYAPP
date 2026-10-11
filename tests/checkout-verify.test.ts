@@ -414,3 +414,32 @@ test("決済確認: Stripe が知らない session（利用者が好きな id �
     assert.deepEqual(res.body, { paid: false });
     assert.deepEqual(capture.lines, []);
   }));
+
+test("決済確認: DB に確定できなかったときのログには SQL の引数を出さず、失敗の種類（SQLSTATE）と session の番号だけを残す", () =>
+  withTestDb(async ({ db }) => {
+    // products を seed していない = 明細の外部キー（SQLSTATE 23503）を満たせない
+    const stripe = fakeStripe({
+      cs_test_paid: paidSession("cs_test_paid", BOUGHT),
+    });
+    const capture = captureConsole();
+    let res: Awaited<ReturnType<typeof read>>;
+    try {
+      res = await read(await verify(stripe, db, "cs_test_paid"));
+    } finally {
+      capture.restore();
+    }
+    assert.equal(res.status, 500);
+    assert.deepEqual(capture.events(), [
+      {
+        level: "error",
+        event: "checkout.fulfill-failed",
+        sessionId: "cs_test_paid",
+        errorName: "Error",
+        errorCode: "23503",
+      },
+    ]);
+    assert.ok(
+      !/params|Failed query|insert into/i.test(capture.text()),
+      capture.text().slice(0, 300),
+    );
+  }));

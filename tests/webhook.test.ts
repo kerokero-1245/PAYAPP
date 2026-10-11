@@ -772,3 +772,36 @@ test("Webhook の配線: Route Handler が使う依存（createWebhookDeps）は
       assert.equal(res.status, 503, JSON.stringify(env));
     }
   }));
+
+test("Webhook: DB に書けなかったときのログには SQL の引数（注文番号・利用者の id など）を出さず、失敗の種類（SQLSTATE）と session・イベントの番号だけを残す", () =>
+  withTestDb(async ({ db }) => {
+    // products を seed していない = 明細の外部キー（SQLSTATE 23503）を満たせない
+    const stripe = fakeStripe({
+      cs_test_paid: paidSession("cs_test_paid", BOUGHT),
+    });
+    const capture = captureConsole();
+    let res: Awaited<ReturnType<typeof send>>;
+    try {
+      res = await send(
+        webhookRequest(sessionEvent(COMPLETED, "cs_test_paid", "evt_db_down")),
+        depsFor(db, stripe),
+      );
+    } finally {
+      capture.restore();
+    }
+    assert.equal(res.status, 500);
+    assert.deepEqual(capture.events(), [
+      {
+        level: "error",
+        event: "webhook.failed",
+        eventId: "evt_db_down",
+        sessionId: "cs_test_paid",
+        errorName: "Error",
+        errorCode: "23503",
+      },
+    ]);
+    assert.ok(
+      !/params|Failed query|insert into/i.test(capture.text()),
+      capture.text().slice(0, 300),
+    );
+  }));

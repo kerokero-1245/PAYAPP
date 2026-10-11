@@ -30,6 +30,7 @@ import {
 import type { StripeLike } from "./checkout-session.ts";
 import type { Db } from "./db/connect.ts";
 import { fulfillCheckout, hasProcessedEvent } from "./fulfillment.ts";
+import { describeError, logEvent } from "./log.ts";
 
 /** 注文を確定するイベントの種類 */
 export const FULFILLMENT_EVENT_TYPES: ReadonlySet<string> = new Set([
@@ -214,7 +215,12 @@ export async function handleStripeWebhook(
         return failure(400, "イベントの形式が不正です");
     }
   } catch (err) {
-    console.error("Stripe webhook error:", err);
+    // DB の失敗の例外は SQL の引数（注文番号・session の識別子・利用者の id）を持つので、例外ごと console に渡さず、名前とコードだけを記録する
+    logEvent("error", "webhook.failed", {
+      eventId: parsed.eventId,
+      sessionId: parsed.sessionId,
+      ...describeError(err),
+    });
     return failure(500, "イベントを処理できませんでした");
   }
 }
