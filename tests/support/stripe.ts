@@ -4,7 +4,9 @@
  * 決済の確認・注文の確定・Webhook のテストが共有する。`tests/*.test.ts` のグロブには当たらないので、テストとしては実行されない。
  * Stripe のクライアントは getStripe() を引数で受ける形（lib/checkout-session.ts の StripeLike）なので、これを差し込む。
  */
-import { encodeOrderMetadata } from "../../lib/checkout.ts";
+import type Stripe from "stripe";
+import { getProductById } from "../../lib/catalog.ts";
+import { CHECKOUT_CURRENCY, encodeOrderMetadata } from "../../lib/checkout.ts";
 import type { StripeLike } from "../../lib/checkout-session.ts";
 import type { ItemQuantity } from "../../lib/types.ts";
 
@@ -12,7 +14,19 @@ import type { ItemQuantity } from "../../lib/types.ts";
 export const STRIPE_ERROR_TEXT =
   "sk_live_SECRET_DETAIL stack at Stripe.request";
 
-/** 支払い済み（payment_status が paid）の Checkout Session。metadata は購入した id と数量 */
+/** 買った品目の合計（カタログの今の価格 × 数量）。Stripe の本物の session の amount_total と同じ値 */
+export function totalOf(items: ItemQuantity[]): number {
+  return items.reduce(
+    (sum, { id, quantity }) =>
+      sum + (getProductById(id)?.price ?? 0) * quantity,
+    0,
+  );
+}
+
+/**
+ * 支払い済み（payment_status が paid）の Checkout Session。metadata は購入した id と数量。
+ * 本物の session と同じく、請求額（amount_total。品目の合計）と通貨（jpy）を持つ。照合で食い違う session は extra で上書きして作る
+ */
 export function paidSession(
   id: string,
   items: ItemQuantity[],
@@ -22,6 +36,8 @@ export function paidSession(
     id,
     payment_status: "paid",
     metadata: encodeOrderMetadata(items),
+    amount_total: totalOf(items),
+    currency: CHECKOUT_CURRENCY,
     ...extra,
   };
 }
@@ -70,4 +86,27 @@ export function fakeStripe(
     },
   };
   return { retrieved, sessions, getStripe: () => stripe };
+}
+
+/**
+ * Checkout Session を作る側（sessions.create）の偽の Stripe。create に渡された引数を created に記録し、決済ページの URL を返す。
+ * fail を渡すと create が（秘密を含む文の）例外で失敗する。retrieve は呼ばれないはず
+ */
+export function fakeCheckoutStripe({ fail = false }: { fail?: boolean } = {}) {
+  const created: Stripe.Checkout.SessionCreateParams[] = [];
+  const stripe: StripeLike = {
+    checkout: {
+      sessions: {
+        async create(params): Promise<{ url: string | null }> {
+          created.push(params);
+          if (fail) throw new Error(STRIPE_ERROR_TEXT);
+          return { url: "https://checkout.stripe.test/pay" };
+        },
+        async retrieve(): Promise<unknown> {
+          throw new Error("決済の作成で sessions.retrieve は呼ばれないはず");
+        },
+      },
+    },
+  };
+  return { created, getStripe: () => stripe };
 }

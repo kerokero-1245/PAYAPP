@@ -1,8 +1,10 @@
 /**
  * Stripe Checkout Session の作成と決済の確認（Route Handler と GraphQL で共有する本体）
  * ---------------------------------------------------
- * - readBodyWithLimit: リクエスト本文を上限つきで読む（超えたら null）
+ * - readBodyWithLimit: リクエスト本文を上限つきで読む（超えたら null）。TOO_LARGE・BAD_REQUEST・UNSUPPORTED_MEDIA_TYPE・NO_STORE は
+ *   入口（/checkout・GraphQL・Webhook・/api/auth）で共通の応答の文言とヘッダー
  * - createCheckoutSessionCore: 検査・価格決定・戻り先の決定・sessions.create をまとめて行う（/checkout と GraphQL の Mutation）
+ * - handleCheckoutRequest: POST /checkout の本体（Content-Type・本文の上限・JSON・ログイン中の持ち主を見てから createCheckoutSessionCore を呼ぶ）
  * - verifyCheckoutSession: session_id の決済を fulfillCheckout で DB に確定し、DB の注文を返す（/api/checkout/session）
  *
  * Stripe クライアントと DB は引数の getStripe() / getDb() から受け取る（lib/stripe.ts と lib/db/client.ts は
@@ -10,6 +12,7 @@
  */
 import type Stripe from "stripe";
 import {
+  MAX_BODY_BYTES,
   buildLineItems,
   encodeOrderMetadata,
   isValidSessionId,
@@ -18,7 +21,9 @@ import type { ConfirmedOrder } from "./checkout.ts";
 import type { Db } from "./db/connect.ts";
 import { fulfillCheckout } from "./fulfillment.ts";
 import type { FulfillResult, StoredOrder } from "./fulfillment.ts";
+import { describeError, logEvent } from "./log.ts";
 import { resolveReturnOrigin } from "./site.ts";
+import type { Viewer } from "./types.ts";
 
 /**
  * getStripe() が返す Stripe クライアントのうち、決済で使うメソッドだけの最小の型。
@@ -58,6 +63,13 @@ export type CheckoutSessionResult =
 /** Content-Type が application/json でないときの文言（/checkout と GraphQL で共通） */
 export const UNSUPPORTED_MEDIA_TYPE =
   "Content-Type は application/json にしてください";
+
+/** 本文が上限を超えた（413）・本文を読めない／形が不正な（400）ときの文言。/checkout・GraphQL・Webhook・/api/auth で共通 */
+export const TOO_LARGE = "リクエストが大きすぎます";
+export const BAD_REQUEST = "リクエストの形式が不正です";
+
+/** 決済の確認・認証・GraphQL の応答はどれもキャッシュさせない（Stripe と DB の状態そのもの・cookie を扱うため） */
+export const NO_STORE = { "Cache-Control": "no-store" };
 
 /**
  * Content-Type が application/json か（大文字小文字は問わない。; charset=... などの引数は可）。
@@ -135,9 +147,6 @@ export type VerifyCheckoutSessionInput = {
   getDb: () => Promise<Db>;
 };
 
-/** 確認結果は Stripe と DB の状態そのものなので、どの応答もキャッシュさせない */
-const NO_STORE = { "Cache-Control": "no-store" };
-
 /** 確認ルートが返す注文（DB の注文のうち、成功ページが使う項目） */
 export function toConfirmedOrder({
   orderNo,
@@ -206,5 +215,80 @@ export async function verifyCheckoutSession({
         { paid: false, error: "注文の内容を確認できませんでした" },
         { status: 500, headers: NO_STORE },
       );
+    case "payment-mismatch":
+      // 記録（値を含まない構造化ログ）は fulfillCheckout が残している。成功ページには「確認が取れていません」を出す
+      return Response.json(
+        { paid: false, error: "注文の内容を確認できませんでした" },
+        { status: 500, headers: NO_STORE },
+      );
   }
+}
+
+/** 決済セッションを作れなかったときの利用者向けの文言（GraphQL の STRIPE_UNAVAILABLE_MESSAGE と同じ） */
+const CHECKOUT_FAILED =
+  "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください";
+
+/** handleCheckoutRequest に差し込むもの */
+export type CheckoutRequestDeps = {
+  /** リクエストのヘッダー（cookie）からログイン中の利用者を引く関数（ログインしていなければ null。引けなければ例外） */
+  getViewer: (headers: Headers) => Promise<Viewer | null>;
+  getStripe: () => StripeLike;
+  baseUrl?: string;
+};
+
+/**
+ * POST /checkout（REST）の本体。クライアントからは { items: [{ id, quantity }] } だけを受け取り、価格と商品名はカタログから引く
+ * （本体は createCheckoutSessionCore。GraphQL の createCheckoutSession と共有）。
+ *  - 415 Content-Type が application/json でない / 413 本文が MAX_BODY_BYTES（16KB）を超える / 400 本文が読めない・JSON でない・品目が不正
+ *  - ログイン中なら、持ち主の id（セッションから引く。本文の値は使わない）を client_reference_id に付ける。
+ *    cookie の無い要求（ゲスト）は DB に触れない。セッションを引けなければ（DB の失敗など）、持ち主を決められないので 500
+ *  - 200 { url } / 500 Stripe に届かなかった
+ */
+export async function handleCheckoutRequest(
+  request: Request,
+  { getViewer, getStripe, baseUrl }: CheckoutRequestDeps,
+): Promise<Response> {
+  // フォーム送信など JSON 以外は受け付けない（GraphQL の入口と同じ判定）
+  if (!isJsonContentType(request.headers.get("content-type"))) {
+    return Response.json({ error: UNSUPPORTED_MEDIA_TYPE }, { status: 415 });
+  }
+
+  let text: string | null;
+  try {
+    text = await readBodyWithLimit(request, MAX_BODY_BYTES);
+  } catch {
+    return Response.json({ error: BAD_REQUEST }, { status: 400 });
+  }
+  if (text === null)
+    return Response.json({ error: TOO_LARGE }, { status: 413 });
+
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return Response.json({ error: BAD_REQUEST }, { status: 400 });
+  }
+
+  let userId: string | undefined;
+  try {
+    userId = (await getViewer(request.headers))?.id;
+  } catch (cause) {
+    // セッションの確認が DB で失敗したときの例外は、SQL の引数（セッションの識別子）を持つので、名前とコードだけ記録する
+    logEvent("error", "checkout.viewer-failed", describeError(cause));
+    return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
+  }
+
+  const result = await createCheckoutSessionCore({
+    items: (body as { items?: unknown } | null | undefined)?.items,
+    requestUrl: request.url,
+    baseUrl,
+    userId,
+    getStripe,
+  });
+  if (result.ok) return Response.json({ url: result.url });
+  if (result.kind === "invalid") {
+    return Response.json({ error: result.error }, { status: 400 });
+  }
+  console.error("Checkout error:", result.cause);
+  return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
 }

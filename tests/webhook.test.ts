@@ -10,7 +10,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
-import { getProductById } from "../lib/catalog.ts";
 import type { Db } from "../lib/db/connect.ts";
 import { orderItems, orders, stripeEvents } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
@@ -23,10 +22,13 @@ import {
 } from "../lib/stripe-webhook.ts";
 import type { WebhookDeps } from "../lib/stripe-webhook.ts";
 import type { ItemQuantity } from "../lib/types.ts";
+import { captureConsole } from "./support/console.ts";
+import { NOTHING, counts } from "./support/orders.ts";
 import {
   STRIPE_ERROR_TEXT,
   fakeStripe,
   paidSession,
+  totalOf,
 } from "./support/stripe.ts";
 import {
   WEBHOOK_SECRET,
@@ -42,11 +44,6 @@ const BOUGHT: ItemQuantity[] = [
   { id: "1", quantity: 2 },
   { id: "5", quantity: 1 },
 ];
-const totalOf = (items: ItemQuantity[]) =>
-  items.reduce(
-    (sum, { id, quantity }) => sum + getProductById(id)!.price * quantity,
-    0,
-  );
 
 // このファイルのテストは、失敗の経路で console.error を出す（本番のログ）。出力を静かにして、出た内容を logged に集める
 const logged: string[] = [];
@@ -90,21 +87,6 @@ async function send(request: Request, deps: WebhookDeps) {
   };
 }
 
-/** 3 つの表の行数 */
-async function counts(db: Db) {
-  const [orderRows, itemRows, eventRows] = await Promise.all([
-    db.select().from(orders),
-    db.select().from(orderItems),
-    db.select().from(stripeEvents),
-  ]);
-  return {
-    orders: orderRows.length,
-    orderItems: itemRows.length,
-    stripeEvents: eventRows.length,
-  };
-}
-
-const NOTHING = { orders: 0, orderItems: 0, stripeEvents: 0 };
 const ONE_ORDER = { orders: 1, orderItems: BOUGHT.length, stripeEvents: 1 };
 
 /* ---------- イベントの読み取り（純粋な関数） ---------- */
@@ -618,6 +600,130 @@ test("Webhook: DB に繋げなくても 500 で返し、接続の例外文を応
       stripe.retrieved,
       [],
       "DB に繋げないなら Stripe も呼ばない",
+    );
+    assert.deepEqual(await counts(db), NOTHING);
+  }));
+
+/* ---------- 請求額・通貨が合わない決済、未払い・知らない決済の記録 ---------- */
+
+test("Webhook: 請求額（amount_total）・通貨が注文の合計と合わない決済は 422 で、注文もイベントの処理済みの記録も残さず、値を含まない記録を残す。session が直った再送で確定する", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const total = totalOf(BOUGHT);
+    const stripe = fakeStripe({
+      cs_test_amount: paidSession("cs_test_amount", BOUGHT, {
+        amount_total: total + 100,
+      }),
+      cs_test_currency: paidSession("cs_test_currency", BOUGHT, {
+        currency: "usd",
+      }),
+    });
+    const deps = depsFor(db, stripe);
+
+    const capture = captureConsole();
+    let amount: Awaited<ReturnType<typeof send>>;
+    let currency: Awaited<ReturnType<typeof send>>;
+    try {
+      amount = await send(
+        webhookRequest(sessionEvent(COMPLETED, "cs_test_amount", "evt_amount")),
+        deps,
+      );
+      currency = await send(
+        webhookRequest(
+          sessionEvent(COMPLETED, "cs_test_currency", "evt_currency"),
+        ),
+        deps,
+      );
+    } finally {
+      capture.restore();
+    }
+    for (const res of [amount, currency]) {
+      assert.equal(res.status, 422);
+      assert.equal(typeof res.body.error, "string");
+    }
+    assert.deepEqual(await counts(db), NOTHING);
+    assert.deepEqual(capture.events(), [
+      {
+        level: "error",
+        event: "fulfillment.payment-mismatch",
+        eventId: "evt_amount",
+        sessionId: "cs_test_amount",
+        field: "amount_total",
+      },
+      {
+        level: "error",
+        event: "fulfillment.payment-mismatch",
+        eventId: "evt_currency",
+        sessionId: "cs_test_currency",
+        field: "currency",
+      },
+    ]);
+    assert.ok(!capture.text().includes(String(total)), "金額をログに出さない");
+
+    // 手で直したあとの再送（イベントは処理済みになっていない）で確定する
+    stripe.sessions.cs_test_amount = paidSession("cs_test_amount", BOUGHT);
+    const resent = await send(
+      webhookRequest(sessionEvent(COMPLETED, "cs_test_amount", "evt_amount")),
+      deps,
+    );
+    assert.deepEqual(resent.body, { received: true, result: "fulfilled" });
+    assert.deepEqual(await counts(db), ONE_ORDER);
+  }));
+
+test("Webhook: 未払いの completed と、Stripe が知らない決済（鍵の取り違えの疑い）は、200 で片付けたうえで警告の記録を残す", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({
+      cs_test_unpaid: paidSession("cs_test_unpaid", BOUGHT, {
+        payment_status: "unpaid",
+      }),
+    });
+    const deps = depsFor(db, stripe);
+
+    const capture = captureConsole();
+    const results = [];
+    try {
+      for (const [sessionId, eventId] of [
+        ["cs_test_unpaid", "evt_unpaid"],
+        ["cs_test_missing", "evt_missing"],
+      ] as const) {
+        results.push(
+          await send(
+            webhookRequest(sessionEvent(COMPLETED, sessionId, eventId)),
+            deps,
+          ),
+        );
+      }
+    } finally {
+      capture.restore();
+    }
+    for (const res of results) {
+      assert.deepEqual(res, {
+        status: 200,
+        body: { received: true, result: "unpaid" },
+      });
+    }
+    assert.deepEqual(
+      capture.events().map(({ level, event, eventId, sessionId }) => ({
+        level,
+        event,
+        eventId,
+        sessionId,
+      })),
+      [
+        {
+          level: "warn",
+          event: "fulfillment.session-unpaid",
+          eventId: "evt_unpaid",
+          sessionId: "cs_test_unpaid",
+        },
+        {
+          level: "warn",
+          event: "fulfillment.session-not-found",
+          eventId: "evt_missing",
+          sessionId: "cs_test_missing",
+        },
+      ],
     );
     assert.deepEqual(await counts(db), NOTHING);
   }));

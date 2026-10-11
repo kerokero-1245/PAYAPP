@@ -11,12 +11,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type Stripe from "stripe";
 
-import { PRODUCTS, getProductById } from "../lib/catalog.ts";
-import {
-  CHECKOUT_ERRORS,
-  buildLineItems,
-  encodeOrderMetadata,
-} from "../lib/checkout.ts";
+import { CATEGORIES, PRODUCTS, getProductById } from "../lib/catalog.ts";
+import { CHECKOUT_ERRORS, buildLineItems } from "../lib/checkout.ts";
 import type { LineItemsResult } from "../lib/checkout.ts";
 import {
   UNSUPPORTED_MEDIA_TYPE,
@@ -25,7 +21,10 @@ import {
 } from "../lib/checkout-session.ts";
 import type { StripeLike } from "../lib/checkout-session.ts";
 import {
+  MAX_DB_FIELDS,
   MAX_GRAPHQL_BODY_BYTES,
+  METHOD_NOT_ALLOWED,
+  TOO_MANY_DB_FIELDS,
   TOO_MANY_FIELDS,
   TOO_MANY_MUTATIONS,
   TOO_MANY_STRIPE_FIELDS,
@@ -50,6 +49,7 @@ import {
   placeOrder,
   timeAt,
 } from "./support/orders.ts";
+import { paidSession } from "./support/stripe.ts";
 
 const URL_ = "http://localhost/api/graphql";
 const SECRET = "sk_live_SECRET_DETAIL stack at Stripe.request";
@@ -79,14 +79,11 @@ function fakeStripe() {
   const created: CreatedArgs[] = [];
   const retrieved: string[] = [];
   const sessions: Record<string, unknown> = {
-    cs_test_paid: {
-      id: "cs_test_paid",
-      payment_status: "paid",
-      metadata: encodeOrderMetadata([
-        { id: "1", quantity: 2 },
-        { id: "5", quantity: 1 },
-      ]),
-    },
+    // 本物の session と同じく、請求額（amount_total）と通貨を持つ（確定のとき、自前の合計と照合する）
+    cs_test_paid: paidSession("cs_test_paid", [
+      { id: "1", quantity: 2 },
+      { id: "5", quantity: 1 },
+    ]),
     cs_test_unpaid: {
       id: "cs_test_unpaid",
       payment_status: "unpaid",
@@ -1228,3 +1225,226 @@ test("client: createCheckoutSession は UserError と 413 の文言だけを見�
     globalThis.fetch = saved;
   }
 });
+
+/* ---------- DB を読むフィールドの数・本番の GET・本番のイントロスペクション ---------- */
+
+/** NODE_ENV を一時的に変えて run を実行する（handler は作るときに NODE_ENV を読む）。NODE_ENV は Next の型で読み取り専用なので辞書として扱う */
+async function withNodeEnv<T>(
+  value: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  const saved = process.env.NODE_ENV;
+  const env = process.env as Record<string, string | undefined>;
+  env.NODE_ENV = value;
+  try {
+    return await run();
+  } finally {
+    if (saved === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = saved;
+  }
+}
+
+/** DB への問い合わせの回数を数える（drizzle の pglite ドライバは client.query を呼ぶ）。count() が今までの回数 */
+function countQueries(client: { query: unknown }) {
+  const target = client as { query: (...args: unknown[]) => unknown };
+  const original = target.query.bind(client);
+  let n = 0;
+  target.query = (...args: unknown[]) => {
+    n += 1;
+    return original(...args);
+  };
+  return { count: () => n, reset: () => (n = 0) };
+}
+
+const DB_FIELD_ERROR_CODE = "BAD_USER_INPUT";
+
+test("GraphQL: DB を読むフィールド（viewer・myOrders・order・orderBySession）は 1 リクエスト合計 2 つまで。エイリアス 100 個の myOrders は BAD_USER_INPUT で断り、DB にも Stripe にも触れない", () =>
+  withTestDb(async ({ db, client }) => {
+    await seedProducts(db);
+    await insertUser(db, "u1");
+    await placeOrder(db, 1, { userId: "u1" });
+    const queries = countQueries(client);
+    const { handler, stripe } = setup({
+      db,
+      viewer: { id: "u1", email: "u1@example.com", name: "u1" },
+    });
+
+    // 単発は通る（myOrders 1 つが DB への問い合わせ 2 回）
+    queries.reset();
+    const single = await post(handler, "{ myOrders(first:1){nextCursor} }");
+    assert.equal(single.status, 200);
+    assert.equal(single.body.errors, undefined);
+    assert.ok(queries.count() >= 1, "単発は DB を読む");
+
+    // エイリアス 100 個。要求の本文は 4KB 未満なので、本文の上限には当たらず、この規則だけが止める
+    const aliases = Array.from(
+      { length: 100 },
+      (_, i) => `a${i}:myOrders(first:1){nextCursor}`,
+    ).join(" ");
+    const hundred = `{${aliases}}`;
+    assert.ok(
+      Buffer.byteLength(JSON.stringify({ query: hundred })) <
+        MAX_GRAPHQL_BODY_BYTES,
+    );
+
+    const rejected = [
+      hundred,
+      // 種類が違っても合計で数える
+      `{ viewer{id} a:myOrders{nextCursor} b:order(orderNo:"ORD-X"){orderNo} }`,
+      `{ a:order(orderNo:"ORD-1"){orderNo} b:order(orderNo:"ORD-2"){orderNo} c:order(orderNo:"ORD-3"){orderNo} }`,
+      // フラグメントの展開・インラインフラグメントも数える
+      `{ ...F ...F ...F } fragment F on Query { myOrders{nextCursor} }`,
+      `{ ... on Query { a:myOrders{nextCursor} b:myOrders{nextCursor} } c:viewer{id} }`,
+      `{ a:orderBySession(sessionId:"cs_test_paid"){state} b:myOrders{nextCursor} c:viewer{id} }`,
+    ];
+    queries.reset();
+    for (const query of rejected) {
+      const r = await post(handler, query);
+      assert.equal(r.body.data, undefined, query.slice(0, 60));
+      const error = (
+        r.body.errors as { message: string; extensions?: { code?: string } }[]
+      ).find((e) => e.message === TOO_MANY_DB_FIELDS);
+      assert.ok(error, r.text.slice(0, 300));
+      assert.equal(error.extensions?.code, DB_FIELD_ERROR_CODE);
+    }
+    assert.equal(queries.count(), 0, "検証で断るので、DB に問い合わせない");
+    assert.equal(stripe.retrieved.length, 0, "Stripe にも照会しない");
+
+    // 上限ちょうど（2 つ）と、数えない場合は通る
+    for (const query of [
+      `{ viewer{id} myOrders(first:1){nextCursor} }`,
+      `{ a:viewer{id} b:viewer{email} }`,
+      // 子の order（OrderLookup.order）はルートの order ではないので数えない
+      `{ orderBySession(sessionId:"cs_test_paid"){state order{orderNo}} }`,
+      `{ products{id} categories{slug} cartQuote(items:[{id:"1",quantity:1}]){errors{code}} }`,
+    ]) {
+      const r = await post(handler, query);
+      assert.equal(
+        r.body.errors,
+        undefined,
+        `${query.slice(0, 60)} ${r.text.slice(0, 200)}`,
+      );
+    }
+    assert.equal(MAX_DB_FIELDS, 2);
+  }));
+
+test("GraphQL: 本番（NODE_ENV=production）では GET と HEAD を 405 で断る（本文の上限・Content-Type の検査を通らず、orderBySession も実行できるため）。DB にも Stripe にも触れず、POST と OPTIONS は従来どおり。本番以外の GET は通る", () =>
+  withTestDb(async ({ db, client }) => {
+    await seedProducts(db);
+    const queries = countQueries(client);
+    const oversized = `#${"x".repeat(MAX_GRAPHQL_BODY_BYTES * 2)}\n{ categories { slug } }`;
+    const orderBySession = `{ orderBySession(sessionId: "cs_test_paid") { state } }`;
+    const get = (handler: Handler, query: string, method = "GET") =>
+      handler.fetch(
+        new Request(`${URL_}?query=${encodeURIComponent(query)}`, { method }),
+      );
+
+    await withNodeEnv("production", async () => {
+      const { handler, stripe } = setup({ db });
+      queries.reset();
+      for (const [method, query] of [
+        ["GET", oversized],
+        ["HEAD", oversized],
+        ["GET", orderBySession],
+      ] as const) {
+        const res = await get(handler, query, method);
+        assert.equal(res.status, 405, `${method} ${query.slice(0, 40)}`);
+        assert.equal(res.headers.get("allow"), "POST, OPTIONS");
+        assert.equal(res.headers.get("cache-control"), "no-store");
+        if (method === "GET") {
+          assert.deepEqual(await res.json(), {
+            errors: [{ message: METHOD_NOT_ALLOWED }],
+          });
+        }
+      }
+      assert.equal(queries.count(), 0, "GET では DB を読まない");
+      assert.equal(stripe.retrieved.length, 0, "GET では Stripe に照会しない");
+
+      // POST は従来どおり。OPTIONS（プリフライト）は GET の 405 とは別の経路（yoga が返す。CORS ヘッダーは付かない）
+      const posted = await post(handler, "{ categories { slug } }");
+      assert.equal(posted.status, 200);
+      const preflight = await handler.fetch(
+        new Request(URL_, {
+          method: "OPTIONS",
+          headers: {
+            origin: "https://evil.example",
+            "access-control-request-method": "POST",
+          },
+        }),
+      );
+      assert.equal(preflight.headers.get("access-control-allow-origin"), null);
+    });
+
+    // 本番以外では GET も通る（GraphiQL が使う。README の開発中の手順）
+    await withNodeEnv("development", async () => {
+      const { handler } = setup({ db });
+      const res = await get(handler, "{ categories { slug } }");
+      assert.equal(res.status, 200);
+      assert.equal(
+        (await res.json()).data.categories.length,
+        CATEGORIES.length,
+      );
+    });
+  }));
+
+test("GraphQL: 本番ではイントロスペクション（__schema・__type）を断る。__typename は使える。本番以外では使える（GraphiQL が使う）", async () => {
+  const introspection = [
+    `{ __schema { queryType { name } } }`,
+    `{ __type(name: "Query") { name } }`,
+    `{ a: __type(name: "Viewer") { fields { name } } }`,
+  ];
+  await withNodeEnv("production", async () => {
+    const { handler } = setup();
+    for (const query of introspection) {
+      const r = await post(handler, query);
+      assert.equal(r.body.data, undefined, query);
+      assert.ok(
+        r.body.errors.some((e: GqlError) => /introspection/i.test(e.message)),
+        r.text.slice(0, 300),
+      );
+    }
+    const typename = await post(handler, "{ __typename categories { slug } }");
+    assert.equal(typename.body.errors, undefined);
+    assert.equal(typename.body.data.__typename, "Query");
+  });
+  await withNodeEnv("development", async () => {
+    const { handler } = setup();
+    for (const query of introspection) {
+      const r = await post(handler, query);
+      assert.equal(r.body.errors, undefined, query);
+    }
+  });
+});
+
+test("GraphQL: orderBySession は、請求額が注文の合計と合わない決済を注文にせず（DB に何も書かない）、例外の中身を返さない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const bought = [{ id: "1", quantity: 2 }];
+    const stripe = {
+      checkout: {
+        sessions: {
+          async create() {
+            return { url: null };
+          },
+          async retrieve(id: string) {
+            return paidSession(id, bought, { amount_total: 1 });
+          },
+        },
+      },
+    };
+    const { handler } = setup({ db, getStripe: () => stripe });
+    const savedError = console.error;
+    console.error = () => {};
+    try {
+      const r = await post(
+        handler,
+        `{ orderBySession(sessionId: "cs_test_drift") { state order { orderNo } } }`,
+      );
+      assert.equal(r.body.data, null);
+      assert.ok(Array.isArray(r.body.errors) && r.body.errors.length === 1);
+      assert.ok(!r.text.includes("請求額"), "例外の中身（請求額）を返さない");
+    } finally {
+      console.error = savedError;
+    }
+    assert.equal((await db.select().from(orders)).length, 0);
+  }));

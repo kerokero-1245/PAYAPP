@@ -60,11 +60,20 @@ function recordingStripe() {
         async create(params) {
           created.push(params);
           const id = `cs_test_flow_${created.length}`;
+          // 本物の Stripe と同じく、line_items から請求額を計算し、通貨を返す（確定のとき、自前の合計と照合される）
+          const lines = params.line_items ?? [];
           sessions[id] = {
             id,
             payment_status: "paid",
             metadata: params.metadata,
             client_reference_id: params.client_reference_id ?? null,
+            amount_total: lines.reduce(
+              (sum, line) =>
+                sum +
+                (line.price_data?.unit_amount ?? 0) * (line.quantity ?? 0),
+              0,
+            ),
+            currency: lines[0]?.price_data?.currency,
           };
           return { url: `https://checkout.stripe.test/${id}` };
         },

@@ -6,6 +6,7 @@
  * - encodeOrderMetadata / decodeOrderMetadata: 購入した id と数量を session の metadata に持たせる
  * - orderFromSession: 支払い済みの session から注文（品目・単価・数量・合計）を作る（DB に確定する前の形。確定は lib/fulfillment.ts）
  * - decideVerifyOutcome: 成功ページの確認結果を「支払い済み / 未払い / 確認できなかった」に分ける
+ * - findPaymentMismatch: 支払い済みの session の請求額・通貨を、自前の合計と照合する（決済を作ってから確定するまでにカタログが変わった場合の検出）
  * - isValidSessionId / isSessionPaid / ownerIdFromSession / isStripeNotFound
  *
  * tests/*.test.ts で `node --test` から検証する。
@@ -20,6 +21,9 @@ import type {
 } from "./types.ts";
 
 export { MAX_QUANTITY };
+
+/** Checkout Session の通貨（カタログの価格は円）。line_items の currency と、確定時の請求額の照合が同じ値を読む */
+export const CHECKOUT_CURRENCY = "jpy";
 
 /** 1 回の決済で受け付ける行数の上限（Stripe Checkout の line_items 上限と同じ） */
 export const MAX_LINE_ITEMS = 100;
@@ -152,7 +156,7 @@ export function buildLineItems(
     const product = lookup(id)!;
     return {
       price_data: {
-        currency: "jpy",
+        currency: CHECKOUT_CURRENCY,
         product_data: { name: product.name },
         unit_amount: product.price,
       },
@@ -285,6 +289,25 @@ export function decideVerifyOutcome(
   // session_id の形が不正（実在しうる決済の参照ではない）
   if (status === 400) return { state: "unpaid" };
   return { state: "unverified" };
+}
+
+/** 請求額・通貨の照合で食い違った項目（Stripe の Checkout Session の項目名） */
+export type PaymentMismatch = "amount_total" | "currency";
+
+/**
+ * 支払い済みの session の通貨と請求額（amount_total）が、自前の合計（metadata とカタログから作った注文の合計）と合っているか調べる。
+ * 食い違った項目の名前を返し、合っていれば null。請求額が数でない（無い）ときも食い違いとして扱う（確かめられないまま確定しない）。
+ * 注文は「確定した時点のカタログ」で金額を決めるので、決済を作ってから確定するまでに価格が変わると、請求額と違う合計で記録されてしまう。
+ */
+export function findPaymentMismatch(
+  session: unknown,
+  total: number,
+): PaymentMismatch | null {
+  const probe = session as
+    { amount_total?: unknown; currency?: unknown } | null | undefined;
+  if (probe?.currency !== CHECKOUT_CURRENCY) return "currency";
+  if (probe.amount_total !== total) return "amount_total";
+  return null;
 }
 
 /** Stripe Checkout Session の id の形か（cs_ で始まり、英数字とアンダースコア、200 文字以下） */

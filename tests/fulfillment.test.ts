@@ -13,10 +13,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { getProductById } from "../lib/catalog.ts";
+import { CHECKOUT_CURRENCY, findPaymentMismatch } from "../lib/checkout.ts";
 import type { PaidOrder } from "../lib/checkout.ts";
 import { validateContactField } from "../lib/contact.ts";
 import type { Db } from "../lib/db/connect.ts";
-import { orderItems, orders, stripeEvents, user } from "../lib/db/schema.ts";
+import { orderItems, orders } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import {
   PG_FOREIGN_KEY_VIOLATION,
@@ -34,8 +35,10 @@ import {
   toStoredOrder,
 } from "../lib/fulfillment.ts";
 import type { FulfillResult } from "../lib/fulfillment.ts";
-import type { ItemQuantity } from "../lib/types.ts";
-import { fakeStripe, paidSession } from "./support/stripe.ts";
+import type { ItemQuantity, ProductLookup } from "../lib/types.ts";
+import { captureConsole } from "./support/console.ts";
+import { NOTHING, counts, insertUser } from "./support/orders.ts";
+import { fakeStripe, paidSession, totalOf } from "./support/stripe.ts";
 
 const NOW = new Date("2026-10-11T03:00:00.000Z");
 /** 購入した品目。商品 5 を 1 点と商品 1 を 2 点（買った順と商品 id の順がずれるように、id の大きい方を先に置く） */
@@ -49,13 +52,6 @@ function catalogLine(id: string) {
   const { name, price } = getProductById(id)!;
   return { name, price };
 }
-
-/** 買った品目の合計 */
-const totalOf = (items: ItemQuantity[]) =>
-  items.reduce(
-    (sum, { id, quantity }) => sum + catalogLine(id).price * quantity,
-    0,
-  );
 
 /** 注文番号を呼び出しごとに変える（固定にしたいテストは自分で渡す） */
 function numbering(prefix = "ORD-TEST") {
@@ -73,34 +69,12 @@ function inputFor(db: Db, stripe: ReturnType<typeof fakeStripe>) {
   };
 }
 
-/** 利用者を 1 人入れる（認証の表。Better Auth を通さず、注文の持ち主にできる利用者だけを用意する） */
-async function insertUser(db: Db, id: string) {
-  await db
-    .insert(user)
-    .values({ id, name: `利用者 ${id}`, email: `${id}@example.com` });
-}
-
 /** 結果が fulfilled であることを確かめて、その中身を返す */
 function fulfilled(result: FulfillResult) {
   assert.ok(result.status === "fulfilled", JSON.stringify(result));
   return result;
 }
 
-/** 3 つの表の行数 */
-async function counts(db: Db) {
-  const [orderRows, itemRows, eventRows] = await Promise.all([
-    db.select().from(orders),
-    db.select().from(orderItems),
-    db.select().from(stripeEvents),
-  ]);
-  return {
-    orders: orderRows.length,
-    orderItems: itemRows.length,
-    stripeEvents: eventRows.length,
-  };
-}
-
-const NOTHING = { orders: 0, orderItems: 0, stripeEvents: 0 };
 const ONE_ORDER = {
   orders: 1,
   orderItems: BOUGHT.length,
@@ -748,4 +722,202 @@ test("fulfillCheckout: 注文には購入した時点の名前と単価を写し
     assert.equal(again.order.items[0].price, catalogLine("1").price);
     assert.equal(again.order.total, first.order.total);
     assert.equal(again.order.total, totalOf(bought));
+  }));
+
+/* ---------- 請求額・通貨の照合（決済を作ってから確定するまでにカタログが変わった場合） ---------- */
+
+test("findPaymentMismatch: 通貨が円で請求額が自前の合計と同じなら null。食い違えばその項目の名前。請求額が数でない（無い）ときも食い違い", () => {
+  const total = totalOf(BOUGHT);
+  assert.equal(
+    findPaymentMismatch(
+      { amount_total: total, currency: CHECKOUT_CURRENCY },
+      total,
+    ),
+    null,
+  );
+  for (const amount_total of [
+    total + 1,
+    total - 1,
+    0,
+    undefined,
+    null,
+    String(total),
+    Number.NaN,
+  ]) {
+    assert.equal(
+      findPaymentMismatch({ amount_total, currency: "jpy" }, total),
+      "amount_total",
+      String(amount_total),
+    );
+  }
+  for (const currency of ["usd", "JPY", "", undefined, null, 392]) {
+    assert.equal(
+      findPaymentMismatch({ amount_total: total, currency }, total),
+      "currency",
+      String(currency),
+    );
+  }
+  assert.equal(findPaymentMismatch(null, total), "currency");
+  assert.equal(findPaymentMismatch("cs_test_a", total), "currency");
+});
+
+test("decideFulfillment: 支払い済みでも請求額・通貨が合計と合わなければ mismatch（注文にしない）。metadata が読めないものは従来どおり unreadable", () => {
+  const total = totalOf(BOUGHT);
+  assert.deepEqual(
+    decideFulfillment(
+      paidSession("cs_test_a", BOUGHT, { amount_total: total + 100 }),
+    ),
+    { kind: "mismatch", field: "amount_total" },
+  );
+  assert.deepEqual(
+    decideFulfillment(paidSession("cs_test_a", BOUGHT, { currency: "usd" })),
+    { kind: "mismatch", field: "currency" },
+  );
+  assert.ok(
+    decideFulfillment(paidSession("cs_test_a", BOUGHT)).kind === "paid",
+  );
+  // 未払いは請求額が合っていなくても未払い。metadata が読めないものは、請求額を見る前に unreadable
+  assert.deepEqual(
+    decideFulfillment(
+      paidSession("cs_test_a", BOUGHT, {
+        payment_status: "unpaid",
+        amount_total: 1,
+      }),
+    ),
+    { kind: "unpaid" },
+  );
+  assert.equal(
+    decideFulfillment({
+      id: "cs_test_a",
+      payment_status: "paid",
+      metadata: {},
+      amount_total: 1,
+      currency: "usd",
+    }).kind,
+    "unreadable",
+  );
+});
+
+/** 値上げのあとのカタログ（全商品が amount 円高い） */
+function raisedBy(amount: number): ProductLookup {
+  return (id) => {
+    const product = getProductById(id);
+    return product && { ...product, price: product.price + amount };
+  };
+}
+
+test("fulfillCheckout: 決済を作ったあとにカタログの価格が変わって請求額と合計が違えば、注文を作らず payment-mismatch。値を含まない記録を 1 件だけ残し、Webhook のイベントは処理済みにせず、直った再送で確定する", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    // session の請求額は、決済を作った時点（今のカタログ）の合計。確定するときのカタログは 100 円値上がりしている
+    const stripe = fakeStripe({
+      cs_test_drift: paidSession("cs_test_drift", BOUGHT),
+    });
+    const input = {
+      ...inputFor(db, stripe),
+      sessionId: "cs_test_drift",
+      eventId: "evt_test_drift",
+    };
+
+    const capture = captureConsole();
+    let result: FulfillResult;
+    try {
+      result = await fulfillCheckout({ ...input, lookup: raisedBy(100) });
+    } finally {
+      capture.restore();
+    }
+    assert.deepEqual(result, {
+      status: "payment-mismatch",
+      field: "amount_total",
+    });
+    assert.deepEqual(await counts(db), NOTHING);
+    assert.deepEqual(capture.events(), [
+      {
+        level: "error",
+        event: "fulfillment.payment-mismatch",
+        eventId: "evt_test_drift",
+        sessionId: "cs_test_drift",
+        field: "amount_total",
+      },
+    ]);
+    // 値（金額・品目）は書かない
+    const text = capture.text();
+    for (const value of [
+      totalOf(BOUGHT),
+      totalOf(BOUGHT) + 100 * 3,
+      ...BOUGHT.map(({ id }) => catalogLine(id).name),
+    ]) {
+      assert.ok(!text.includes(String(value)), `ログに値が出ている: ${value}`);
+    }
+
+    // 価格が請求額と合うカタログに戻れば（Stripe の再送・もう一度確認）確定する
+    const retried = fulfilled(await fulfillCheckout(input));
+    assert.equal(retried.created, true);
+    assert.equal(retried.order.total, totalOf(BOUGHT));
+    assert.deepEqual(await counts(db), { ...ONE_ORDER, stripeEvents: 1 });
+  }));
+
+test("fulfillCheckout: 通貨が円でない決済も payment-mismatch で、注文を作らない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({
+      cs_test_usd: paidSession("cs_test_usd", BOUGHT, { currency: "usd" }),
+    });
+    const capture = captureConsole();
+    let result: FulfillResult;
+    try {
+      result = await fulfillCheckout({
+        ...inputFor(db, stripe),
+        sessionId: "cs_test_usd",
+      });
+    } finally {
+      capture.restore();
+    }
+    assert.deepEqual(result, { status: "payment-mismatch", field: "currency" });
+    assert.deepEqual(await counts(db), NOTHING);
+    assert.equal(capture.events()[0]?.field, "currency");
+  }));
+
+test("fulfillCheckout: Webhook（eventId あり）が届けた決済を Stripe が知らない（404）・未払いのときは警告を残す。成功ページの確認（eventId なし）は残さない。どちらも結果は unpaid のまま", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({
+      cs_test_unpaid: paidSession("cs_test_unpaid", BOUGHT, {
+        payment_status: "unpaid",
+      }),
+    });
+    const input = inputFor(db, stripe);
+
+    const capture = captureConsole();
+    try {
+      for (const sessionId of ["cs_test_missing", "cs_test_unpaid"]) {
+        assert.deepEqual(
+          await fulfillCheckout({ ...input, sessionId, eventId: "evt_test_w" }),
+          { status: "unpaid" },
+        );
+      }
+      assert.equal(capture.lines.length, 2);
+      // 成功ページの確認（eventId なし）は、利用者が好きな id を送れるので記録しない
+      for (const sessionId of ["cs_test_missing", "cs_test_unpaid"]) {
+        assert.deepEqual(await fulfillCheckout({ ...input, sessionId }), {
+          status: "unpaid",
+        });
+      }
+    } finally {
+      capture.restore();
+    }
+    const [notFound, unpaid, ...rest] = capture.events();
+    assert.equal(rest.length, 0, "成功ページの経路は記録しない");
+    assert.equal(notFound?.level, "warn");
+    assert.equal(notFound?.event, "fulfillment.session-not-found");
+    assert.equal(notFound?.eventId, "evt_test_w");
+    assert.equal(notFound?.sessionId, "cs_test_missing");
+    assert.match(String(notFound?.hint), /STRIPE_SECRET_KEY/);
+    assert.deepEqual(unpaid, {
+      level: "warn",
+      event: "fulfillment.session-unpaid",
+      eventId: "evt_test_w",
+      sessionId: "cs_test_unpaid",
+    });
+    assert.deepEqual(await counts(db), NOTHING);
   }));

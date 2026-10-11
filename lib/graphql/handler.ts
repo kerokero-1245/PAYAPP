@@ -7,13 +7,18 @@
  * - 本文は 4KB 上限（超えたら 413）。yoga に渡す前に当てる（/checkout の 16KB とは別の値）
  * - POST は Content-Type が application/json のものだけ受け付ける（フォーム送信を通さない）
  * - Stripe を呼ぶフィールド（createCheckoutSession・orderBySession）は 1 リクエスト合計 1 つまで
+ * - DB を読むフィールド（viewer・myOrders・order・orderBySession）は 1 リクエスト合計 2 つまで（エイリアスも数える。超えたら BAD_USER_INPUT）。
+ *   myOrders 1 つが DB への問い合わせ 2 回なので、数に上限が無いと、3.5KB の要求のエイリアス 100 個で 200 回になる
  * - Mutation のフィールドは 1 リクエスト 1 つまで
  * - 選択するフィールドの総数（エイリアス・同名の重複・フラグメントの展開を含む）は 200 まで
  * - maskedErrors を明示的に有効にし、Stripe の例外文やスタックを返さない
  * - CORS は付けない（他オリジンを反射しない）。GraphiQL は本番以外だけ
+ * - 本番では GET を受けない（405）。GET は本文の上限（4KB）も Content-Type の検査も通らず、副作用のある orderBySession も実行できる。
+ *   ブラウザのクライアント（lib/graphql/client.ts）は POST だけを使う。GET は GraphiQL を出す本番以外だけ
+ * - 本番ではイントロスペクション（__schema・__type）を断る（本番以外は GraphiQL が使う）
  * - 応答はすべて Cache-Control: no-store
  */
-import { GraphQLError, Kind } from "graphql";
+import { GraphQLError, Kind, NoSchemaIntrospectionCustomRule } from "graphql";
 import type {
   FragmentDefinitionNode,
   SelectionSetNode,
@@ -23,11 +28,15 @@ import type {
 import { createYoga } from "graphql-yoga";
 import type { Plugin } from "graphql-yoga";
 import {
+  BAD_REQUEST,
+  NO_STORE,
+  TOO_LARGE,
   UNSUPPORTED_MEDIA_TYPE,
   isJsonContentType,
   readBodyWithLimit,
 } from "../checkout-session.ts";
 import type { Viewer } from "../types.ts";
+import { BAD_USER_INPUT } from "./authorize.ts";
 import { schema } from "./schema.ts";
 import type { GraphqlContext } from "./schema.ts";
 
@@ -41,9 +50,18 @@ export const MAX_STRIPE_FIELDS = 1;
 export const MAX_SELECTED_FIELDS = 200;
 /** 解析・検証結果をキャッシュするクエリ文の件数（既定の 1024 から絞る） */
 export const PARSE_CACHE_MAX = 100;
+/** 1 リクエストで DB を読むフィールドの数の上限 */
+export const MAX_DB_FIELDS = 2;
 /** Stripe に要求を出すフィールド */
 export const STRIPE_FIELDS = new Set([
   "createCheckoutSession",
+  "orderBySession",
+]);
+/** DB を読むフィールド（viewer はセッションを DB で引く。orderBySession は DB を読んで、無ければ Stripe に照会して書く） */
+export const DB_FIELDS = new Set([
+  "viewer",
+  "myOrders",
+  "order",
   "orderBySession",
 ]);
 
@@ -51,9 +69,11 @@ export const TOO_MANY_MUTATIONS =
   "1 回のリクエストで実行できる Mutation は 1 つまでです";
 export const TOO_MANY_STRIPE_FIELDS =
   "1 回のリクエストで実行できる決済の操作（createCheckoutSession・orderBySession）は 1 つまでです";
+export const TOO_MANY_DB_FIELDS = `1 回のリクエストで読める利用者・注文（viewer・myOrders・order・orderBySession）は ${MAX_DB_FIELDS} つまでです`;
 export const TOO_MANY_FIELDS = `1 回のリクエストで選択できるフィールドは ${MAX_SELECTED_FIELDS} までです`;
-const TOO_LARGE = "リクエストが大きすぎます";
-const BAD_REQUEST = "リクエストの形式が不正です";
+/** 本番で GET を断るときの文言（405 の本文） */
+export const METHOD_NOT_ALLOWED =
+  "このエンドポイントは POST だけを受け付けます";
 
 /**
  * ルートの選択セットのうち、条件に合うフィールドの数（フラグメントを展開する）。
@@ -102,36 +122,64 @@ export const singleMutationRule: ValidationRule = (context) => ({
 });
 
 /**
- * Stripe を呼ぶフィールドを 1 リクエスト合計 1 つまでにする。
- * 同じフラグメントを何度展開しても、その中身を毎回数える。
+ * ルートの選択セットのうち、names に当たるフィールドが max を超えたら断る検証規則を作る。
+ * エイリアス（別名で同じフィールドを並べる）・インラインフラグメント・フラグメントの展開も数える
+ * （同じフラグメントを何度展開しても、その中身を毎回数える）。@include / @skip は見ずに数える。
+ * 子のフィールドは数えない（orderBySession { order { … } } の order は、ルートの order ではない）。
+ * code を渡すと、エラーの extensions.code に入れる。
  */
-export const singleStripeFieldRule: ValidationRule = (context) => ({
-  OperationDefinition(node) {
-    const count = (set: SelectionSetNode, stack: Set<string>): number => {
-      let n = 0;
-      for (const s of set.selections) {
-        if (s.kind === Kind.FIELD) {
-          if (STRIPE_FIELDS.has(s.name.value)) n += 1;
-        } else if (s.kind === Kind.INLINE_FRAGMENT) {
-          n += count(s.selectionSet, stack);
-        } else if (s.kind === Kind.FRAGMENT_SPREAD) {
-          const name = s.name.value;
-          const fragment = context.getFragment(name);
-          // 循環は別の規則（NoFragmentCycles）が弾く。ここでは無限再帰だけ防ぐ
-          if (!fragment || stack.has(name)) continue;
-          n += count(fragment.selectionSet, new Set([...stack, name]));
+function limitRootFieldsRule(
+  names: ReadonlySet<string>,
+  max: number,
+  message: string,
+  code?: string,
+): ValidationRule {
+  return (context) => ({
+    OperationDefinition(node) {
+      const count = (set: SelectionSetNode, stack: Set<string>): number => {
+        let n = 0;
+        for (const s of set.selections) {
+          if (s.kind === Kind.FIELD) {
+            if (names.has(s.name.value)) n += 1;
+          } else if (s.kind === Kind.INLINE_FRAGMENT) {
+            n += count(s.selectionSet, stack);
+          } else if (s.kind === Kind.FRAGMENT_SPREAD) {
+            const name = s.name.value;
+            const fragment = context.getFragment(name);
+            // 循環は別の規則（NoFragmentCycles）が弾く。ここでは無限再帰だけ防ぐ
+            if (!fragment || stack.has(name)) continue;
+            n += count(fragment.selectionSet, new Set([...stack, name]));
+          }
+          if (n > max) return n;
         }
-        if (n > MAX_STRIPE_FIELDS) return n;
+        return n;
+      };
+      if (count(node.selectionSet, new Set()) > max) {
+        context.reportError(
+          new GraphQLError(message, {
+            nodes: [node],
+            ...(code ? { extensions: { code } } : {}),
+          }),
+        );
       }
-      return n;
-    };
-    if (count(node.selectionSet, new Set()) > MAX_STRIPE_FIELDS) {
-      context.reportError(
-        new GraphQLError(TOO_MANY_STRIPE_FIELDS, { nodes: [node] }),
-      );
-    }
-  },
-});
+    },
+  });
+}
+
+/** Stripe を呼ぶフィールドを 1 リクエスト合計 1 つまでにする */
+export const singleStripeFieldRule: ValidationRule = limitRootFieldsRule(
+  STRIPE_FIELDS,
+  MAX_STRIPE_FIELDS,
+  TOO_MANY_STRIPE_FIELDS,
+);
+
+/** DB を読むフィールドを 1 リクエスト合計 2 つまでにする（超えたら extensions.code = BAD_USER_INPUT。DB には触れない） */
+export const maxDbFieldsRule: ValidationRule = limitRootFieldsRule(
+  DB_FIELDS,
+  MAX_DB_FIELDS,
+  TOO_MANY_DB_FIELDS,
+  BAD_USER_INPUT,
+);
 
 /**
  * 選択するフィールドの総数を 200 までにする。エイリアス・同名フィールドの重複は 1 つずつ数え、
@@ -178,13 +226,18 @@ export const maxSelectedFieldsRule: ValidationRule = (context) => {
   };
 };
 
-const limitsPlugin: Plugin = {
-  onValidate({ addValidationRule }) {
-    addValidationRule(singleMutationRule);
-    addValidationRule(singleStripeFieldRule);
-    addValidationRule(maxSelectedFieldsRule);
-  },
-};
+/** 入口の上限の規則を足す plugin。本番だけ、イントロスペクション（__schema・__type）も断る */
+function limitsPlugin(isProduction: boolean): Plugin {
+  return {
+    onValidate({ addValidationRule }) {
+      addValidationRule(singleMutationRule);
+      addValidationRule(singleStripeFieldRule);
+      addValidationRule(maxDbFieldsRule);
+      addValidationRule(maxSelectedFieldsRule);
+      if (isProduction) addValidationRule(NoSchemaIntrospectionCustomRule);
+    },
+  };
+}
 
 /** 件数に上限のある小さなキャッシュ（Map の挿入順で古いものから捨てる） */
 function boundedCache<T>(max: number) {
@@ -224,14 +277,19 @@ type HandlerOptions = {
   baseUrl?: string;
 };
 
-function jsonError(message: string, status: number): Response {
-  return Response.json({ errors: [{ message }] }, { status });
+function jsonError(
+  message: string,
+  status: number,
+  headers?: HeadersInit,
+): Response {
+  return Response.json({ errors: [{ message }] }, { status, headers });
 }
 
 /** 応答に Cache-Control: no-store を付ける（ヘッダーが変更できない応答もあるので作り直す） */
 function noStore(res: Response): Response {
   const headers = new Headers(res.headers);
-  headers.set("Cache-Control", "no-store");
+  for (const [name, value] of Object.entries(NO_STORE))
+    headers.set(name, value);
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
@@ -251,17 +309,19 @@ export function createGraphqlHandler({
   getViewer,
   baseUrl,
 }: HandlerOptions) {
+  // 本番かどうかは、handler を作るときに決める（GraphiQL・イントロスペクション・GET の扱いが同じ判定に揃う）
+  const isProduction = process.env.NODE_ENV === "production";
   const yoga = createYoga<object, GraphqlContext>({
     schema,
     graphqlEndpoint: GRAPHQL_ENDPOINT,
     maskedErrors: { isDev: false },
     cors: false,
-    graphiql: process.env.NODE_ENV !== "production",
+    graphiql: !isProduction,
     parserAndValidationCache: {
       documentCache: boundedCache(PARSE_CACHE_MAX),
       errorCache: boundedCache(PARSE_CACHE_MAX),
     },
-    plugins: [limitsPlugin],
+    plugins: [limitsPlugin(isProduction)],
     context: ({ request }) => ({
       request,
       getStripe,
@@ -273,6 +333,13 @@ export function createGraphqlHandler({
 
   /** Content-Type と本文の上限を先に当ててから yoga に渡す */
   async function handle(request: Request): Promise<Response> {
+    // 本番では GET を受けない（本文の上限も Content-Type の検査も通らず、orderBySession も実行できる）。本番以外は GraphiQL が使う
+    if (
+      isProduction &&
+      (request.method === "GET" || request.method === "HEAD")
+    ) {
+      return jsonError(METHOD_NOT_ALLOWED, 405, { Allow: "POST, OPTIONS" });
+    }
     if (request.method !== "POST") return yoga.fetch(request);
 
     if (!isJsonContentType(request.headers.get("content-type"))) {

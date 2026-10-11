@@ -14,15 +14,18 @@ import assert from "node:assert/strict";
 import { getProductById } from "../lib/catalog.ts";
 import { verifyCheckoutSession } from "../lib/checkout-session.ts";
 import type { Db } from "../lib/db/connect.ts";
-import { orderItems, orders, stripeEvents } from "../lib/db/schema.ts";
+import { orders } from "../lib/db/schema.ts";
 import { seedProducts } from "../lib/db/seed.ts";
 import { withTestDb } from "../lib/db/test-helpers.ts";
 import { handleStripeWebhook } from "../lib/stripe-webhook.ts";
 import type { ItemQuantity } from "../lib/types.ts";
+import { captureConsole } from "./support/console.ts";
+import { NOTHING, counts } from "./support/orders.ts";
 import {
   STRIPE_ERROR_TEXT,
   fakeStripe,
   paidSession,
+  totalOf,
 } from "./support/stripe.ts";
 import {
   WEBHOOK_SECRET,
@@ -69,30 +72,10 @@ async function read(response: Response) {
   };
 }
 
-/** 3 つの表の行数 */
-async function counts(db: Db) {
-  const [orderRows, itemRows, eventRows] = await Promise.all([
-    db.select().from(orders),
-    db.select().from(orderItems),
-    db.select().from(stripeEvents),
-  ]);
-  return {
-    orders: orderRows.length,
-    orderItems: itemRows.length,
-    stripeEvents: eventRows.length,
-  };
-}
-
-const NOTHING = { orders: 0, orderItems: 0, stripeEvents: 0 };
 const BOUGHT: ItemQuantity[] = [
   { id: "1", quantity: 2 },
   { id: "5", quantity: 1 },
 ];
-const totalOf = (items: ItemQuantity[]) =>
-  items.reduce(
-    (sum, { id, quantity }) => sum + getProductById(id)!.price * quantity,
-    0,
-  );
 
 test("決済確認: 支払い済みの session は、DB に確定した注文（metadata とカタログから作った品目・単価・数量・合計と注文番号）を返す", () =>
   withTestDb(async ({ db }) => {
@@ -379,3 +362,55 @@ test("決済確認: DB に繋げなければ 500 で返し、接続の例外文�
     console.error = savedError;
   }
 });
+
+test("決済確認: 請求額・通貨が注文の合計と合わない決済は 500（確認できなかった）で注文を返さず、DB に何も書かない。値を含まない記録は 1 件", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({
+      cs_test_drift: paidSession("cs_test_drift", BOUGHT, {
+        amount_total: totalOf(BOUGHT) + 100,
+      }),
+    });
+
+    const capture = captureConsole();
+    let res: Awaited<ReturnType<typeof read>>;
+    try {
+      res = await read(await verify(stripe, db, "cs_test_drift"));
+    } finally {
+      capture.restore();
+    }
+    assert.equal(res.status, 500);
+    assert.equal(res.body.paid, false);
+    assert.ok(!("order" in res.body));
+    assert.equal(res.cacheControl, "no-store");
+    assert.deepEqual(await counts(db), NOTHING);
+    assert.deepEqual(
+      capture.events().map(({ event, sessionId, field }) => ({
+        event,
+        sessionId,
+        field,
+      })),
+      [
+        {
+          event: "fulfillment.payment-mismatch",
+          sessionId: "cs_test_drift",
+          field: "amount_total",
+        },
+      ],
+    );
+  }));
+
+test("決済確認: Stripe が知らない session（利用者が好きな id を送れる経路）は、警告の記録を残さない", () =>
+  withTestDb(async ({ db }) => {
+    await seedProducts(db);
+    const stripe = fakeStripe({});
+    const capture = captureConsole();
+    let res: Awaited<ReturnType<typeof read>>;
+    try {
+      res = await read(await verify(stripe, db, "cs_test_missing"));
+    } finally {
+      capture.restore();
+    }
+    assert.deepEqual(res.body, { paid: false });
+    assert.deepEqual(capture.lines, []);
+  }));

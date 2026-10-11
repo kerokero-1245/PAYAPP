@@ -223,6 +223,9 @@ export const resolvers: Resolvers<GraphqlContext> = {
           throw result.cause;
         case "unreadable-order":
           throw new Error(result.error);
+        case "payment-mismatch":
+          // 請求額・通貨が注文の合計と合わない（記録は fulfillCheckout）。例外の中身は maskedErrors で利用者に返さない
+          throw new Error("請求額・通貨が注文の合計と一致しません");
       }
     },
   },

@@ -1,68 +1,20 @@
 import { getViewerFromHeaders } from "@/lib/auth/server";
 import { getStripe } from "@/lib/stripe";
-import { MAX_BODY_BYTES } from "@/lib/checkout";
-import {
-  UNSUPPORTED_MEDIA_TYPE,
-  createCheckoutSessionCore,
-  isJsonContentType,
-  readBodyWithLimit,
-} from "@/lib/checkout-session";
-
-const TOO_LARGE = "リクエストが大きすぎます";
-const BAD_REQUEST = "リクエストの形式が不正です";
-const CHECKOUT_FAILED =
-  "決済セッションの作成に失敗しました。時間をおいてもう一度お試しください";
+import { handleCheckoutRequest } from "@/lib/checkout-session";
 
 /**
- * Stripe Checkout Session を作成する。
+ * Stripe Checkout Session を作成する（REST）。
  * クライアントからは { items: [{ id, quantity }] } だけを受け取り、
  * 価格と商品名はサーバ側のカタログ（lib/catalog.ts）から引く。
  * 購入した id と数量は session の metadata に持たせ、成功ページの確認で注文を作るのに使う。
  * ログイン中なら、持ち主の id（セッションから引く。本文の値は使わない）を client_reference_id に付ける。
- * 本体は lib/checkout-session.ts（GraphQL の createCheckoutSession と共有）。
+ * 本体は lib/checkout-session.ts の handleCheckoutRequest（GraphQL の createCheckoutSession と同じ createCheckoutSessionCore を呼ぶ。
+ * ログイン中の持ち主の受け渡しは tests/checkout-route.test.ts が確かめている）。
  */
 export async function POST(request: Request) {
-  // フォーム送信など JSON 以外は受け付けない（GraphQL の入口と同じ判定）
-  if (!isJsonContentType(request.headers.get("content-type"))) {
-    return Response.json({ error: UNSUPPORTED_MEDIA_TYPE }, { status: 415 });
-  }
-
-  let text: string | null;
-  try {
-    text = await readBodyWithLimit(request, MAX_BODY_BYTES);
-  } catch {
-    return Response.json({ error: BAD_REQUEST }, { status: 400 });
-  }
-  if (text === null)
-    return Response.json({ error: TOO_LARGE }, { status: 413 });
-
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    return Response.json({ error: BAD_REQUEST }, { status: 400 });
-  }
-
-  // cookie の無い要求（ゲスト）は DB に触れない。セッションを引けなければ（DB の失敗など）、持ち主を決められないので失敗にする
-  let userId: string | undefined;
-  try {
-    userId = (await getViewerFromHeaders(request.headers))?.id;
-  } catch (cause) {
-    console.error("Checkout viewer error:", cause);
-    return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
-  }
-
-  const result = await createCheckoutSessionCore({
-    items: (body as { items?: unknown } | null | undefined)?.items,
-    requestUrl: request.url,
-    baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
-    userId,
+  return handleCheckoutRequest(request, {
+    getViewer: getViewerFromHeaders,
     getStripe,
+    baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
   });
-  if (result.ok) return Response.json({ url: result.url });
-  if (result.kind === "invalid") {
-    return Response.json({ error: result.error }, { status: 400 });
-  }
-  console.error("Checkout error:", result.cause);
-  return Response.json({ error: CHECKOUT_FAILED }, { status: 500 });
 }

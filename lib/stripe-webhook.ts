@@ -20,7 +20,11 @@
  * Route Handler が Stripe.webhooks.constructEvent などの本物を渡し、tests/webhook.test.ts が本物の署名を作って呼ぶ。
  */
 import { isValidSessionId } from "./checkout.ts";
-import { readBodyWithLimit } from "./checkout-session.ts";
+import {
+  BAD_REQUEST,
+  TOO_LARGE,
+  readBodyWithLimit,
+} from "./checkout-session.ts";
 import type { StripeLike } from "./checkout-session.ts";
 import type { Db } from "./db/connect.ts";
 import { fulfillCheckout, hasProcessedEvent } from "./fulfillment.ts";
@@ -110,7 +114,7 @@ function received(result: string): Response {
  *                                    unpaid（未払い。何も記録しない）/ ignored（対象外のイベント）
  *  - 400  署名が無い・通らない・本文が読めない・イベントの形が不正
  *  - 413  本文が大きすぎる
- *  - 422  支払い済みだが、metadata から注文を作れない（再送されても作れるようになるまで 2xx にしない）
+ *  - 422  支払い済みだが、metadata から注文を作れない・請求額/通貨が注文の合計と合わない（再送されても直るまで 2xx にしない。手で直す）
  *  - 502  Stripe から Checkout Session を取れなかった
  *  - 500  DB の失敗など
  *  - 503  STRIPE_WEBHOOK_SECRET が未設定
@@ -132,9 +136,9 @@ export async function handleStripeWebhook(
   try {
     payload = await readBodyWithLimit(request, MAX_WEBHOOK_BODY_BYTES);
   } catch {
-    return failure(400, "リクエストの形式が不正です");
+    return failure(400, BAD_REQUEST);
   }
-  if (payload === null) return failure(413, "リクエストが大きすぎます");
+  if (payload === null) return failure(413, TOO_LARGE);
 
   let event: unknown;
   try {
@@ -180,6 +184,9 @@ export async function handleStripeWebhook(
       case "stripe-error":
         console.error("Stripe webhook retrieve error:", result.cause);
         return failure(502, "決済情報を取得できませんでした");
+      case "payment-mismatch":
+        // 記録（値を含まない構造化ログ）は fulfillCheckout が残している
+        return failure(422, "請求額・通貨が注文の合計と一致しませんでした");
       case "invalid-session-id":
         // parseWebhookEvent が形を確かめているので通常は来ない
         return failure(400, "イベントの形式が不正です");

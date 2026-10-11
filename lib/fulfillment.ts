@@ -15,6 +15,10 @@
  * どの経路（Webhook・成功ページ・GraphQL）から確定しても、持ち主は Stripe の session だけで決まる（確認ルートを開いた人は関係しない）。
  * DB は引数で受け取る（lib/db/client.ts の getDb() は server-only でテストから読めない。getStripe と同じ流儀）。
  *
+ * 支払い済みでも、Stripe の請求額（amount_total）・通貨が、metadata とカタログから作った合計と合わなければ、注文を作らない
+ * （決済を作ってから確定するまでにカタログの価格が変わった場合。請求額と違う合計で記録しないため。値を含まない構造化ログを残し、
+ * Webhook は 422 を返す。手で直す前提。明細を Stripe の line_items から作る設計は段 7 の課題）。
+ *
  * - decideFulfillment / toOrderRows / toStoredOrder / generateOrderNo: DB に触れない純粋な関数
  * - readStoredOrders / findOrderBySessionId / hasProcessedEvent / fulfillCheckout: DB を読み書きする
  *   （利用者ごとの注文の読み取りは lib/order-history.ts。そちらも readStoredOrders で StoredOrder にする）
@@ -22,17 +26,19 @@
 import { eq, inArray } from "drizzle-orm";
 import { getProductById } from "./catalog.ts";
 import {
+  findPaymentMismatch,
   isSessionPaid,
   isStripeNotFound,
   isValidSessionId,
   orderFromSession,
   ownerIdFromSession,
 } from "./checkout.ts";
-import type { PaidOrder } from "./checkout.ts";
+import type { PaidOrder, PaymentMismatch } from "./checkout.ts";
 import type { StripeLike } from "./checkout-session.ts";
 import type { Db } from "./db/connect.ts";
 import { orderItems, orders, stripeEvents, user } from "./db/schema.ts";
 import type { OrderStatus } from "./db/schema.ts";
+import { logEvent } from "./log.ts";
 import type { OrderItem, ProductLookup } from "./types.ts";
 
 /* ---------- 注文番号 ---------- */
@@ -78,11 +84,13 @@ export type FulfillmentDecision =
   /** 支払い済みではない（注文を作らない） */
   | { kind: "unpaid" }
   /** 支払い済みだが、metadata から注文を作れない（この店の決済ではない・metadata が壊れている） */
-  | { kind: "unreadable"; error: string };
+  | { kind: "unreadable"; error: string }
+  /** 支払い済みで metadata も読めたが、Stripe の請求額・通貨が自前の合計と合わない（注文を作らない）。field は食い違った項目 */
+  | { kind: "mismatch"; field: PaymentMismatch };
 
 /**
- * Stripe から取り直した Checkout Session を「支払い済み / 未払い / 注文を読み取れない」に分ける。
- * 未払いの session は metadata が付いていても注文にしない。
+ * Stripe から取り直した Checkout Session を「支払い済み / 未払い / 注文を読み取れない / 請求額が合わない」に分ける。
+ * 未払いの session は metadata が付いていても注文にしない。支払い済みでも、請求額・通貨が自前の合計と違えば注文にしない。
  */
 export function decideFulfillment(
   session: unknown,
@@ -90,13 +98,14 @@ export function decideFulfillment(
 ): FulfillmentDecision {
   if (!isSessionPaid(session)) return { kind: "unpaid" };
   const result = orderFromSession(session, lookup);
-  return result.ok
-    ? {
-        kind: "paid",
-        order: result.order,
-        ownerId: ownerIdFromSession(session),
-      }
-    : { kind: "unreadable", error: result.error };
+  if (!result.ok) return { kind: "unreadable", error: result.error };
+  const mismatch = findPaymentMismatch(session, result.order.total);
+  if (mismatch) return { kind: "mismatch", field: mismatch };
+  return {
+    kind: "paid",
+    order: result.order,
+    ownerId: ownerIdFromSession(session),
+  };
 }
 
 type NewOrderRow = typeof orders.$inferInsert;
@@ -287,7 +296,9 @@ export type FulfillResult =
   /** Stripe から Checkout Session を取れなかった（404 以外。cause は呼び出し側がログに出す） */
   | { status: "stripe-error"; cause: unknown }
   /** 支払い済みだが、metadata から注文を作れなかった */
-  | { status: "unreadable-order"; error: string };
+  | { status: "unreadable-order"; error: string }
+  /** 支払い済みだが、請求額・通貨が自前の合計と合わなかった（注文は作っていない。値を含まない記録は fulfillCheckout が残した） */
+  | { status: "payment-mismatch"; field: PaymentMismatch };
 
 /** 処理済みのイベントとして記録する（記録済みなら何もしない） */
 function recordEvent(db: Db, eventId: string) {
@@ -322,15 +333,38 @@ export async function fulfillCheckout({
   try {
     session = await getStripe().checkout.sessions.retrieve(sessionId);
   } catch (cause) {
-    return isStripeNotFound(cause)
-      ? { status: "unpaid" }
-      : { status: "stripe-error", cause };
+    if (!isStripeNotFound(cause)) return { status: "stripe-error", cause };
+    // Webhook（eventId がある）が届けた決済を Stripe が知らない: 署名の通ったイベントなので、STRIPE_SECRET_KEY が
+    // 別のアカウント・別のモードの鍵かもしれない（成功ページの経路は、利用者が好きな id を送れるので記録しない）
+    if (eventId) {
+      logEvent("warn", "fulfillment.session-not-found", {
+        eventId,
+        sessionId,
+        hint: "STRIPE_SECRET_KEY と STRIPE_WEBHOOK_SECRET が同じアカウント・同じモード（テスト / 本番）か確かめる",
+      });
+    }
+    return { status: "unpaid" };
   }
 
   const decision = decideFulfillment(session, lookup);
-  if (decision.kind === "unpaid") return { status: "unpaid" };
+  if (decision.kind === "unpaid") {
+    // Webhook の checkout.session.completed なのに未払い（あとから入金される支払い方法）。注文は作らず入金のイベントを待つ
+    if (eventId) {
+      logEvent("warn", "fulfillment.session-unpaid", { eventId, sessionId });
+    }
+    return { status: "unpaid" };
+  }
   if (decision.kind === "unreadable") {
     return { status: "unreadable-order", error: decision.error };
+  }
+  if (decision.kind === "mismatch") {
+    // 値（金額・通貨・品目）は書かない。どの決済かと、食い違った項目だけ（手で直すときは Stripe のダッシュボードで session を見る）
+    logEvent("error", "fulfillment.payment-mismatch", {
+      eventId,
+      sessionId,
+      field: decision.field,
+    });
+    return { status: "payment-mismatch", field: decision.field };
   }
 
   // 持ち主は、確かめてからトランザクションの外で決める（確かめたあとに利用者が消えると外部キーで失敗するが、

@@ -4,11 +4,12 @@
  * fulfillCheckout は注文を「いま」の時刻で作り、持ち主は Stripe の session から決まる。履歴の並びや持ち主ごとの絞り込みを確かめるには、
  * 時刻と持ち主を自由に決めたいので、fulfillCheckout と同じ行の組み立て（toOrderRows）で直接入れる。
  * `tests/*.test.ts` のグロブには当たらないので、テストとしては実行されない。
+ * あわせて、注文の確定・決済確認・Webhook のテストが共有する道具（3 つの表の行数 counts と、何も書かれていない状態 NOTHING）を持つ。
  */
 import assert from "node:assert/strict";
 import { orderFromSession } from "../../lib/checkout.ts";
 import type { Db } from "../../lib/db/connect.ts";
-import { orderItems, orders, user } from "../../lib/db/schema.ts";
+import { orderItems, orders, stripeEvents, user } from "../../lib/db/schema.ts";
 import { toOrderRows } from "../../lib/fulfillment.ts";
 import type { ItemQuantity } from "../../lib/types.ts";
 import { paidSession } from "./stripe.ts";
@@ -32,6 +33,23 @@ export async function insertUser(db: Db, id: string): Promise<void> {
     .insert(user)
     .values({ id, name: `利用者 ${id}`, email: `${id}@example.com` });
 }
+
+/** 注文に関わる 3 つの表（orders・order_items・stripe_events）の行数 */
+export async function counts(db: Db) {
+  const [orderRows, itemRows, eventRows] = await Promise.all([
+    db.select().from(orders),
+    db.select().from(orderItems),
+    db.select().from(stripeEvents),
+  ]);
+  return {
+    orders: orderRows.length,
+    orderItems: itemRows.length,
+    stripeEvents: eventRows.length,
+  };
+}
+
+/** counts の結果が「何も書かれていない」状態 */
+export const NOTHING = { orders: 0, orderItems: 0, stripeEvents: 0 };
 
 /** placeOrder が決める注文番号（n ごとに別。画面に出す番号の形 ORD- と 10 文字） */
 export const orderNoOf = (n: number): string =>
