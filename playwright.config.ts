@@ -4,11 +4,14 @@
  * 本番ビルド済みの `next start` に対して回す（dev は 404 の HTML や初回コンパイルの遅さが本番と違う）。
  * 先に `npm run build` が要る（`npm run test:e2e` は build してから回す）。
  * サーバを立てる前に、専用の PGlite（.pglite-e2e/）にマイグレーションと seed を当てる。
+ * 認証（Better Auth）はこの DB に利用者とセッションを書く本物で、秘密は固定のダミー（e2e/constants.ts）を渡す。
  * ブラウザは Playwright の Chromium が既定。システムの Chrome で回すときは PW_CHANNEL=chrome。
  */
 import { defineConfig, devices } from "@playwright/test";
 import {
   BASE_URL,
+  E2E_AUTH_SECRET,
+  E2E_CLIENT_IPS,
   E2E_PGLITE_DIR,
   PORT,
   STRIPE_ENABLED,
@@ -43,14 +46,23 @@ export default defineConfig({
     video: "off",
   },
   // 幅は撮影と同じ 390 / 1280。モバイル端末の模倣（isMobile・タッチ）はせず、幅だけを変える
+  // x-forwarded-for は、本番ビルドの試行回数の制限が接続元を分けるための値（幅ごとに分ける。e2e/constants.ts の E2E_CLIENT_IPS）
   projects: [
     {
       name: "mobile-390",
-      use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.mobile },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: VIEWPORTS.mobile,
+        extraHTTPHeaders: { "x-forwarded-for": E2E_CLIENT_IPS["mobile-390"] },
+      },
     },
     {
       name: "desktop-1280",
-      use: { ...devices["Desktop Chrome"], viewport: VIEWPORTS.desktop },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: VIEWPORTS.desktop,
+        extraHTTPHeaders: { "x-forwarded-for": E2E_CLIENT_IPS["desktop-1280"] },
+      },
     },
   ],
   webServer: {
@@ -73,6 +85,9 @@ export default defineConfig({
       DATABASE_URL: "",
       DATABASE_URL_UNPOOLED: "",
       PGLITE_DATA_DIR: E2E_PGLITE_DIR,
+      // 認証: 固定のダミーの秘密と、サーバ自身の URL（.env.local の値に左右されない。Origin の検査はこの URL を信用する）
+      BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
+      BETTER_AUTH_URL: BASE_URL,
     },
   },
 });

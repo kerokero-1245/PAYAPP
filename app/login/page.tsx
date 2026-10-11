@@ -1,10 +1,9 @@
-"use client";
-
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
-import { useMounted } from "@/lib/useMounted";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getViewer } from "@/lib/auth/server";
+import { SIGNUP_PATH, authPageHref, safeNextPath } from "@/lib/auth/next-path";
+import { NO_PASSWORD_RESET_NOTE } from "@/lib/policies";
 import Section from "@/components/ui/Section";
 import Card from "@/components/ui/Card";
 import Eyebrow from "@/components/ui/Eyebrow";
@@ -12,31 +11,27 @@ import Heading from "@/components/ui/Heading";
 import Divider from "@/components/ui/Divider";
 import Actions from "@/components/ui/Actions";
 import Button from "@/components/ui/Button";
-import FormField from "@/components/ui/FormField";
+import LoginForm from "./LoginForm";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const login = useAuthStore((s) => s.login);
+export const metadata: Metadata = { title: "ログイン" };
 
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-
-  // persist ストアのため、初期描画では user を参照せず
-  // マウント後に「ログイン済み」表示を出して hydration ズレを防ぐ
-  const mounted = useMounted();
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    login({ email: email.trim(), name });
-    router.push("/account");
-  };
+/**
+ * ログインページ（サーバ）
+ * ---------------------------------------------------
+ * サーバでセッションを確かめる。ログイン済みなら、?next= があればそこへ（ログインが要るページから来て、別のタブですでに
+ * ログインしていた場合など）、無ければ「ログイン中です」を出す。未ログインならフォーム（LoginForm）。
+ * ?next= は URL に書ける値（誰でも作れる）なので、safeNextPath で自サイトの中のパスだけに絞ってから使う。
+ */
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const { next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext);
+  const viewer = await getViewer();
+  if (viewer && typeof rawNext === "string") redirect(next);
 
   return (
     <Section spacing="md" as="div">
       <div className="max-w-md mx-auto animate-fade-up">
-        {mounted && user ? (
+        {viewer ? (
           // ── 既にログイン済み ──
           <Card variant="panel" padding="md" className="text-center">
             <Eyebrow>ACCOUNT</Eyebrow>
@@ -45,7 +40,7 @@ export default function LoginPage() {
             </Heading>
             <Divider variant="rule" className="mt-4" />
             <p className="lead mt-4">
-              <span className="accent">{user.name}</span>{" "}
+              <span className="accent">{viewer.name}</span>{" "}
               様としてサインインしています。
             </p>
             <Actions layout="stack" className="mt-8">
@@ -68,39 +63,24 @@ export default function LoginPage() {
               <Divider variant="rule" className="mt-4" />
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
-              <FormField
-                id="email"
-                label="メールアドレス"
-                type="email"
-                required
-                requiredMark={false}
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              <FormField
-                id="name"
-                label="表示名（任意）"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="山田 花子"
-                hint="未入力の場合はメールアドレスから自動で設定されます。"
-              />
-
-              <Button type="submit" block className="mt-1">
-                ログイン
-              </Button>
-            </form>
+            <LoginForm next={next} />
 
             <Divider className="my-7" />
 
             <p className="fine fine-relaxed text-center">
-              ※
-              これはポートフォリオ用のデモ認証です。パスワードは検証されず、入力内容はこのブラウザにのみ保存されます。
+              アカウントをお持ちでない方は{" "}
+              <Link
+                href={authPageHref(
+                  SIGNUP_PATH,
+                  typeof rawNext === "string" ? next : undefined,
+                )}
+                className="link-underline accent"
+              >
+                新規登録
+              </Link>
+            </p>
+            <p className="fine fine-relaxed text-center mt-3">
+              ※ {NO_PASSWORD_RESET_NOTE}
             </p>
           </Card>
         )}

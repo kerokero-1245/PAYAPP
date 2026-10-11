@@ -5,8 +5,8 @@
  * GraphQL の境界の型は lib/graphql/__generated__/types.ts（SDL から生成）が正本で、ここの型とは別に持つ。
  * 名前が同じもの（Product・Order など）は、生成型の側を `import type { Product as GqlProduct }` のように別名で読む。
  *
- * localStorage から戻した値（カートの行・注文・モック認証の利用者）は、型で形を宣言しているだけで、
- * 実行時に形を保証するものではない（カートは reconcileCart で作り直すが、注文とログイン状態は検査しない）。
+ * localStorage から戻した値（カートの行・注文）は、型で形を宣言しているだけで、
+ * 実行時に形を保証するものではない（カートは reconcileCart で作り直すが、注文は検査しない）。
  */
 
 /** カテゴリ（lib/catalog.ts の CATEGORIES の 1 件） */
@@ -58,12 +58,6 @@ export type Order = {
 /** ログイン中の利用者（Better Auth のセッションから lib/auth/viewer.ts の toViewer が作る。GraphQL の Viewer と同じ項目） */
 export type Viewer = {
   id: string;
-  email: string;
-  name: string;
-};
-
-/** ログイン中の利用者（モック認証。store/authStore.ts と E2E の seed だけが使う。ページを Better Auth に切り替えるコミットで、ストアと一緒に消す） */
-export type User = {
   email: string;
   name: string;
 };

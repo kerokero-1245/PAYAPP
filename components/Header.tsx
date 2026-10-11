@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { FormEvent } from "react";
 import { useCartStore } from "@/store/cartStore";
-import { useAuthStore } from "@/store/authStore";
+import { authClient } from "@/lib/auth/client";
 import { useMounted } from "@/lib/useMounted";
 import Eyebrow from "@/components/ui/Eyebrow";
 import { ANNOUNCEMENT } from "@/lib/policies";
@@ -141,7 +141,11 @@ function Nav(props: NavProps) {
  *
  * - スリムなアナウンスバー + メインナビ
  * - カート点数バッジ / ログイン状態表示 / 検索
- * - persist ストアの hydration ズレを防ぐため mounted 後に動的値を表示
+ * - カートは persist ストア（localStorage）なので、hydration ズレを防ぐため mounted 後に動的値を表示する
+ * - ログイン状態はサーバのセッション（Better Auth の /api/auth/get-session。cookie を見て、期限と署名を確かめる）から取る。
+ *   取れるまでは（サーバの描画も）未ログインの表示。ログイン・ログアウトが成功すると useSession が自動で取り直す。
+ *   サーバコンポーネントで読まないのは、ヘッダーはすべてのページにあり、cookie を読むとすべてのページが動的になる
+ *   （商品ページの静的生成が外れる）ため
  */
 export default function Header() {
   const pathname = usePathname();
@@ -151,7 +155,8 @@ export default function Header() {
   const [query, setQuery] = useState("");
 
   const totalItems = useCartStore((s) => s.totalItems());
-  const user = useAuthStore((s) => s.user);
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
 
   // ページ遷移でモバイルメニューを閉じる（前回の pathname と比べて描画中に更新する）
   const [menuPath, setMenuPath] = useState(pathname);
@@ -222,13 +227,13 @@ export default function Header() {
 
             {/* アカウント */}
             <Link
-              href={mounted && user ? "/account" : "/login"}
+              href={user ? "/account" : "/login"}
               className="link-quiet flex items-center gap-2"
               aria-label="アカウント"
             >
               <UserIcon />
               <span className="account-name hidden sm:inline md:hidden lg:inline truncate">
-                {mounted && user ? user.name : "ログイン"}
+                {user ? user.name : "ログイン"}
               </span>
             </Link>
 

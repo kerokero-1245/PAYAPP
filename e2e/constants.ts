@@ -25,6 +25,7 @@ export const PATHS = {
   success: "/success",
   orders: "/orders",
   login: "/login",
+  signup: "/signup",
   account: "/account",
   contact: "/contact",
 } as const;
@@ -51,6 +52,23 @@ export const ORDER_NO = "ORD-E2ETESTPAID";
  * サーバを立てる前にマイグレーションと seed を当てておく（playwright.config.ts）。
  */
 export const E2E_PGLITE_DIR = ".pglite-e2e";
+
+/**
+ * E2E のサーバ（next start）に渡す認証の設定（playwright.config.ts）。
+ * 秘密は固定のダミー（本物ではない。本番の検査 resolveAuthSettings を通る 32 文字以上）。URL はサーバ自身。
+ * .env.local に BETTER_AUTH_* があっても使われないよう、必ずここで渡す（空文字ではなく値を渡して上書きする）
+ */
+export const E2E_AUTH_SECRET = "e2e-secret-4d1f7a9b3c5e8f2a6b0d9c4e7f1a3b5c";
+
+/**
+ * プロジェクト（幅）ごとの、接続元の IP のつもりの値（x-forwarded-for）。
+ * 本番ビルドの Better Auth は試行回数の制限を有効にし、IP が分からない要求は全員で 1 つの枠（ログインは 10 秒に 3 回）に入れる。
+ * 2 つの幅のテストが同時に動いても枠を取り合わないよう、幅ごとに IP を分ける（Vercel が付ける x-forwarded-for と同じ、値 1 つの形）
+ */
+export const E2E_CLIENT_IPS = {
+  "mobile-390": "198.51.100.10",
+  "desktop-1280": "198.51.100.20",
+} as const;
 
 /** Stripe のモックが返す決済ページの URL（遷移先もモックで返すので、外には出ない） */
 export const CHECKOUT_REDIRECT_URL =

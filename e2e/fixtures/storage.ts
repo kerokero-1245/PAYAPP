@@ -1,5 +1,5 @@
 /**
- * localStorage の形（カート・注文履歴・ログイン状態）を知る唯一の場所
+ * localStorage の形（カート・注文履歴）を知る唯一の場所
  * ---------------------------------------------------
  * zustand の persist は { state, version } の入れ物で書く（version は既定の 0）。形は store/ から拾った:
  *  - cart-storage  = { state: { items: [{ id, quantity, … }] }, version: 0 }
@@ -8,19 +8,18 @@
  *  - order-storage = { state: { orders: [{ id, date, items, total, sessionId? }] }, version: 0 }   store/orderStore.ts
  *      アプリはもう書かない（注文はサーバの DB に確定する）。/orders が段 4 でサーバから読む形になるまで読むので、
  *      以前の履歴を seed して「消さない」ことを確かめるのと、「新しい注文を書かない」ことを確かめるのに使う
- *  - auth-storage  = { state: { user: { email, name } }, version: 0 }                              store/authStore.ts
+ * ログイン状態は localStorage に持たない（サーバのセッション。cookie の HttpOnly の値で、画面の操作でだけ作る）。
  * seed の入れ方と読み戻し方はここだけに置き、テストは入れ物の形を知らなくてよい。
  * Playwright に依存するのは型だけ（import type）なので、撮影スクリプトなど Node から直接 import してもよい。
  */
 import type { BrowserContext, Page } from "@playwright/test";
 import { paidOrder } from "../support/catalog.ts";
-import type { CartLine, ItemQuantity, Order, User } from "../../lib/types.ts";
+import type { CartLine, ItemQuantity, Order } from "../../lib/types.ts";
 
 /** localStorage のキー（persist の name） */
 export const STORAGE_KEYS = {
   cart: "cart-storage",
   orders: "order-storage",
-  auth: "auth-storage",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
@@ -39,7 +38,6 @@ function persisted<State>(state: State): Persisted<State> {
 export type Seed = {
   cart?: ItemQuantity[];
   orders?: Order[];
-  auth?: User;
 };
 
 /** seed を localStorage に書く文字列にする（キー → JSON） */
@@ -53,8 +51,6 @@ export function seedEntries(seed: Seed): Record<string, string> {
     entries[STORAGE_KEYS.orders] = JSON.stringify(
       persisted({ orders: seed.orders }),
     );
-  if (seed.auth)
-    entries[STORAGE_KEYS.auth] = JSON.stringify(persisted({ user: seed.auth }));
   return entries;
 }
 
@@ -127,12 +123,6 @@ export async function readCart(page: Page): Promise<CartLine[]> {
 export async function readOrders(page: Page): Promise<Order[]> {
   const { orders } = stateOf(await readStorage(page, STORAGE_KEYS.orders));
   return Array.isArray(orders) ? (orders as Order[]) : [];
-}
-
-/** ログイン中の利用者（未ログイン・キーが無ければ null） */
-export async function readAuth(page: Page): Promise<User | null> {
-  const { user } = stateOf(await readStorage(page, STORAGE_KEYS.auth));
-  return user ? (user as User) : null;
 }
 
 /** カートの行から id と数量だけを取り出す（価格などはカタログから引き直した値なので、比べるのは id と数量） */

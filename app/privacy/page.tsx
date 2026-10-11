@@ -3,6 +3,10 @@ import Section from "@/components/ui/Section";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionHeading from "@/components/ui/SectionHeading";
 import InfoList from "@/components/ui/InfoList";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_EXPIRES_IN_DAYS,
+} from "@/lib/auth/constants";
 import { TEST_MODE_NOTE } from "@/lib/policies";
 
 export const metadata: Metadata = {
@@ -11,8 +15,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * ブラウザに保存するもの（store/*.ts の persist の name と同じ）。
- * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行、注文は app/success の記録）
+ * ブラウザに保存するもの（store/*.ts の persist の name と同じ。ログイン状態だけは cookie で、サーバが発行する）。
+ * 中身は実際の localStorage を書き出して確かめた値（カートは lib/cart.ts の行、注文は app/success の記録）。
+ * ログイン状態の行は、本番ビルドでログインして書き出した cookie（e2e/auth.spec.ts が HttpOnly・約 7 日を確かめている）と、
+ * DB の user・account・session の行（tests/auth.test.ts）の中身
  */
 const STORAGE = [
   {
@@ -24,8 +30,8 @@ const STORAGE = [
     desc: "決済の確認が取れた注文（注文番号・日時・品目の id・商品名・単価・数量・画像の URL・カテゴリ・合計金額）と、同じ注文を二重に記録しないための Stripe の決済の番号（session_id）。注文履歴の表示に使います。",
   },
   {
-    term: "auth-storage",
-    desc: "デモのログインで入力したメールアドレスと表示名。パスワードは扱いません。",
+    term: `${SESSION_COOKIE_NAME}（cookie）`,
+    desc: `ログイン中であることを示す cookie（HttpOnly。JavaScript からは読めません）。ログアウトするか、最後に使ってから ${SESSION_EXPIRES_IN_DAYS} 日たつと無効になります。登録した表示名・メールアドレスと、元に戻せない形に変えたパスワード、ログインの記録（有効期限・IP アドレス・ブラウザの種類）は、サーバのデータベースに保存します。`,
   },
 ];
 
