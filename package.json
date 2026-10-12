@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:css": "node scripts/check-flat-css.ts app components",
@@ -43,8 +44,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "0.31.11",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.8",
+    "eslint": "10.12.0",
+    "eslint-config-next": "16.4.0",
     "prettier": "3.9.9",
     "tailwindcss": "^4",
     "typescript": "^5"
