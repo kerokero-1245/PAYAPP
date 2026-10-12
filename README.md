@@ -536,7 +536,7 @@ scripts/seed-products.ts   カタログの商品を products 表に入れる（n
 tests/                  node --test のテスト（決済・決済確認・POST /checkout の本体・注文の確定（請求額の照合を含む）・Webhook（配線を含む）・カート・GraphQL（入口の上限・本番の GET と introspection）・認証（入力の長さ・本文の上限・ログに値が出ないこと・公開している口・試行回数の制限）・構造化ログ・next.config のヘッダー・ログイン後の行き先・サイト設定・注文履歴・日付と金額の整形・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 24（`.nvmrc`）が型を剥がして実行する。support/ = 偽の Stripe・Webhook の署名・本物の Better Auth を PGlite で動かす道具・持ち主と時刻を指定して注文を入れる道具・console に出た内容を集める道具）
 e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。db-unavailable.spec.ts は DB の使えないサーバ（ポート 3211）に対して回す。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ・注文履歴の seed の中身、seed.ts = 注文履歴の利用者と注文を E2E 専用の DB に入れる、constants.ts = URL とビューポート）
 playwright.config.ts    E2E の設定（next start -p 3210・幅 390 / 1280・retries は CI だけ 1・reporter は list + html）
-DESIGN.md               設計の決まりごと（作り方の規則の正本へのリンクと、この repo で違うこと）
+DESIGN.md               設計の決まりごと（作り方の規則との差分・E2E・トークンと部品の置き場・hover・aria-current・文面・DB・注文・GraphQL・認証）
 ```
 
 ## デザインの書き方

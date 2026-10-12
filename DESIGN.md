@@ -8,14 +8,14 @@
 
 ### 例外（規則と違うこと）
 
-- なし
+- **配布は CI を待たない**: 本番とプレビューへの配布は Vercel の GitHub 連携が push ごとに行い、GitHub Actions の CI（`.github/workflows/ci.yml`）とは独立に動く。CI が落ちても配布は止まらない（手順は README の「公開（Vercel）」）
 
 ### 固有の約束（このリポジトリだけの不変条件）
 
 - **寄せ先**: 1 か所へ寄せるときの置き場は、トークン・部品クラス・部品・lib の定数や関数（[トークンと部品の置き場](#トークンと部品の置き場)）
 - **JS で残すファイル**: ツールの設定（`eslint.config.mjs`・`postcss.config.mjs`）と、検査の見本 `tests/fixtures/flat-css/` だけ
 - **型の検査**: `npx next typegen` で Next のルートの型を作ってから `npm run typecheck`
-- **型の置き場**: 3 か所以上で使うドメインの型は `lib/types.ts`、1 ファイルだけで使う型はそのファイルに書く。`as` で要素を差し替える部品の props は `components/ui/polymorphic.ts` の `PolymorphicProps`。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は、引数を `unknown` で受けて中で絞る
+- **型の置き場**: 3 か所以上で使うドメインの型は `lib/types.ts`、1 ファイルだけで使う型はそのファイルに書く。`as` で要素を差し替える部品の props は `components/ui/polymorphic.ts` の `PolymorphicProps`。この repo で外から来る値は localStorage・リクエスト本文・Stripe の metadata・環境変数（受け方は正本の「書き方」）
 - **Node 側の import**: `lib/`・`tests/`・`scripts/` は Node が型を剥がして直接読むので、相対パスに拡張子 `.ts` を付け、型だけの import は `import type` で書く（`@/` は使わない）。`app/`・`components/`・`store/` は Next が読むので `@/…` で拡張子なし。enum・namespace・コンストラクタの引数プロパティは使えない（`erasableSyntaxOnly`）
 - **テスト**: Stripe は `getStripe` で差し込める形にして、テストでは偽の Stripe を渡す。画面の操作（導線）の E2E の書き方は [E2E（Playwright）](#e2eplaywright)
 - **Route Handler は薄い配線だけにする**: `app/**/route.ts` は node --test から import できない（`@/` の別名と `server-only`）ので、中身を書くと配線の取り違え（持ち主を渡し忘れる・Webhook の秘密を別の変数から読む）がどのテストにも見えない。本体と、本物の依存の組み立てを lib に置き（`handleCheckoutRequest`・`createWebhookDeps`・`handleAuthRequest`・`verifyCheckoutSession`・`createGraphqlHandler`）、テストが同じ関数を呼ぶ
@@ -28,7 +28,7 @@
 
 ## E2E（Playwright）
 
-- **置き場**: `e2e/*.spec.ts`（1 ファイル 1 導線）、`e2e/fixtures/`（localStorage の形・Stripe のモック・外部画像・`test` の拡張）、`e2e/support/`（カタログから期待値を作る・画面を開く・ロケータ）、`e2e/constants.ts`（URL・ビューポート・session id）。`tests/` は `node --test` のグロブなので混ぜない。新規は TS で、`any` は使わない
+- **置き場**: `e2e/*.spec.ts`（1 ファイル 1 導線）、`e2e/fixtures/`（localStorage の形・Stripe のモック・外部画像・`test` の拡張）、`e2e/support/`（カタログから期待値を作る・画面を開く・ロケータ）、`e2e/constants.ts`（URL・ビューポート・session id）。`tests/` は `node --test` のグロブなので混ぜない
 - **ロケータ**: `getByRole` / `getByLabel` / 文言で取り、クラス名と DOM の構造には頼らない（部品クラスを改名しても落ちないのが正しい）。取れない部品には、見た目を変えずに `aria-label` を足す（例: ヘッダーのカート点数バッジ）
 - **期待値**: 件数・商品名・金額はカタログ（`lib/catalog.ts`）から組み、テストに直書きしない。localStorage の形（cart）を知るのは `e2e/fixtures/storage.ts` だけで、seed は画面を開く前に `seedStorage` で入れる。注文はブラウザに持たないので seed しない（`readOrderKeys` で、注文を記録するキーが無いことを確かめる）
 - **Stripe には通信しない**: Stripe に向かう通信（`createCheckoutSession`・決済確認）は既定で閉じてあり、テストが `page.route` でモックする。モックし忘れるとテストが落ちる。実通信は `@stripe` タグの 1 本だけで、`STRIPE_SECRET_KEY` と `E2E_STRIPE=1` の両方があるときだけ動く。CI には Stripe のキーを置かない
