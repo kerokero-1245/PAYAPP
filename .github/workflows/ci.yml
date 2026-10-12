@@ -22,10 +22,10 @@ jobs:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Node.js 22 を用意
+      - name: Node を .nvmrc の版で用意
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: 依存をインストール
@@ -77,10 +77,10 @@ jobs:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Node.js 22 を用意
+      - name: Node を .nvmrc の版で用意
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: 依存をインストール
@@ -137,10 +137,10 @@ jobs:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Node.js 22 を用意
+      - name: Node を .nvmrc の版で用意
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: 依存をインストール
@@ -188,10 +188,10 @@ jobs:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Node.js 22 を用意
+      - name: Node を .nvmrc の版で用意
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: 依存をインストール
