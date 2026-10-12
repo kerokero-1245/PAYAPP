@@ -3,6 +3,8 @@
 ラグジュアリーブランドをイメージした、ダークテーマのECサイト（ポートフォリオ用個人開発）。
 商品閲覧からカート、Stripe 決済、注文履歴までの購入体験を、拡張しやすい構成で実装しています。
 
+作り方の規則と、この repo で違うこと: [DESIGN.md](DESIGN.md#この-repo-での適用)
+
 ## スクリーンショット
 
 <img src="docs/screenshots/top.png" width="720" alt="MAISON のトップページ">
@@ -54,7 +56,7 @@
 
 ## セットアップ
 
-> **Node.js 22 を使ってください**（22.23.3 で lint・型の検査・ビルド・テストを確認）。graphql 17 と、テスト・検査スクリプト（どちらも TypeScript）を型消去でそのまま実行するために **22.18 以上** が必要です（`package.json` の `engines`）。
+> **Node.js 24 を使ってください**（版の正本は `.nvmrc` の 24.21.0。CI も同じ版で回します）。graphql 17 と、テスト・検査スクリプト（どちらも TypeScript）を型消去でそのまま実行するために **22.18 以上** が必要です。
 
 ```bash
 # 依存インストール
@@ -72,7 +74,7 @@ npm test               # node --test tests/*.test.ts（Node 22 / 24 で確認）
 
 # 型の検査（next typegen が Next のルートの型 PageProps・LayoutProps などを作ってから tsc を回す。CI でも実行）
 npx next typegen
-npx tsc --noEmit
+npm run typecheck
 
 # GraphQL の型を SDL から作り直す（lib/graphql/sdl.ts を変えたら実行してコミット）
 npm run codegen

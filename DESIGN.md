@@ -2,16 +2,29 @@
 
 このリポジトリでコードを足す・直すときの方針。見た目の書き方の細部は README の「デザインの書き方」を正本とし、ここには判断の基準と置き場だけを書く。
 
-## 方針
+## この repo での適用
 
-- **共通化の線引き**: 同じ意味の値・処理が **3 回以上** 出てきたら 1 か所（トークン・部品クラス・部品・lib の定数や関数）へ寄せる。2 回までは直書きでよい。値が偶然同じでも意味が違うもの（ボタンの余白とカードの余白など）は分けたままにする
-- **TypeScript**: すべて TS（`.ts` / `.tsx`）で書く。JS で残すのはツールの設定（`eslint.config.mjs`・`postcss.config.mjs`）と、検査の見本 `tests/fixtures/flat-css/` だけ。`any` は使わない。型の検査は `npx next typegen` → `npx tsc --noEmit`（CI でも実行）
+規則の全文は [作り方の規則](https://github.com/kerokero-1245/kerokero-1245/blob/main/DESIGN.md) にあります。ここには、このリポジトリで違うことだけを書きます。
+
+### 例外（規則と違うこと）
+
+- なし
+
+### 固有の約束（このリポジトリだけの不変条件）
+
+- **寄せ先**: 1 か所へ寄せるときの置き場は、トークン・部品クラス・部品・lib の定数や関数（[トークンと部品の置き場](#トークンと部品の置き場)）
+- **JS で残すファイル**: ツールの設定（`eslint.config.mjs`・`postcss.config.mjs`）と、検査の見本 `tests/fixtures/flat-css/` だけ
+- **型の検査**: `npx next typegen` で Next のルートの型を作ってから `npm run typecheck`
 - **型の置き場**: 3 か所以上で使うドメインの型は `lib/types.ts`、1 ファイルだけで使う型はそのファイルに書く。`as` で要素を差し替える部品の props は `components/ui/polymorphic.ts` の `PolymorphicProps`。外から来る値（localStorage・リクエスト本文・Stripe の metadata・環境変数）を受ける関数は、引数を `unknown` で受けて中で絞る
 - **Node 側の import**: `lib/`・`tests/`・`scripts/` は Node が型を剥がして直接読むので、相対パスに拡張子 `.ts` を付け、型だけの import は `import type` で書く（`@/` は使わない）。`app/`・`components/`・`store/` は Next が読むので `@/…` で拡張子なし。enum・namespace・コンストラクタの引数プロパティは使えない（`erasableSyntaxOnly`）
-- **テスト**: 純粋な関数と API（`lib/`・`app/api/`）はテスト必須（`npm test` = `node --test tests/*.test.ts`。Stripe は `getStripe` で差し込める形にして、偽の Stripe を渡す）。UI の変更は前後のスクリーンショットを撮って比べる。画面の操作（導線）は `e2e/` の E2E（Playwright。`npm run test:e2e`）で確かめる。書き方は下の「E2E（Playwright）」
+- **テスト**: Stripe は `getStripe` で差し込める形にして、テストでは偽の Stripe を渡す。画面の操作（導線）の E2E の書き方は [E2E（Playwright）](#e2eplaywright)
 - **Route Handler は薄い配線だけにする**: `app/**/route.ts` は node --test から import できない（`@/` の別名と `server-only`）ので、中身を書くと配線の取り違え（持ち主を渡し忘れる・Webhook の秘密を別の変数から読む）がどのテストにも見えない。本体と、本物の依存の組み立てを lib に置き（`handleCheckoutRequest`・`createWebhookDeps`・`handleAuthRequest`・`verifyCheckoutSession`・`createGraphqlHandler`）、テストが同じ関数を呼ぶ
-- **整形**: Prettier の既定の設定で整形する。コミットの前に `npm run format` を打つ（`npm run format:check` が CI の最初の検査で、lint より前に走る）。生成物（`lib/graphql/__generated__`・`drizzle/`）・ロックファイル・`tests/fixtures/`・`docs/screenshots` は `.prettierignore` で対象外（整形すると生成物の鮮度の検査が落ちる）。整形だけのコミットは `.git-blame-ignore-revs` に載せる
+- **整形の対象外**: 生成物（`lib/graphql/__generated__`・`drizzle/`）・ロックファイル・`tests/fixtures/`・`docs/screenshots` は `.prettierignore` で対象外（整形すると生成物の鮮度の検査が落ちる）
 - **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは README の「デザインの書き方」。`npm run check:css` が検査し、`tests/flat-css.test.ts` が検査そのものを確かめる
+
+### 記録の例
+
+- 壊しにかかるレビューと修正の記録: [docs/review-evidence.md](docs/review-evidence.md)
 
 ## E2E（Playwright）
 
