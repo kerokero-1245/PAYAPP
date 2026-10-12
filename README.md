@@ -70,7 +70,7 @@ npm run build
 npm run start
 
 # テスト（決済まわりの純粋な関数・注文の確定・Webhook・GraphQL API・認証（登録・ログイン・セッション・cookie・試行回数の制限・送信元の検査）・お問い合わせの検証・平坦な CSS の検査・DB のスキーマとマイグレーション。Stripe にも外部の DB にも通信しません）
-npm test               # node --test tests/*.test.ts（Node 22 / 24 で確認）
+npm test               # node --test tests/*.test.ts（Node 24 で確認）
 
 # 型の検査（next typegen が Next のルートの型 PageProps・LayoutProps などを作ってから tsc を回す。CI でも実行）
 npx next typegen
@@ -125,7 +125,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
 上から順に進めます（DB を先に用意し、環境変数と Webhook を置いてから、`main` への push で今のコードをデプロイします）。
 
 1. **Neon** でプロジェクトを作ります（最初からあるブランチ `main` を本番のブランチにします）。ダッシュボードの **Connect** で接続文字列を 2 つ控えます。**Connection pooling をオン**にしたもの（ホスト名に `-pooler` が付く。プール経由 = `DATABASE_URL`）と、**オフ**にしたもの（`-pooler` が無い。直結 = `DATABASE_URL_UNPOOLED`）です。
-2. **認証を入れたコードをデプロイする前に**、手元から本番の DB へマイグレーションと seed を当てます（`products` に商品が無いと、注文の明細が外部キーで失敗し、決済の確認が通りません。認証の表 `user` `session` `account` `verification` と `orders.user_id` の外部キーも、このマイグレーションで作られます。無いと、登録とログインが 500 になります。注文履歴の絞り込みを支える索引 `orders_user_id_idx` も、このマイグレーションで作られます。無くても動きますが、注文が増えると履歴が遅くなります）。このリポジトリで、Node 22 で打ちます（上の「セットアップ」）。接続文字列は `.env.local` に書かず、そのコマンドだけに環境変数で渡します（`.env.local` に書くと、`npm run dev` も本番の DB を読み書きします）。
+2. **認証を入れたコードをデプロイする前に**、手元から本番の DB へマイグレーションと seed を当てます（`products` に商品が無いと、注文の明細が外部キーで失敗し、決済の確認が通りません。認証の表 `user` `session` `account` `verification` と `orders.user_id` の外部キーも、このマイグレーションで作られます。無いと、登録とログインが 500 になります。注文履歴の絞り込みを支える索引 `orders_user_id_idx` も、このマイグレーションで作られます。無くても動きますが、注文が増えると履歴が遅くなります）。このリポジトリで、Node 24（`.nvmrc`）で打ちます（上の「セットアップ」）。接続文字列は `.env.local` に書かず、そのコマンドだけに環境変数で渡します（`.env.local` に書くと、`npm run dev` も本番の DB を読み書きします）。
 
    ```bash
    DATABASE_URL_UNPOOLED='<Neon の直結の接続文字列>' npm run db:migrate
@@ -155,7 +155,7 @@ Vercel の GitHub 連携でデプロイします。`vercel.json` は置いてい
    - `BETTER_AUTH_URL` は **Production だけ**に置きます。Preview に置くと（Vercel の既定の「全環境」で作ると）、プレビューの URL からのログインが「信用できない送信元」として 403 で断られます。置かなければ、そのプレビュー自身の URL を信用します。
    - 変数を作るときの既定は全環境（Production・Preview・Development）です。表の「設定する環境」に無い環境のチェックは外します。表に無い変数（`DATABASE_URL_UNPOOLED`・`PGLITE_DATA_DIR`）は Vercel に置きません。
 
-5. **Settings → Build and Deployment → Node.js Version** を **22.x** にします（ローカルと CI に合わせる）。
+5. **Settings → Build and Deployment → Node.js Version** を **24.x** にします（ローカルと CI に合わせる）。
 6. Stripe（テストモード）の Webhook を本番の URL に登録し、署名シークレットを Production の `STRIPE_WEBHOOK_SECRET` に置きます（下の「Webhook を登録する」の 1〜3）。
 7. デプロイします。`main` への push で本番に、プルリクエストではプレビューに自動でデプロイされます。環境変数は、変えたあとのデプロイから効きます（push をしないときは **Deployments** の最新の本番で **Redeploy**）。
 8. デプロイのあとに確かめます（`<本番>` は本番のドメイン）。
@@ -181,7 +181,7 @@ Webhook は、ブラウザを閉じたり回線が切れたりして成功ペー
 
 ローカルで Webhook を試すには Stripe CLI の `stripe listen --forward-to localhost:3000/api/stripe/webhook` が要ります（このリポジトリには入れていません）。CLI が無くても、成功ページの確認で注文は確定します。
 
-`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 22 で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。別の job `e2e` が、ブラウザ（Playwright の Chromium）で画面を操作する E2E も回します（Stripe には通信せず、secrets も使いません）。
+`main` への push とプルリクエストでは、GitHub Actions（`.github/workflows/ci.yml`）が lint・型の検査・平坦な CSS の検査・GraphQL の生成物の鮮度・テスト・本番ビルドを Node 24（`.nvmrc` の版）で実行します。ビルドは Stripe のキーが無くても通るので（キーはリクエスト時にだけ読みます）、CI には環境変数を設定していません。別の job `e2e` が、ブラウザ（Playwright の Chromium）で画面を操作する E2E も回します（Stripe には通信せず、secrets も使いません）。
 
 ## 決済の流れ
 
@@ -321,7 +321,7 @@ curl -s http://localhost:3000/api/graphql \
   - 本番では `GET` と `HEAD` を 405 にします（本文の 4KB の上限も `Content-Type` の検査も通らず、副作用のある `orderBySession` も実行できてしまうため。ブラウザのクライアント `lib/graphql/client.ts` は `POST` だけを使います）。イントロスペクション（`__schema`・`__type`）も本番では断ります。
   - 選択するフィールドの総数は 1 リクエスト 200 まで（エイリアス・同名フィールドの重複・フラグメントの展開も数える）。解析・検証結果のキャッシュは 100 件まで。
   - Stripe の例外文は返さない（yoga の maskedErrors）。CORS ヘッダーは付けない（他オリジンを反射しない）。応答はすべて `Cache-Control: no-store`。GraphiQL は本番（`NODE_ENV=production`）では出さない。
-- テスト（`tests/graphql.test.ts`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 22 の型消去で `.ts` をそのまま読み込みます）。
+- テスト（`tests/graphql.test.ts`）は handler を `new Request()` で直接呼び、偽の Stripe を差し込みます。サーバは起動せず、Stripe にも通信しません（Node 24 の型消去で `.ts` をそのまま読み込みます）。
 
 ## 認証
 
@@ -533,10 +533,10 @@ drizzle/                DB のマイグレーション（drizzle-kit generate �
 drizzle.config.ts       drizzle-kit の設定
 scripts/check-flat-css.ts  平坦な CSS の検査（npm run check:css）
 scripts/seed-products.ts   カタログの商品を products 表に入れる（npm run db:seed）
-tests/                  node --test のテスト（決済・決済確認・POST /checkout の本体・注文の確定（請求額の照合を含む）・Webhook（配線を含む）・カート・GraphQL（入口の上限・本番の GET と introspection）・認証（入力の長さ・本文の上限・ログに値が出ないこと・公開している口・試行回数の制限）・構造化ログ・next.config のヘッダー・ログイン後の行き先・サイト設定・注文履歴・日付と金額の整形・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 22.18 以上が型を剥がして実行する。support/ = 偽の Stripe・Webhook の署名・本物の Better Auth を PGlite で動かす道具・持ち主と時刻を指定して注文を入れる道具・console に出た内容を集める道具）
+tests/                  node --test のテスト（決済・決済確認・POST /checkout の本体・注文の確定（請求額の照合を含む）・Webhook（配線を含む）・カート・GraphQL（入口の上限・本番の GET と introspection）・認証（入力の長さ・本文の上限・ログに値が出ないこと・公開している口・試行回数の制限）・構造化ログ・next.config のヘッダー・ログイン後の行き先・サイト設定・注文履歴・日付と金額の整形・お問い合わせ・平坦な CSS の検査・DB。TypeScript のまま Node 24（`.nvmrc`）が型を剥がして実行する。support/ = 偽の Stripe・Webhook の署名・本物の Better Auth を PGlite で動かす道具・持ち主と時刻を指定して注文を入れる道具・console に出た内容を集める道具）
 e2e/                    Playwright の E2E（*.spec.ts は 1 ファイル 1 導線。db-unavailable.spec.ts は DB の使えないサーバ（ポート 3211）に対して回す。fixtures/ = localStorage の形・Stripe のモック・外部画像、support/ = カタログから期待値を作る・画面を開く・ロケータ・注文履歴の seed の中身、seed.ts = 注文履歴の利用者と注文を E2E 専用の DB に入れる、constants.ts = URL とビューポート）
 playwright.config.ts    E2E の設定（next start -p 3210・幅 390 / 1280・retries は CI だけ 1・reporter は list + html）
-DESIGN.md               設計の決まりごと（共通化の線引き・トークンと部品の置き場・hover・aria-current・文面の置き場）
+DESIGN.md               設計の決まりごと（作り方の規則の正本へのリンクと、この repo で違うこと）
 ```
 
 ## デザインの書き方
