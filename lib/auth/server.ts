@@ -18,20 +18,21 @@ import { viewerFromHeaders } from "./viewer.ts";
  * そのためテストはここを読まず、lib/auth/config.ts の createAuth に PGlite を差し込む。
  */
 const store = globalThis as typeof globalThis & {
-  __payappAuth?: Promise<Auth>;
+  __maisonNoirAuth?: Promise<Auth>;
 };
 
 export function getAuth(): Promise<Auth> {
-  if (store.__payappAuth === undefined) {
+  if (store.__maisonNoirAuth === undefined) {
     const pending = getDb().then((db) =>
       createAuth(db, resolveAuthSettings(process.env)),
     );
     pending.catch(() => {
-      if (store.__payappAuth === pending) store.__payappAuth = undefined;
+      if (store.__maisonNoirAuth === pending)
+        store.__maisonNoirAuth = undefined;
     });
-    store.__payappAuth = pending;
+    store.__maisonNoirAuth = pending;
   }
-  return store.__payappAuth;
+  return store.__maisonNoirAuth;
 }
 
 /** リクエストのヘッダー（cookie）から、ログイン中の利用者を引く（ログインしていなければ null）。Route Handler と GraphQL が使う */

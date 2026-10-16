@@ -143,7 +143,7 @@ function SuccessChecking() {
       className="text-center animate-fade-in"
       as="div"
     >
-      <Eyebrow>MAISON</Eyebrow>
+      <Eyebrow>MAISON NOIR</Eyebrow>
       <Loading
         label="決済を確認しています…"
         announce={false}

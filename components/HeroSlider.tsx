@@ -75,7 +75,7 @@ export default function HeroSlider() {
       <div className="absolute inset-0 flex items-center">
         <div className="container-lux">
           <div className="animate-fade-up max-w-2xl">
-            <Eyebrow>MAISON — NEW SEASON</Eyebrow>
+            <Eyebrow>MAISON NOIR — NEW SEASON</Eyebrow>
             <Divider variant="rule" className="mt-4" />
             <Heading as="h1" size="hero" className="mt-5">
               {/* 句の途中で改行しないよう、句ごとに折り返し単位をまとめる */}

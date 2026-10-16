@@ -18,16 +18,16 @@ import {
  * そのためテストはここを読まず、DB を関数の引数で受け取る側（fulfillCheckout など）に lib/db/test-helpers.ts の接続を差し込む。
  */
 const store = globalThis as typeof globalThis & {
-  __payappDb?: Promise<DbConnection>;
+  __maisonNoirDb?: Promise<DbConnection>;
 };
 
 export async function getDb(): Promise<Db> {
-  if (store.__payappDb === undefined) {
+  if (store.__maisonNoirDb === undefined) {
     const pending = connectDb(resolveDbTarget(process.env));
     pending.catch(() => {
-      if (store.__payappDb === pending) store.__payappDb = undefined;
+      if (store.__maisonNoirDb === pending) store.__maisonNoirDb = undefined;
     });
-    store.__payappDb = pending;
+    store.__maisonNoirDb = pending;
   }
-  return (await store.__payappDb).db;
+  return (await store.__maisonNoirDb).db;
 }

@@ -8,7 +8,7 @@ export default function CancelPage() {
   return (
     <StatusMessage
       icon="cancel"
-      eyebrow="MAISON"
+      eyebrow="MAISON NOIR"
       title="決済がキャンセルされました"
       lead="お支払いは完了していません。ご請求は発生しておりませんのでご安心ください。カートの内容はそのまま保持されていますので、いつでもお手続きを再開いただけます。"
       actions={

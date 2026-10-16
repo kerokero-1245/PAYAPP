@@ -174,7 +174,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: payapp
+          POSTGRES_DB: maison_noir
         ports:
           - 5432:5432
         options: >-
@@ -183,7 +183,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/payapp
+      DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/maison_noir
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4

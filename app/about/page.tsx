@@ -8,7 +8,7 @@ import PledgeGrid from "@/components/PledgeGrid";
 
 export const metadata: Metadata = {
   title: "ブランドストーリー",
-  description: "MAISON が選ぶ品と、その基準について。",
+  description: "MAISON NOIR が選ぶ品と、その基準について。",
 };
 
 /** 段落（はじまり・選ぶ基準・職人） */
@@ -16,7 +16,7 @@ const CHAPTERS = [
   {
     eyebrow: "Origin",
     title: "はじまり",
-    body: "MAISON は「長く使うほどに愛着が深まるものだけを届けたい」という思いから生まれた、架空のセレクトストアです。流行を追うのではなく、十年後も手に取りたくなる品を、ひとつずつ選んでいます。",
+    body: "MAISON NOIR は「長く使うほどに愛着が深まるものだけを届けたい」という思いから生まれた、架空のセレクトストアです。流行を追うのではなく、十年後も手に取りたくなる品を、ひとつずつ選んでいます。",
   },
   {
     eyebrow: "Selection",

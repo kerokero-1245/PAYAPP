@@ -50,11 +50,11 @@ test("NEXT_PUBLIC_BASE_URL が不正ならリクエスト URL の origin に戻�
   ]) {
     assert.equal(
       resolveReturnOrigin({
-        requestUrl: "https://payapp.example/checkout",
+        requestUrl: "https://maison-noir.example/checkout",
         headers: evilHeaders,
         baseUrl,
       }),
-      "https://payapp.example",
+      "https://maison-noir.example",
       String(baseUrl),
     );
   }

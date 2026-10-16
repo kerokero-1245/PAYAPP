@@ -531,7 +531,7 @@ test("stripe_events: 同じイベント id は 2 回入らず、ON CONFLICT DO N
 // ---------- 接続先 ----------
 
 test("接続先: PGlite のファイルに保存でき、閉じて開き直しても残る（DATABASE_URL が無いときの dev）", async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "payapp-pglite-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "maison-noir-pglite-"));
   const dataDir = path.join(dir, "pglite");
   try {
     const created = await createTestDb({ dataDir });
@@ -707,22 +707,22 @@ test("接続先: postgres:// 以外の値は例外にし、パスワードをメ
 });
 
 test(".env.local の読み込み: 無ければ何もせず、あれば読み、既にある環境変数は上書きしない", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "payapp-env-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "maison-noir-env-"));
   const file = path.join(dir, ".env.local");
-  const names = ["PAYAPP_TEST_ENV_NEW", "PAYAPP_TEST_ENV_EXISTING"];
+  const names = ["maison_noir_test_env_new", "maison_noir_test_env_existing"];
   try {
     loadLocalEnv(file); // ファイルが無い: 例外にならない
-    assert.equal(process.env.PAYAPP_TEST_ENV_NEW, undefined);
+    assert.equal(process.env.maison_noir_test_env_new, undefined);
 
     fs.writeFileSync(
       file,
-      'PAYAPP_TEST_ENV_NEW="from file"\nPAYAPP_TEST_ENV_EXISTING=from_file\n',
+      'maison_noir_test_env_new="from file"\nmaison_noir_test_env_existing=from_file\n',
     );
-    process.env.PAYAPP_TEST_ENV_EXISTING = "from_shell";
+    process.env.maison_noir_test_env_existing = "from_shell";
     loadLocalEnv(file);
-    assert.equal(process.env.PAYAPP_TEST_ENV_NEW, "from file");
+    assert.equal(process.env.maison_noir_test_env_new, "from file");
     assert.equal(
-      process.env.PAYAPP_TEST_ENV_EXISTING,
+      process.env.maison_noir_test_env_existing,
       "from_shell",
       "シェルや CI で指定した値が勝つ",
     );
@@ -733,7 +733,7 @@ test(".env.local の読み込み: 無ければ何もせず、あれば読み、�
 });
 
 test("接続先: Vercel（VERCEL=1）では PGLITE_DATA_DIR を無視する（本番は DATABASE_URL 必須のまま。Neon が先なのも変わらない）。VERCEL が 1 以外なら従来どおり", () => {
-  const dir = "/tmp/payapp-pglite";
+  const dir = "/tmp/maison-noir-pglite";
   const url = "postgres://app@pooler.example/db";
 
   // 本番の Vercel: PGLITE_DATA_DIR があっても例外（消える DB に注文を書かない）。理由を文に出し、値は出さない

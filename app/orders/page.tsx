@@ -33,7 +33,7 @@ export default async function OrdersPage() {
   return (
     <Section spacing="md" as="div">
       <PageHeader
-        eyebrow="MAISON — ORDER HISTORY"
+        eyebrow="MAISON NOIR — ORDER HISTORY"
         title="注文履歴"
         dividerClassName="mt-8 mb-10"
         dividerOutside

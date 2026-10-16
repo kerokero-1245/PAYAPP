@@ -31,7 +31,7 @@ export default async function SignupPage({
       <div className="max-w-md mx-auto animate-fade-up">
         <Card variant="panel" padding="md">
           <div className="text-center">
-            <Eyebrow>MAISON</Eyebrow>
+            <Eyebrow>MAISON NOIR</Eyebrow>
             <Heading as="h1" size="page" className="mt-3">
               新規登録
             </Heading>

@@ -56,7 +56,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           // ── ログインフォーム ──
           <Card variant="panel" padding="md">
             <div className="text-center">
-              <Eyebrow>MAISON</Eyebrow>
+              <Eyebrow>MAISON NOIR</Eyebrow>
               <Heading as="h1" size="page" className="mt-3">
                 サインイン
               </Heading>

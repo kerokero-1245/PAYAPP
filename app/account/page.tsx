@@ -29,7 +29,7 @@ export default async function AccountPage() {
   return (
     <Section spacing="md" as="div">
       <PageHeader
-        eyebrow="MAISON — MY ACCOUNT"
+        eyebrow="MAISON NOIR — MY ACCOUNT"
         title="アカウント"
         dividerClassName="mt-8 mb-10"
         dividerOutside

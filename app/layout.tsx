@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   metadataBase: resolveMetadataBase(process.env.NEXT_PUBLIC_BASE_URL),
   title: {
     default: SITE_TITLE,
-    template: "%s | MAISON",
+    template: "%s | MAISON NOIR",
   },
   description: SITE_DESCRIPTION,
   openGraph: SITE_OPEN_GRAPH,

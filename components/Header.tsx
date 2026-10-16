@@ -197,7 +197,7 @@ export default function Header() {
               <MenuIcon open={menuOpen} />
             </button>
             <Link href="/" className="type-display brand">
-              MAISON
+              MAISON NOIR
             </Link>
           </div>
 

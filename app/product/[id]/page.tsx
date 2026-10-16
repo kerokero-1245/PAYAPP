@@ -16,7 +16,7 @@ export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ id: p.id }));
 }
 
-/** タイトルと OGP は商品ごと（「Éclat Automatic 41 | MAISON」） */
+/** タイトルと OGP は商品ごと（「Éclat Automatic 41 | MAISON NOIR」） */
 export async function generateMetadata({
   params,
 }: PageProps<"/product/[id]">): Promise<Metadata> {

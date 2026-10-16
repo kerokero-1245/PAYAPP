@@ -5,8 +5,8 @@
  * - resolveReturnOrigin: 決済後の戻り先。リクエストの Origin ヘッダーは使わない
  */
 
-export const SITE_NAME = "MAISON";
-export const SITE_TITLE = "MAISON — PAYAPP";
+export const SITE_NAME = "MAISON NOIR";
+export const SITE_TITLE = "MAISON NOIR";
 export const SITE_DESCRIPTION =
   "選び抜かれた逸品だけを集めたラグジュアリー・オンラインストア。時計・レザー・フレグランス・ジュエリー。";
 
@@ -22,7 +22,7 @@ export const SITE_OPEN_GRAPH = {
       url: "/og-image.png",
       width: 1200,
       height: 630,
-      alt: "MAISON のトップページ",
+      alt: "MAISON NOIR のトップページ",
     },
   ],
 };
