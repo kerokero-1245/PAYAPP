@@ -41,10 +41,12 @@ export default function Footer() {
   return (
     <footer className="site-footer mt-24">
       <div className="container-lux py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* ブランド */}
           <div>
-            <p className="type-display brand mb-3">MAISON NOIR</p>
+            <p className="type-display brand whitespace-nowrap mb-3">
+              MAISON NOIR
+            </p>
             <p className="lead lead-sm max-w-xs">
               選び抜かれた逸品だけを集めた、ラグジュアリー・オンラインストア。
             </p>

@@ -191,18 +191,18 @@ export default function Header() {
               aria-label="メニュー"
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
-              className="menu-btn md:hidden"
+              className="menu-btn lg:hidden"
               onClick={() => setMenuOpen((o) => !o)}
             >
               <MenuIcon open={menuOpen} />
             </button>
-            <Link href="/" className="type-display brand">
+            <Link href="/" className="type-display brand whitespace-nowrap">
               MAISON NOIR
             </Link>
           </div>
 
-          {/* 中央: ナビ（デスクトップ） */}
-          <nav className="hidden md:flex items-center gap-5 lg:gap-8">
+          {/* 中央: ナビ（lg 以上） */}
+          <nav className="hidden lg:flex items-center gap-8">
             <Nav
               pathname={pathname}
               linkClass="link-underline link-quiet nav-link"
@@ -211,13 +211,12 @@ export default function Header() {
 
           {/* 右: 検索・アカウント・カート */}
           <div className="flex items-center gap-4">
-            {/* md（768〜1023px）でも検索欄を出す。幅が足りないので md では細めにする */}
-            <form onSubmit={submitSearch} className="hidden md:block relative">
+            <form onSubmit={submitSearch} className="hidden lg:block relative">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="検索"
-                className="input-lux input-search-sm w-28 lg:w-40"
+                className="input-lux input-search-sm w-40"
                 aria-label="商品を検索"
               />
               <span className="search-icon absolute left-2.5 top-1/2 -translate-y-1/2">
@@ -232,7 +231,7 @@ export default function Header() {
               aria-label="アカウント"
             >
               <UserIcon />
-              <span className="account-name hidden sm:inline md:hidden lg:inline truncate">
+              <span className="account-name hidden sm:inline truncate">
                 {user ? user.name : "ログイン"}
               </span>
             </Link>
@@ -263,7 +262,7 @@ export default function Header() {
       <div
         id="mobile-menu"
         hidden={!menuOpen}
-        className="mobile-menu md:hidden animate-fade-in"
+        className="mobile-menu lg:hidden animate-fade-in"
       >
         <div className="container-lux py-4 flex flex-col gap-1">
           <form onSubmit={submitSearch} className="relative mb-3">
