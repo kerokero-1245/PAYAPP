@@ -1,6 +1,6 @@
 # maison-noir（MAISON NOIR）の設計の決まりごと
 
-このリポジトリでコードを足す・直すときの方針。見た目の書き方の細部は README の「デザインの書き方」を正本とし、ここには判断の基準と置き場だけを書く。
+このリポジトリでコードを足す・直すときの方針。見た目の書き方の細部は [docs/css.md の「デザインの書き方」](docs/css.md#デザインの書き方)を正本とし、ここには判断の基準と置き場だけを書く。
 
 ## この repo での適用
 
@@ -8,7 +8,7 @@
 
 ### 例外（規則と違うこと）
 
-- **配布は CI を待たない**: 本番とプレビューへの配布は Vercel の GitHub 連携が push ごとに行い、GitHub Actions の CI（`.github/workflows/ci.yml`）とは独立に動く。CI が落ちても配布は止まらない（手順は README の「公開（Vercel）」）
+- **配布は CI を待たない**: 本番とプレビューへの配布は Vercel の GitHub 連携が push ごとに行い、GitHub Actions の CI（`.github/workflows/ci.yml`）とは独立に動く。CI が落ちても配布は止まらない（手順は [docs/deploy.md の「公開（Vercel）」](docs/deploy.md#公開vercel)）
 
 ### 固有の約束（このリポジトリだけの不変条件）
 
@@ -20,7 +20,7 @@
 - **テスト**: Stripe は `getStripe` で差し込める形にして、テストでは偽の Stripe を渡す。画面の操作（導線）の E2E の書き方は [E2E（Playwright）](#e2eplaywright)
 - **Route Handler は薄い配線だけにする**: `app/**/route.ts` は node --test から import できない（`@/` の別名と `server-only`）ので、中身を書くと配線の取り違え（持ち主を渡し忘れる・Webhook の秘密を別の変数から読む）がどのテストにも見えない。本体と、本物の依存の組み立てを lib に置き（`handleCheckoutRequest`・`createWebhookDeps`・`handleAuthRequest`・`verifyCheckoutSession`・`createGraphqlHandler`）、テストが同じ関数を呼ぶ
 - **整形の対象外**: 生成物（`lib/graphql/__generated__`・`drizzle/`）・ロックファイル・`tests/fixtures/`・`docs/screenshots` は `.prettierignore` で対象外（整形すると生成物の鮮度の検査が落ちる）
-- **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは README の「デザインの書き方」。`npm run check:css` が検査し、`tests/flat-css.test.ts` が検査そのものを確かめる
+- **平坦な CSS**: 1 クラス 1 役割の足し算で書き、結合子・入れ子・`!important` を使わない。詳しくは [docs/css.md の「デザインの書き方」](docs/css.md#デザインの書き方)。`npm run check:css` が検査し、`tests/flat-css.test.ts` が検査そのものを確かめる
 
 ### 記録の例
 
@@ -85,7 +85,7 @@
 - **接続先の切り替えは `lib/db/connect.ts` の `resolveDbTarget` の 1 か所**: `DATABASE_URL` があれば Neon、無ければ PGlite。ほかの場所で `process.env.DATABASE_URL` を読まない
 - **DB は関数の引数で受け取る**（`Db` 型）: アプリは `lib/db/client.ts` の `getDb()`（`server-only`）だけから受け取り、テストは `lib/db/test-helpers.ts` の `withTestDb` の接続を差し込む。テストは `client.ts` を import しない（Stripe の `getStripe` と同じ流儀）
 - **本番は `DATABASE_URL` 必須**: `resolveDbTarget` は、`NODE_ENV=production` で `DATABASE_URL` も `PGLITE_DATA_DIR` も無ければ例外にする（PGlite に黙って切り替えない）。本番ビルドをローカルで動かすとき（`next start`・E2E）は `PGLITE_DATA_DIR` で PGlite を明示する。`PGLITE_DATA_DIR` は **E2E とローカルの `next start` のための opt-in** で、Vercel（`VERCEL=1`）では無視する（置かれても、関数の実体ごとに消える DB に注文を書かない）。dev・test は従来どおり既定の `.pglite/`
-- **環境の境目**: Vercel の Preview には本番の `DATABASE_URL` を入れない（Preview 用の DB を置くか、置かずに DB なし）。Webhook は本番の URL だけに登録する（Stripe はアカウントのイベントを登録済みの全エンドポイントに送るので、Preview・ローカルの試し買いも本番の Webhook に届き、本番の DB にゲストの注文として確定される。避けたいときは Preview・ローカルに別の Stripe アカウントのテストキーを使う）。手順は README の「公開（Vercel）」
+- **環境の境目**: Vercel の Preview には本番の `DATABASE_URL` を入れない（Preview 用の DB を置くか、置かずに DB なし）。Webhook は本番の URL だけに登録する（Stripe はアカウントのイベントを登録済みの全エンドポイントに送るので、Preview・ローカルの試し買いも本番の Webhook に届き、本番の DB にゲストの注文として確定される。避けたいときは Preview・ローカルに別の Stripe アカウントのテストキーを使う）。手順は [docs/deploy.md の「公開（Vercel）」](docs/deploy.md#公開vercel)
 - **DB の制約に写す値は、持ち主の定数から読む**: 数量の上下限は `lib/cart.ts` の `MIN_QUANTITY` / `MAX_QUANTITY` を schema が読む（定数を変えると generate の差分が出て CI が落ちる）。同じ数を schema に直書きしない
 - **在庫（`products.stock`）は DB が正本**: seed（`lib/db/seed.ts`）は価格だけを合わせ、在庫は上書きしない。カタログから消えた商品も消さない（注文の明細が参照している）
 - **DB のテストは PGlite**: `withTestDb` がテストごとに全マイグレーションを当てた状態の DB を立てる。外部のサービスや docker に依存しない。PGlite と本物の Postgres の差は CI の `db-migrate-postgres`（`services: postgres`）で拾う
@@ -121,14 +121,14 @@
 
 - **登録・ログイン・ログアウトは GraphQL にしない**: Better Auth の `/api/auth/*`（`app/api/auth/[...all]/route.ts`）が、cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持つ。GraphQL は `viewer` を読むだけ。`/api/auth/*` を自前で包み直さない
 - **セッションを引く場所は 1 つ**: ページ（サーバコンポーネント）は `lib/auth/server.ts` の `getViewer()`、Route Handler と GraphQL は `getViewerFromHeaders(headers)`。どちらも `lib/auth/viewer.ts` の `viewerFromHeaders`（セッションの cookie が無ければ DB に触れない。期限は延ばさない）を通る。ほかの場所で `auth.api.getSession` を直接呼ばない。**ヘッダーだけは例外**で、クライアントの `authClient.useSession()` を使う（ヘッダーはすべてのページにあり、サーバで cookie を読むとすべてのページが動的になって、商品ページの静的生成が外れるため）
-- **`/api/auth/*` の入口は `lib/auth/handler.ts` の `handleAuthRequest`**: 本文を持つ要求は 16KB（`MAX_AUTH_BODY_BYTES`）までしか読まず、超えたら Better Auth にも DB にも触れずに 413。Better Auth を作れない・想定外の例外のときは理由を出さず 500。公開している口の一覧は README の「認証」で、`tests/auth-endpoints.test.ts` が固定している（Better Auth を上げて口が増えたら落ちる）
+- **`/api/auth/*` の入口は `lib/auth/handler.ts` の `handleAuthRequest`**: 本文を持つ要求は 16KB（`MAX_AUTH_BODY_BYTES`）までしか読まず、超えたら Better Auth にも DB にも触れずに 413。Better Auth を作れない・想定外の例外のときは理由を出さず 500。公開している口の一覧は [docs/auth.md の「認証」](docs/auth.md#認証)で、`tests/auth-endpoints.test.ts` が固定している（Better Auth を上げて口が増えたら落ちる）
 - **利用者が入れる値には長さの上限がある**（`lib/auth/constants.ts`: 表示名 50・メール 254・画像の URL 2048 文字、User-Agent は 256 文字で切る）。Better Auth の `databaseHooks`（`lib/auth/config.ts`）が、登録と `update-user` の両方で DB に書く前に検査する（400）。登録フォームの入力欄にも同じ値を付ける
 - **ログに値を出さない**: 例外を console に渡さない（Drizzle の例外は message と params に SQL の引数＝パスワードのハッシュ・メールアドレス・セッションの識別子を持つ）。出来事は `lib/log.ts` の `logEvent`（1 行 1 JSON。値は文字列・数・真偽・null だけ）で、例外は `describeError`（名前と SQLSTATE などのコードだけ）を通して書く。Better Auth のログは `logger.log` と `onAPIError.onError`（`lib/auth/log.ts`）で同じ形にする（水準は既定の warn のまま。info の「登録済みのメールへの登録の試み」にはメールが入る）。`tests/auth-log.test.ts` が、DB を失敗させて console に出た内容を調べる
 - **試行回数の制限が見る接続元**は、`x-real-ip`（Vercel が前段で付け直す）を先に、無ければ `x-forwarded-for`（値 1 つのときだけ）。`IP_ADDRESS_HEADERS`（`lib/auth/constants.ts`）。本番の既定で制限が有効なことは、`NODE_ENV=production` の子プロセスで確かめる（`tests/auth-rate-limit.test.ts`。Better Auth は NODE_ENV を読み込み時に定数にするため）
 - **ログインが要るページ**（`/account`・`/orders`）: サーバで `getViewer()` を引き、無ければ `redirect(loginPathFor(<そのページ>))`。localStorage を見て判定しない。`/login` と `/signup` が受ける `next` は、必ず `safeNextPath`（`lib/auth/next-path.ts`）を通してから使う（未検査の値で移動しない。オープンリダイレクトを防ぐ）
 - **注文の持ち主は 1 か所で決める**: `createCheckoutSessionCore` が `client_reference_id`（セッションから引いた利用者の id。リクエストの本文の値は使わない）を付け、`fulfillCheckout` だけが `orders.user_id` に入れる（実在する利用者のときだけ。それ以外はゲストとして、支払い済みの注文を失わない）。別の経路から `orders.user_id` を書かない。応答（確認 API・GraphQL の `Order`）には持ち主を出さない
 - **認証の表は Better Auth の CLI の出力が正本**: 手で列を足さない。プロパティ名（`emailVerified` など）は Better Auth のフィールド名で、アダプタがこの名前で列を引く。`role` などは管理画面の段で、Better Auth の機能（`additionalFields` か admin プラグイン）で足して、CLI の出力を取り込み直す。`tests/auth.test.ts` の「認証の表」が、Better Auth の要求との食い違い（列・型・必須・一意・外部キー・索引）を検出する
-- **既定値は、採否を決めてから使う**: Better Auth の既定のうち方針に関わるもの（パスワードの長さ・セッションの期限）は `lib/auth/constants.ts` に明示して固定し、採否と理由は README の「既定値の採否」に書く。Better Auth を上げるときは、公開から 14 日以上たった版を完全一致で固定し、その表と `tests/auth.test.ts` を読み直す
+- **既定値は、採否を決めてから使う**: Better Auth の既定のうち方針に関わるもの（パスワードの長さ・セッションの期限）は `lib/auth/constants.ts` に明示して固定し、採否と理由は [docs/auth.md の「既定値の採否」](docs/auth.md#既定値の採否)に書く。Better Auth を上げるときは、公開から 14 日以上たった版を完全一致で固定し、その表と `tests/auth.test.ts` を読み直す
 - **本番の必須の環境変数**: `BETTER_AUTH_SECRET`（`resolveAuthSettings` が、無い・32 文字未満・開発用の固定の値なら例外にする）。`BETTER_AUTH_URL` は Production だけに置き、Preview には置かない（置くとプレビューの URL からのログインが 403 になる）
 - **文面**: 失敗の文は `lib/auth/messages.ts`（ログインは、メールの有無・パスワードの違いを言い分けない。英語の message や例外の中身は出さない）、パスワードの再設定が無い注記は `lib/policies.ts`。プライバシーポリシーの「ログイン状態」の行は、実際の cookie と DB の行（`tests/auth.test.ts`）と突き合わせる
 - **テストは本物の Better Auth**: `tests/auth.test.ts` と `tests/auth-viewer.test.ts` は、Better Auth を PGlite の DB でそのまま動かし、`auth.handler(new Request(...))` に `/api/auth/*` を送る（偽物に差し替えない。ブラウザの代わりに Set-Cookie を次の要求の Cookie に付ける）。`NODE_ENV=test` では Better Auth が Origin の検査を切るので、テストを `NODE_ENV=test` で動かさない（`node --test` は設定しない）
