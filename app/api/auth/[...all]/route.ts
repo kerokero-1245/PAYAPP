@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  *   POST update-session。
  * 設定していないので失敗する口: ソーシャルログインの sign-in/social・callback・link-social・unlink-account・refresh-token・
  * get-access-token、メールの確認・パスワードの再設定の verify-email・send-verification-email・request-password-reset・reset-password、
- * change-email・delete-user（無効）。ほかに GET ok と GET error。一覧は README の「認証」。
+ * change-email・delete-user（無効）。ほかに GET ok と GET error。一覧は docs/auth.md の「認証」。
  * 本文を持つ要求は 16KB まで（超えたら 413。本体は lib/auth/handler.ts）。設定は lib/auth/config.ts、
  * Better Auth を作るのは lib/auth/server.ts の getAuth。
  * 認証を作れなかったとき（本番で BETTER_AUTH_SECRET が無い・DB に繋がらないなど）は、理由を応答に出さず 500 にする。

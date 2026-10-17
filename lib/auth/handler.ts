@@ -9,7 +9,7 @@
  * Better Auth を作れなかったとき（本番で BETTER_AUTH_SECRET が無い・DB に繋がらないなど）は、理由を応答に出さず 500 にする。
  * 想定外の例外は、名前とコードだけを記録する（例外ごと console に出すと、SQL の引数に入っているパスワードのハッシュやメールが
  * ログに残る。lib/auth/log.ts）。
- * 使える入口（/api/auth/ の下）は README の「認証」の表のとおり。
+ * 使える入口（/api/auth/ の下）は docs/auth.md の「認証」の表のとおり。
  */
 import {
   BAD_REQUEST,

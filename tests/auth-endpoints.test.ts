@@ -2,7 +2,7 @@
 //
 // なぜあるか: app/api/auth/[...all]/route.ts は Better Auth の口をすべて同じ入口で受ける。画面が使うのは登録・ログイン・ログアウト・
 // セッションの取得の 4 つだけだが、update-user・change-password・list-sessions なども、ログイン中の本人なら呼べる。
-// README の「公開している口」の表は、ここで確かめた結果を書いたもの。Better Auth を上げて口が増えたとき・設定していない機能が
+// docs/auth.md の「公開している口」の表は、ここで確かめた結果を書いたもの。Better Auth を上げて口が増えたとき・設定していない機能が
 // 使えるようになったときに、このテストが落ちて気付けるようにする（表を読み直す）。
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -24,7 +24,7 @@ type Endpoint = {
   };
 };
 
-/** README の「公開している口」の表のとおり。Better Auth が HTTP で受ける口 */
+/** docs/auth.md の「公開している口」の表のとおり。Better Auth が HTTP で受ける口 */
 const PUBLISHED = [
   "POST /sign-in/social",
   "GET|POST /callback/:id",
@@ -58,7 +58,7 @@ const PUBLISHED = [
   "GET /error",
 ];
 
-test("公開している口: Better Auth が HTTP で受ける口は、README の「公開している口」の表と同じ（口が増えたら気付く）", () =>
+test("公開している口: Better Auth が HTTP で受ける口は、docs/auth.md の「公開している口」の表と同じ（口が増えたら気付く）", () =>
   withTestDb(async ({ db }) => {
     const auth = createTestAuth(db);
     const routes = Object.values(auth.api as Record<string, Endpoint>)

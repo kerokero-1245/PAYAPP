@@ -7,7 +7,7 @@
  * （cookie の発行と削除・試行回数の制限・送信元（Origin）の検査をまとめて持っているため）。
  *
  * 付けないもの: メール確認・パスワードの再設定（メールを送る基盤が無い）・外部サービスでのログイン（GitHub は後の段）。
- * 採用した既定値と、変えた値・理由は README の「認証」節の表にある（Better Auth 1.7.6 のコードで確かめた値）。
+ * 採用した既定値と、変えた値・理由は docs/auth.md の「認証」節の表にある（Better Auth 1.7.6 のコードで確かめた値）。
  * Better Auth を上げるときは、その表と tests/auth.test.ts を読み直す。
  *
  * DB と設定は引数で受け取る（lib/db/client.ts の getDb() は server-only でテストから読めない。getStripe と同じ流儀）。

@@ -12,7 +12,7 @@
 - **購入と持ち主**: ログイン中に購入手続きへ進むと、サーバがセッションから引いた利用者の `id` を Checkout Session の `client_reference_id` に付けます（リクエストの本文の値は使いません）。注文を確定する `fulfillCheckout` が、それを `orders.user_id` に入れます（Webhook と成功ページのどちらから確定しても同じです。付いていない決済・実在しない利用者はゲストの注文として確定し、支払い済みの注文を失いません）。持ち主ごとの注文は、注文履歴 `/orders` と GraphQL の `myOrders` が読みます（`lib/order-history.ts`）。
 - **ファイル**: `lib/auth/config.ts`（設定。DB は引数で受ける）・`server.ts`（サーバ専用。`getAuth` と、ページが使う `getViewer`）・`viewer.ts`（セッション → 利用者）・`next-path.ts`・`messages.ts`（失敗の文）・`constants.ts`（パスワードの長さ・セッションの期限）・`client.ts`（ブラウザ用）。認証の表は `lib/db/schema.ts`（Better Auth の CLI の出力が正本。`tests/auth.test.ts` が Better Auth の要求との食い違いを検出します）。
 
-### 公開している口（`/api/auth/*`）
+## 公開している口（`/api/auth/*`）
 
 `app/api/auth/[...all]/route.ts` は Better Auth の口をすべて同じ入口で受けます。確かめた結果（Better Auth 1.7.6、このリポジトリの設定）です。ここに無い口は、そもそも登録されていません。
 
@@ -30,7 +30,7 @@
 
 「画面には出していない」口を閉じるには `disabledPaths`（Better Auth の設定）がありますが、今は閉じていません。使わない口が増えないよう、Better Auth を上げるときは `tests/auth-endpoints.test.ts`（口の一覧を固定）が落ちるので、この表を読み直してください。
 
-### 既定値の採否
+## 既定値の採否
 
 Better Auth 1.7.6 のコード（`node_modules`）で確かめた既定値と、そのまま採ったか、変えたかの一覧です。Better Auth を上げるときは、この表と `tests/auth.test.ts` を読み直してください。
 
@@ -50,7 +50,7 @@ Better Auth 1.7.6 のコード（`node_modules`）で確かめた既定値と、
 
 既知の限界（段 3 の後の敵対レビューで判断します）: 試行回数の制限はメモリなので、分散した試行は関数の実体ごとに通ります。セッションに絶対の期限が無く、メールアドレスの持ち主を確かめず、登録済みのメールアドレスが分かります（メール確認を使わないため）。scrypt のコストは固定です。`NODE_ENV=test` か環境変数 `TEST` があると Better Auth の Origin の検査が切れます（本番に置かないでください）。
 
-### ローカルで動かす
+## ローカルで動かす
 
 ```bash
 npm run db:migrate   # 認証の表（user・session・account・verification）も作る

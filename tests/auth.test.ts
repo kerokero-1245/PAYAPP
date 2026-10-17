@@ -6,7 +6,7 @@
 //  - パスワードは DB に平文で残らない（scrypt のハッシュ）。ログインの失敗はメールの有無を言い分けない
 //  - 試行回数の制限・送信元（Origin）の検査・cookie の改ざん・セッションの期限と延長が効いている
 //  - 認証の表が Better Auth の要求と食い違わない（Better Auth を上げたときに気付く）
-// 採用した既定値の一覧は README の「認証」節。ここで確かめた値がその根拠。
+// 採用した既定値の一覧は docs/auth.md の「認証」節。ここで確かめた値がその根拠。
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getAuthTables } from "better-auth/db";

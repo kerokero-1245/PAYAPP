@@ -3,7 +3,7 @@
  * ---------------------------------------------------
  * ブラウザのコード（登録フォームなど）も読むので、何も import しない（Better Auth や DB を引き込まない）。
  * Better Auth の既定と同じ値も、ここで明示して固定する（ライブラリの既定が変わっても、方針は黙って変わらない）。
- * 値の採否と理由は、段 3 の既定値の一覧（README の「認証」節）にある。
+ * 値の採否と理由は、段 3 の既定値の一覧（docs/auth.md の「認証」節）にある。
  */
 
 /** Better Auth の Route Handler を置くパス（app/api/auth/[...all]/route.ts）。クライアントも同じ場所に問い合わせる */
@@ -50,6 +50,6 @@ export const MAX_AUTH_BODY_BYTES = 16 * 1024;
  * 試行回数の制限が接続元を決めるときに見るヘッダー（前から順に。値が 1 つの有効な IP になった最初のものを使う）。
  * Vercel は前段で x-real-ip と x-forwarded-for を接続元の IP に付け直す（利用者が送った値は信用しない）。
  * x-forwarded-for はローカル・E2E（幅ごとに値を変えて枠を分ける）のため。Vercel 以外の前段（追記型のプロキシ）に置くなら、
- * advanced.ipAddress.trustedProxies も要る（README の「認証」）
+ * advanced.ipAddress.trustedProxies も要る（docs/auth.md の「認証」）
  */
 export const IP_ADDRESS_HEADERS = ["x-real-ip", "x-forwarded-for"];

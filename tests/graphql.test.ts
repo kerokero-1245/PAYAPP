@@ -1376,7 +1376,7 @@ test("GraphQL: 本番（NODE_ENV=production）では GET と HEAD を 405 で断
       assert.equal(preflight.headers.get("access-control-allow-origin"), null);
     });
 
-    // 本番以外では GET も通る（GraphiQL が使う。README の開発中の手順）
+    // 本番以外では GET も通る（GraphiQL が使う。docs/setup.md の手順）
     await withNodeEnv("development", async () => {
       const { handler } = setup({ db });
       const res = await get(handler, "{ categories { slug } }");

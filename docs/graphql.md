@@ -99,11 +99,11 @@ curl -s http://localhost:3000/api/graphql \
   -d '{"query":"{ categories { slug label } }"}'
 ```
 
-### 型の生成（codegen）
+## 型の生成（codegen）
 
 `npm run codegen` が `lib/graphql/sdl.ts` の SDL から、スキーマの型と resolver の型（`Resolvers`）を `lib/graphql/__generated__/types.ts` に出します（設定は `codegen.ts`）。生成物はコミットし、CI は `npm run codegen` のあとに差分が無いことを確かめます。SDL を変えたら `npm run codegen` を実行して、生成物も一緒にコミットしてください。
 
-### 設計の要点
+## 設計の要点
 
 - **カートはブラウザ、注文は DB**: サーバはカートを保存しません（Vercel のサーバレスでは関数のメモリに状態を置けないため）。カートはブラウザの localStorage にあり、API は送られた id と数量から毎回計算します。注文は支払いを確認したときに DB に確定し、`orderBySession` はその DB の注文を返します（resolver 自身は状態を持たず、DB と Stripe は context で受けます）。
 - **価格はサーバが決める**: `CartItemInput` は `id` と `quantity` だけで、price を受け付けません。合計も Stripe に渡す金額も `lib/catalog.ts` から引きます（`/checkout` と同じ関数を共有）。
